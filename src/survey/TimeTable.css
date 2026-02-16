@@ -1,0 +1,206 @@
+.table-container {
+    /* overflow-x: auto; */
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+.time-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    font-family: Arial, sans-serif;
+}
+
+.time-slot-header,
+.day-header {
+    background-color: #004466;
+    color: white;
+    padding: 0.2em;
+    /* position: sticky; */
+    /* top: 0; */
+    /* z-index: 10; */
+    border-inline: thin solid #ddd;
+}
+
+.time-slot {
+    background-color: #f1f4f8;
+    font-weight: bold;
+    font-size: 0.9em;
+    padding: 0.2em;
+    border: thin solid #ddd;
+    width: 14.2857%;
+}
+
+.empty-slot {
+    background-color: white;
+    border: thin solid #ddd;
+    width: 14.2857%;
+
+}
+
+.subject-cell {
+    font-weight: bold;
+    font-size: 0.875em;
+    border: thin solid #ddd;
+    text-align: center;
+    width: 14.2857%;
+}
+
+/* .subject-content {
+    padding: 0.2em;
+} */
+
+.instructor,
+.room {
+    font-size: 0.8rem;
+    font-weight: normal;
+}
+
+/* ========== Subject colors ========== */
+
+.color-1 {
+    background-color: red;
+    color: white;
+}
+
+.color-2 {
+    background-color: #008812;
+    color: white;
+}
+
+.color-3 {
+    background-color: #fb6d00;
+    color: white; 
+}
+
+.color-4 {
+    background-color: blue;
+    color: white;
+}
+
+.color-5 {
+    background-color: yellow;
+    color: black;
+}
+
+.color-6 {
+    background-color: purple;
+    color: white;
+}
+
+.color-7 {
+    background-color: #000000;
+    color: white;   
+}
+
+.color-8 {
+    background-color: #00FA9A;
+    color: black;
+}
+
+.color-9 {
+    background-color: #B22222;
+    color: white;
+}
+
+.color-10 {
+    background-color: #89c80b;
+    color: white;
+}
+
+.color-11 {
+    background-color: #1E90FF;
+    color: white;
+}
+
+.color-12 {
+    background-color: #C71585;
+    color: white;
+}
+
+.color-13 {
+    color: white;
+    background-color: #fe5517;
+}
+
+.color-14 {
+    background-color: #FF1493;
+    color: white;
+}
+
+.color-15 {
+    background-color: #00BFFF;
+    color: black;
+}
+
+.color-16 {
+    background-color: #A52A2A;
+    color: white;
+}
+
+.color-17 {
+    background-color: #20B2AA;
+    color: white;
+}
+
+.color-18 {
+    background-color: #8B4513;
+    color: white;
+}
+
+.color-19 {
+    background-color: #ae500d;
+    color: white;
+}
+
+.color-20 {
+    background-color: #F4A300;
+    color: black;
+}
+
+.color-21 {
+    background-color: #BA55D3;
+    color: white;
+}
+
+.color-22 {
+    background-color: #ff9068;
+}
+
+.color-23 {
+    background-color: #4682B4;
+    color: white;
+}
+
+.color-24 {
+    background-color: #370c4d;
+    color: white;
+}
+
+.color-25 {
+    background-color: #ffbebe9b;
+}
+
+.color-26 {
+    background-color: #c50707;
+    color: white;
+}
+
+.color-27 {
+    background-color: #ff0055;
+    color: white;
+}
+
+.color-28 {
+    background-color: #00f794;
+}
+
+.color-29 {
+    background-color: #e74646;
+}
+
+.color-30 {
+    background-color: #00884d;
+    color: white;
+}

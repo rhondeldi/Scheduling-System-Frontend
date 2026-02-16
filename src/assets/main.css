@@ -1,0 +1,32 @@
+* {
+    padding: 0px;
+    margin: 0px;
+    box-sizing: border-box;
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+.no-text-select {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.all-btns {
+    padding: 0.55em 1.5em;
+    font-size: 1em;
+    background-color: #007bffcd;
+    color: white;
+    border: none;
+    border-radius: 0.3em;
+    cursor: pointer;
+    height: 100%;
+}
+
+.all-btns:hover {
+    background-color: #8a00cf;
+}
+
+.all-btns:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}

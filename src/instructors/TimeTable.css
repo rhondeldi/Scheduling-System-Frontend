@@ -1,0 +1,103 @@
+.table-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+.time-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    font-family: Arial, sans-serif;
+}
+
+.time-slot-header,
+.day-header {
+    background-color: #004466;
+    color: white;
+    padding: 0.2em;
+    border-inline: thin solid #ddd;
+}
+
+.time-slot {
+    background-color: #f1f4f8;
+    font-weight: normal;
+    font-size: 0.75em;
+    line-height: 1.4em;
+    padding: 0.2em;
+    border: thin solid #ddd;
+    width: 14.2857%;
+
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.time-slot-cover {
+    position: absolute;
+
+    width: 100%;
+    height: 100%;
+
+    top: 0px;
+    left: 0px;
+
+    transition: ease 0.1s;
+}
+
+.time-slot-cover:hover {
+    border: 0.2em solid rgb(44, 0, 85) !important;
+}
+
+.time-slot-cover.selected-time-slot-cell {
+    background: rgba(11, 190, 255, 0.42) !important;
+    border: thin solid rgb(44, 0, 85) !important;
+}
+
+.subject-cell {
+    font-weight: bold;
+    font-size: 0.875em;
+    border: thin solid #ddd;
+    text-align: center;
+    width: 14.2857%;
+}
+
+
+.disabled-slot,
+.occupied-slot,
+.available-slot {
+    position: relative;
+
+    width: 14.2857%;
+    border: thin solid #ddd;
+    user-select: none;
+
+    cursor: pointer;
+}
+
+.empty-slot {
+    background-color: white;
+    border: thin solid #ddd;
+    width: 14.2857%;
+}
+
+.disabled-slot {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.202), rgba(0, 0, 0, 0.383));
+    box-shadow: inset 0 0 0 0.07em #02020257;
+}
+
+.occupied-slot {
+    background: linear-gradient(135deg, rgba(255, 0, 0, 0.12), rgba(226, 0, 0, 0.26));
+    box-shadow: inset 0 0 0 0.07em #c5000057;
+}
+
+.available-slot {
+    background: linear-gradient(135deg, #93f50067, #74d1038c);
+    box-shadow: inset 0 0 0 0.07em #5da400;
+    transition: background 0.3s ease;
+}
+
+.available-slot:hover {
+    background: linear-gradient(135deg, #3bc500, #2d9f00);
+    cursor: pointer;
+}

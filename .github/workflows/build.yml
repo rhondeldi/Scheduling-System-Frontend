@@ -1,0 +1,21 @@
+name: build
+
+on:
+  workflow_call:
+  push:
+    branches: [ "main", "master", "dev", "development" ]
+
+jobs:
+  run_build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: mrdcvlsc/scheduling-system-frontend
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Build
+        run: npm run build

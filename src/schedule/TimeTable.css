@@ -1,0 +1,70 @@
+.table-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+.time-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    font-family: Arial, sans-serif;
+}
+
+.time-slot-header,
+.day-header {
+    background-color: #004466;
+    color: white;
+    padding: 0.2em;
+    border-inline: thin solid #ddd;
+}
+
+.time-slot {
+    background-color: #f1f4f8;
+    font-weight: normal;
+    font-size: 0.75em;
+    line-height: 1.4em;
+    padding: 0.2em;
+    border: thin solid #ddd;
+    width: 14.2857%;
+
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.empty-slot {
+    background-color: white;
+    border: thin solid #ddd;
+    width: 14.2857%;
+}
+
+.subject-cell {
+    font-weight: bold;
+    font-size: 0.875em;
+    border: thin solid #ddd;
+    text-align: center;
+    width: 14.2857%;
+}
+
+.subject-cell:hover {
+    cursor: grab;
+}
+
+.instructor,
+.room {
+    font-size: 0.8rem;
+    font-weight: normal;
+}
+
+
+.free-move-slot {
+    background: linear-gradient(135deg, #93f50067, #74d1038c);
+    box-shadow: inset 0 0 0 0.07em #5da400;
+    transition: background 0.3s ease;
+}
+
+.free-move-slot:hover {
+    background: linear-gradient(135deg, #3bc500, #2d9f00);
+    cursor: pointer;
+}

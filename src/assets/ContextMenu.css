@@ -1,0 +1,28 @@
+.context-menu {
+    position: fixed;
+
+    border: solid thin black;
+    border-radius: 0.6em;
+    overflow: hidden;
+    width: fit-content;
+    padding: 0em 0px;
+    box-shadow:
+    0.2em 0.2em 0.6em #8d8d8dca;
+
+    z-index: 999999;
+}
+
+.context-menu-items {
+    font-weight: bold;
+    padding: 0.22em 1em;
+    width: 100%;
+    cursor: pointer;
+    background-color: rgb(255, 255, 255);
+
+    transition: ease-in-out 0.2s;
+}
+
+.context-menu-items:hover {
+    color: white;
+    background-color: rgb(119, 119, 119);
+}
