@@ -1,26 +1,26 @@
-import { StrictMode, useState, useEffect } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import {
+  Alert,
   Box,
-  Paper,
-  Typography,
-  TextField,
   Button,
   CircularProgress,
+  Paper,
   Snackbar,
-  Alert,
+  TextField,
   ThemeProvider,
+  Typography,
 } from "@mui/material";
 
 import LoginIcon from "@mui/icons-material/Login";
 import theme from "../components/Theme";
-import { isAdminAuthenticated, loginAdmin } from "../utils/adminAuth";
+import { fetchWho, loginDepartment } from "../js/departments";
 
 import LOGIN_LOGO from "../assets/cvsu-silang.jpg";
 
-export default function Login() {
-  const [form, setForm] = useState({ username: "", password: "" });
+export default function DepartmentLogin() {
+  const [form, setForm] = useState({ id: "", code: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -29,24 +29,33 @@ export default function Login() {
   });
 
   useEffect(() => {
-    if (isAdminAuthenticated()) {
-      window.location.href = "/departments/";
-    }
+    const checkSession = async () => {
+      try {
+        const who = await fetchWho();
+        if (who !== "no one is logged in") {
+          window.location.href = "/schedule/";
+        }
+      } catch (err) {
+        void err;
+      }
+    };
+
+    checkSession();
   }, []);
 
   const handleChange = (e) => {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+    setForm((current) => ({ ...current, [e.target.name]: e.target.value }));
   };
 
   const handleCloseSnackbar = () => {
-    setSnackbar((s) => ({ ...s, open: false }));
+    setSnackbar((current) => ({ ...current, open: false }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!form.username || !form.password) {
+    if (!form.id || !form.code || !form.password) {
       setSnackbar({
         open: true,
         severity: "warning",
@@ -57,20 +66,39 @@ export default function Login() {
     }
 
     try {
-      const isSuccess = await loginAdmin(form.username, form.password);
+      const payload = {
+        id: Number(form.id),
+        code: form.code.trim(),
+        password: form.password,
+      };
 
-      if (isSuccess) {
+      const resp = await loginDepartment(payload);
+
+      if (resp.status === 200 || resp.status === 208) {
         setSnackbar({
           open: true,
           severity: "success",
           message: "Login successful!",
         });
-        window.location.href = "/departments/";
-      } else {
+        window.location.href = "/schedule/";
+      } else if (resp.status === 404) {
         setSnackbar({
           open: true,
           severity: "error",
-          message: "Invalid admin credentials.",
+          message: "Department not found or code incorrect.",
+        });
+      } else if (resp.status === 401) {
+        setSnackbar({
+          open: true,
+          severity: "error",
+          message: "Incorrect password.",
+        });
+      } else {
+        const text = await resp.text();
+        setSnackbar({
+          open: true,
+          severity: "error",
+          message: text || "Login failed.",
         });
       }
     } catch (err) {
@@ -96,19 +124,19 @@ export default function Login() {
       <Paper elevation={3} sx={{ p: 4, maxWidth: 400, width: "100%" }}>
         <Box
           marginBottom={2}
-          display={"flex"}
-          justifyContent={"space-between"}
-          alignItems={"center"}
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
         >
-          <img src={LOGIN_LOGO} height={"50px"} />
+          <img src={LOGIN_LOGO} height="50px" />
           <Typography
             color="purple"
-            fontWeight={"bold"}
+            fontWeight="bold"
             variant="body1"
             gutterBottom
             align="center"
           >
-            Admin Login
+            Department Admin Login
           </Typography>
         </Box>
         <Box
@@ -117,9 +145,18 @@ export default function Login() {
           sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
           <TextField
-            label="Username"
-            name="username"
-            value={form.username}
+            label="Department ID"
+            name="id"
+            type="number"
+            value={form.id}
+            onChange={handleChange}
+            required
+            fullWidth
+          />
+          <TextField
+            label="Department Code"
+            name="code"
+            value={form.code}
             onChange={handleChange}
             required
             fullWidth
@@ -168,7 +205,7 @@ const root = createRoot(document.getElementById("root"));
 root.render(
   <StrictMode>
     <ThemeProvider theme={theme}>
-      <Login />
+      <DepartmentLogin />
     </ThemeProvider>
   </StrictMode>,
 );

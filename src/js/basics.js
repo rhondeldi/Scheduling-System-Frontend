@@ -3,8 +3,8 @@ const API_VERSION = "v1";
 // this is for development only : start.
 const DEV = true;
 
-// const base_url = 'http://localhost:3000'
-const base_url = "http://192.168.1.14:3000"; // my binded local server's network ip
+const defaultBaseUrl = `http://${window.location.hostname}:3000`;
+const base_url = import.meta.env.VITE_API_BASE_URL ?? defaultBaseUrl;
 
 // this is for development only : end.
 
