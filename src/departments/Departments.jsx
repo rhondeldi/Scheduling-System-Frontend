@@ -11,7 +11,7 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination,
     Paper, CircularProgress, Dialog, DialogContent, DialogContentText, DialogTitle, DialogActions,
     FormControlLabel, Checkbox,
-    ThemeProvider,
+    ThemeProvider, IconButton,
 } from "@mui/material";
 
 import DoneIcon from '@mui/icons-material/Done';
@@ -58,10 +58,6 @@ function Departments() {
     const [codeMatch, setCodeMatch] = useState("");
     const [nameMatch, setNameMatch] = useState("");
 
-    const [jumpToPage, setJumpToPage] = useState('');
-
-    const totalPages = Math.ceil(totalCount / pageSize);
-
     const load_departments = async (page_size, new_page, code_match = "", name_match = "") => {
         setIsLoading(true);
         try {
@@ -103,21 +99,6 @@ function Departments() {
         setIsDialogDeleteShow(false);
     };
 
-    const handleJumpToPage = () => {
-        const pageNumber = parseInt(jumpToPage, 10);
-        if (pageNumber > 0 && pageNumber <= totalPages) {
-            const newPage = pageNumber - 1; // Convert to 0-based index
-            setPage(newPage);
-            load_departments(pageSize, newPage, codeMatch, nameMatch);
-            setJumpToPage('');
-        } else {
-            setPopupOptions({
-                Heading: "Invalid Page",
-                HeadingStyle: { background: POPUP_WARNING_COLOR, color: "white" },
-                Message: `Please enter a page number between 1 and ${totalPages}`,
-            });
-        }
-    };
 
     useEffect(() => {
         load_departments(pageSize, page, codeMatch, nameMatch);
@@ -125,12 +106,12 @@ function Departments() {
 
     return (<>
 
-        <MainHeader pageName={'departments'} />
+        <MainHeader pageName={'departments'}>
 
         <Popup popupOptions={popupOptions} closeButtonActionHandler={() => setPopupOptions(null)} />
 
         <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', padding: '0.5em' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', padding: '1.5em' }}>
                 <Box display={'flex'} gap={'0.5em'}>
                     <TextField
                         sx={{ minWidth: 100, maxWidth: 130 }}
@@ -164,7 +145,6 @@ function Departments() {
                     color="secondary"
                     variant="contained"
                     onClick={() => {
-
                         setMode("new");
                         setIsDialogFormOpen(true);
                     }}
@@ -173,18 +153,9 @@ function Departments() {
                 </Button>
             </Box>
 
-            <Box
-                paddingInlineStart={0}
-                paddingInlineEnd={3}
-                display={'flex'}
-                justifyContent={'space-between'}
-            >
-                <Typography marginInline={'0.5em'} variant="h6">Departments</Typography>
-            </Box>
-
-            <Box paddingInline={1}>
-            <TableContainer component={Paper}>
-                <Table size="small">
+            <Box paddingInline={4}>
+                <TableContainer component={Paper}>
+                    <Table size="small">
                     <TableHead>
                         <TableRow>
                             <TableCell>ID</TableCell>
@@ -206,84 +177,54 @@ function Departments() {
                                     <TableCell>{department.DepartmentID}</TableCell>
                                     <TableCell>{department.Code}</TableCell>
                                     <TableCell>{truncateText(department.Name, 90)}</TableCell>
-                                    <TableCell align="right">
-                                        <Button
-                                            disabled={department.DepartmentID == 0}
-                                            variant="contained"
-                                            color="primary"
-                                            size="small"
-                                            style={{ marginRight: 8 }}
-                                            startIcon={<EditIcon />}
-                                            onClick={() => {
-                                                setDepartment(department);
-                                                setMode("edit");
-                                                setIsDialogFormOpen(true);
-                                            }}
-                                        >
-                                            Edit
-                                        </Button>
-                                        <Button
-                                            disabled={department.DepartmentID == 0}
-                                            variant="contained"
-                                            color="error"
-                                            size="small"
-                                            endIcon={<DeleteIcon />}
-                                            onClick={() => {
-                                                setDepartmentToDelete(department);
-                                                setIsDialogDeleteShow(true);
-                                            }}
-                                        >
-                                            Delete
-                                        </Button>
+                                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
+                                            <IconButton
+                                                disabled={department.DepartmentID == 0}
+                                                sx={{ backgroundColor: '#2e6417' }}
+                                                onClick={() => {
+                                                    setDepartment(department);
+                                                    setMode("edit");
+                                                    setIsDialogFormOpen(true);
+                                                }}
+                                            >
+                                                <EditIcon />
+                                            </IconButton>
+                                            <IconButton
+                                                disabled={department.DepartmentID == 0}
+                                                sx={{ backgroundColor: '#9e0000' }}
+                                                onClick={() => {
+                                                    setDepartmentToDelete(department);
+                                                    setIsDialogDeleteShow(true);
+                                                }}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </Box>
                                     </TableCell>
                                 </TableRow> : null
                             ))
                         )}
                     </TableBody>
                 </Table>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                     <TablePagination
-                        rowsPerPageOptions={[5, 10, 15]}
                         component="div"
                         count={totalCount}
                         rowsPerPage={pageSize}
                         page={page}
+                        rowsPerPageOptions={[]}
+                        labelRowsPerPage={() => ''}
                         onPageChange={async (_, new_page) => {
                             setPage(new_page);
                             await load_departments(pageSize, new_page, codeMatch, nameMatch);
                         }}
-                        onRowsPerPageChange={async (event) => {
-                            const newPageSize = parseInt(event.target.value, 10);
-                            setPageSize(newPageSize);
-                            setPage(0);
-                            await load_departments(newPageSize, 0, codeMatch, nameMatch);
-                        }}
                     />
-                    {/* page jump controls */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography>{`${page + 1}/${totalPages}`}</Typography>
-                        <TextField
-                            label="Go to page"
-                            type="number"
-                            value={jumpToPage}
-                            onChange={(e) => setJumpToPage(e.target.value)}
-                            slotProps={{ htmlInput: { min: 1, max: totalPages } }}
-                            size="small"
-                            style={{ width: '100px' }}
-                        />
-                        <Button
-                            variant="contained"
-                            onClick={handleJumpToPage}
-                            size="small"
-                        >
-                            Go
-                        </Button>
-                    </Box>
                 </Box>
             </TableContainer>
-            </Box>
         </Box>
-
+    </Box>
+        
         <Dialog
             open={isDialogDeleteShow}
             onClose={() => setIsDialogDeleteShow(false)}
@@ -421,6 +362,7 @@ function Departments() {
                 <Button variant="outlined" onClick={() => setIsDialogFormOpen(false)}>Cancel</Button>
             </DialogActions>
         </Dialog>
+        </MainHeader>
     </>);
 }
 

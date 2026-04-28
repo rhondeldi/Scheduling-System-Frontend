@@ -1,4 +1,4 @@
-import { StrictMode, useState, useEffect } from "react";
+import { StrictMode, useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 
 import '@fontsource/roboto/300.css';
@@ -14,20 +14,17 @@ import {
     ThemeProvider,
 } from "@mui/material";
 
-import SearchIcon from '@mui/icons-material/Search';
-
-import DoneIcon from '@mui/icons-material/Done';
-import CancelIcon from '@mui/icons-material/Cancel';
-import ClearAllIcon from '@mui/icons-material/ClearAll';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import IconButton from "@mui/material/IconButton";
 
 import "../assets/main.css";
 import { fetchSubjects, deleteRemoveSubject, patchUpdateSubject, postCreateSubject } from "../js/subjects";
 import { Popup, POPUP_ERROR_COLOR, POPUP_SUCCESS_COLOR, POPUP_WARNING_COLOR } from "../components/Loading";
 import { MainHeader } from "../components/Header";
 import theme from "../components/Theme";
+import warning from '../assets/warning.png';
 
 const truncateText = (text, maxLength) => {
     if (text.length > maxLength) {
@@ -51,22 +48,32 @@ function Subjects() {
     });
 
     const [subjectList, setSubjectList] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isTableLoading, setIsTableLoading] = useState(false);
+    const [isOperationLoading, setIsOperationLoading] = useState(false);
     const [page, setPage] = useState(0);
-    const [pageSize, setPageSize] = useState(10);
+    const pageSize = 7;
     const [totalCount, setTotalCount] = useState(0);
 
-    const [codeMatch, setCodeMatch] = useState("");
-    const [nameMatch, setNameMatch] = useState("");
-
+    const [searchTerm, setSearchTerm] = useState("");
     const [jumpToPage, setJumpToPage] = useState('');
+    const initialSearch = useRef(true);
 
     const totalPages = Math.ceil(totalCount / pageSize);
 
-    const load_subjects = async (page_size, new_page, code_match = "", name_match = "") => {
-        setIsLoading(true);
+    const load_subjects = async (page_size, new_page, search_term = "") => {
+        setIsTableLoading(true);
         try {
-            const subjectsData = await fetchSubjects(page_size, new_page, code_match, name_match);
+            let subjectsData;
+            if (search_term) {
+                subjectsData = await fetchSubjects(page_size, new_page, search_term, "");
+
+                if (!subjectsData.Subjects?.length) {
+                    subjectsData = await fetchSubjects(page_size, new_page, "", search_term);
+                }
+            } else {
+                subjectsData = await fetchSubjects(page_size, new_page, "", "");
+            }
+
             setSubjectList(subjectsData.Subjects);
             setTotalCount(subjectsData.TotalSubjects);
         } catch (err) {
@@ -76,14 +83,14 @@ function Subjects() {
                 Message: `${err.message}`,
             });
         }
-        setIsLoading(false);
+        setIsTableLoading(false);
     };
 
     const handleSubjectDelete = async (subject_id) => {
-        setIsLoading(true);
+        setIsOperationLoading(true);
         try {
             await deleteRemoveSubject(subject_id);
-            await load_subjects(pageSize, page, codeMatch, nameMatch);
+            await load_subjects(pageSize, page, searchTerm);
             setPopupOptions({
                 Heading: "Delete Success",
                 HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
@@ -97,16 +104,16 @@ function Subjects() {
             });
         }
         setSubjectToDelete(null);
-        setIsLoading(false);
+        setIsOperationLoading(false);
         setIsDialogDeleteShow(false);
     };
 
-    const handleJumpToPage = () => {
+    const handleJumpToPage = async () => {
         const pageNumber = parseInt(jumpToPage, 10);
         if (pageNumber > 0 && pageNumber <= totalPages) {
             const newPage = pageNumber - 1; // Convert to 0-based index
             setPage(newPage);
-            load_subjects(pageSize, newPage, codeMatch, nameMatch);
+            await load_subjects(pageSize, newPage, searchTerm);
             setJumpToPage('');
         } else {
             setPopupOptions({
@@ -118,49 +125,47 @@ function Subjects() {
     };
 
     useEffect(() => {
-        load_subjects(pageSize, page, codeMatch, nameMatch);
+        load_subjects(pageSize, page, searchTerm);
     }, []);
+
+    useEffect(() => {
+        if (initialSearch.current) {
+            initialSearch.current = false;
+            return;
+        }
+
+        setPage(0);
+        const debounceTimer = setTimeout(() => {
+            load_subjects(pageSize, 0, searchTerm);
+        }, 300);
+
+        return () => clearTimeout(debounceTimer);
+    }, [searchTerm]);
 
     return (<>
 
-        <MainHeader pageName={'subjects'} />
+        <MainHeader pageName="subjects">
 
         <Popup popupOptions={popupOptions} closeButtonActionHandler={() => setPopupOptions(null)} />
 
         <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', padding: '0.5em' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', padding: '1.5em'}}>
                 <Box display={'flex'} gap={'0.5em'}>
-                    <TextField
-                        sx={{ maxWidth: 130 }}
-                        size="small"
-                        label="Search Code"
-                        value={codeMatch}
-                        onChange={(e) => setCodeMatch(e.target.value)}
-                    />
                     <TextField
                         sx={{ minWidth: 300 }}
                         size="small"
-                        label="Search Name"
-                        value={nameMatch}
-                        onChange={(e) => setNameMatch(e.target.value)}
+                        label="Search code or name"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    <Button
-                        size="small"
-                        variant="contained"
-                        onClick={() => {
-                            setPage(0);
-                            load_subjects(pageSize, 0, codeMatch, nameMatch);
-                        }}
-                    >
-                    <SearchIcon/>
-                    </Button>
                 </Box>
 
                 <Button
                     endIcon={<AddIcon />}
                     size="medium"
-                    color="secondary"
+                    color="primary"
                     variant="contained"
+                    disabled={isOperationLoading}
                     onClick={() => {
                         setSubject({ Code: "", Name: "", LecHours: 0, LabHours: 0 });
                         setMode("new");
@@ -170,66 +175,64 @@ function Subjects() {
                     Add New Subject
                 </Button>
             </Box>
-
-            <Box padding={0}>
-                <Typography marginInline={'0.5em'} variant="h6">Subjects</Typography>
-            </Box>
-
-            <Box paddingInline={1}>
+            <Box paddingInline={4}>
             <TableContainer component={Paper}>
                 <Table size="small">
                     <TableHead>
                         <TableRow>
-                            <TableCell>ID</TableCell>
-                            <TableCell>Code</TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Lec Hours</TableCell>
-                            <TableCell>Lab Hours</TableCell>
-                            <TableCell align="right">Actions</TableCell>
+                            <TableCell>CODE</TableCell>
+                            <TableCell>SUBJECT NAME</TableCell>
+                            <TableCell>CREDITS</TableCell>
+                            <TableCell>LECTURE</TableCell>
+                            <TableCell>LAB</TableCell>
+                            <TableCell align="right"></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {isLoading ? (
+                        {isTableLoading ? (
                             <TableRow>
                                 <TableCell colSpan={6} align="center">
                                     <CircularProgress />
                                 </TableCell>
                             </TableRow>
+                        ) : subjectList.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={6} align="center" sx={{ fontWeight: 'bold', py: 6 }}>
+                                    No subjects found.
+                                </TableCell>
+                            </TableRow>
                         ) : (
                             subjectList.map((subject) => (
                                 <TableRow key={subject.ID}>
-                                    <TableCell>{subject.ID}</TableCell>
-                                    <TableCell>{subject.Code}</TableCell>
-                                    <TableCell>{truncateText(subject.Name, 90)}</TableCell>
+                                    <TableCell sx={{fontWeight: 'bold'}}> {subject.Code} </TableCell>
+                                    <TableCell sx={{fontStyle: 'italic'}}>{truncateText(subject.Name, 90)}</TableCell>
+                                    <TableCell>{subject.Credits}</TableCell>
                                     <TableCell>{subject.LecHours}</TableCell>
                                     <TableCell>{subject.LabHours}</TableCell>
-                                    <TableCell align="right">
-                                        <Button
-                                            variant="contained"
-                                            color="primary"
-                                            size="small"
-                                            style={{ marginRight: 8 }}
-                                            startIcon={<EditIcon />}
-                                            onClick={() => {
-                                                setSubject(subject);
-                                                setMode("edit");
-                                                setIsDialogFormOpen(true);
-                                            }}
-                                        >
-                                            Edit
-                                        </Button>
-                                        <Button
-                                            variant="contained"
-                                            color="error"
-                                            size="small"
-                                            endIcon={<DeleteIcon />}
-                                            onClick={() => {
-                                                setSubjectToDelete(subject);
-                                                setIsDialogDeleteShow(true);
-                                            }}
-                                        >
-                                            Delete
-                                        </Button>
+                                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
+                                            <IconButton
+                                                color="edit"
+                                                disabled={isOperationLoading}
+                                                onClick={() => {
+                                                    setSubject(subject);
+                                                    setMode("edit");
+                                                    setIsDialogFormOpen(true);
+                                                }}
+                                            >
+                                                <EditIcon />
+                                            </IconButton>
+                                            <IconButton
+                                                color="delete"
+                                                disabled={isOperationLoading}
+                                                onClick={() => {
+                                                    setSubjectToDelete(subject);
+                                                    setIsDialogDeleteShow(true);
+                                                }}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -238,65 +241,78 @@ function Subjects() {
                 </Table>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <TablePagination
-                        rowsPerPageOptions={[5, 10, 15]}
                         component="div"
                         count={totalCount}
                         rowsPerPage={pageSize}
                         page={page}
+                        rowsPerPageOptions={[pageSize]}
                         onPageChange={async (_, new_page) => {
                             setPage(new_page);
-                            await load_subjects(pageSize, new_page, codeMatch, nameMatch);
-                        }}
-                        onRowsPerPageChange={async (event) => {
-                            const newPageSize = parseInt(event.target.value, 10);
-                            setPageSize(newPageSize);
-                            setPage(0);
-                            await load_subjects(newPageSize, 0, codeMatch, nameMatch);
+                            await load_subjects(pageSize, new_page, searchTerm);
                         }}
                     />
-                    {/* page jump controls */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography>{`${page + 1}/${totalPages}`}</Typography>
-                        <TextField
-                            label="Go to page"
-                            type="number"
-                            value={jumpToPage}
-                            onChange={(e) => setJumpToPage(e.target.value)}
-                            slotProps={{ htmlInput: { min: 1, max: totalPages } }}
-                            size="small"
-                            style={{ width: '100px' }}
-                        />
-                        <Button
-                            variant="contained"
-                            onClick={handleJumpToPage}
-                            size="small"
-                        >
-                            Go
-                        </Button>
-                    </Box>
                 </Box>
             </TableContainer>
             </Box>
         </Box>
 
         <Dialog
-            open={isDialogDeleteShow}
-            onClose={() => setIsDialogDeleteShow(false)}
-            aria-labelledby="alert-dialog-title"
-            aria-describedby="alert-dialog-description"
+        open={isDialogDeleteShow}
+        onClose={() => setIsDialogDeleteShow(false)}
+        aria-describedby="alert-dialog-description"
         >
-            <DialogTitle id="alert-dialog-title">Remove Subject</DialogTitle>
-            <DialogContent>
-                <DialogContentText id="alert-dialog-description">
-                    {`Are you sure you want to remove "${subjectToDelete?.Name}"?`}
-                </DialogContentText>
-            </DialogContent>
-            <DialogActions>
-                <Button variant='outlined' onClick={() => handleSubjectDelete(subjectToDelete?.ID)}>Yes</Button>
-                <Button variant='outlined' onClick={() => setIsDialogDeleteShow(false)}>No</Button>
-            </DialogActions>
-        </Dialog>
+        <DialogContent sx={{ textAlign: "center", pt: 3 }}>
+            
+            {/* Image on top */}
+            <img
+                src={warning}
+                alt="Warning"
+                style={{
+                    width: 80,
+                    height: 80,
+                    marginBottom: 8,
+                }}
+            />
 
+            {/* Header */}
+            <h3 style={{ margin: 0, marginBottom: 8, fontWeight: 'bold' }}>
+                Delete Subject?
+            </h3>
+
+            {/* Message */}
+            <DialogContentText id="alert-dialog-description">
+                {`This action cannot be undone. All data associated within ${subjectToDelete?.Code} will be lost.`}
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions
+            sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 1.5,
+                pb: 3,
+            }}
+        >
+            <Button
+                variant="contained"
+                color="error"
+                disabled={isOperationLoading}
+                onClick={() => subjectToDelete && handleSubjectDelete(subjectToDelete?.ID)}
+                sx={{ width: "50%" }}
+            >
+                {isOperationLoading ? <CircularProgress size={20} /> : "Confirm"}
+            </Button>
+
+            <Button
+                variant="outlined"
+                onClick={() => setIsDialogDeleteShow(false)}
+                disabled={isOperationLoading}
+                sx={{ width: "50%" }}
+            >
+                Cancel
+            </Button>
+        </DialogActions>
+        </Dialog>
         <Dialog
             open={isDialogFormOpen}
             onClose={() => setIsDialogFormOpen(false)}
@@ -324,7 +340,7 @@ function Subjects() {
                         }
 
                         try {
-                            setIsLoading(true);
+                            setIsOperationLoading(true);
                             if (mode === "new") {
                                 await postCreateSubject(subjectData);
                                 setPopupOptions({
@@ -340,7 +356,7 @@ function Subjects() {
                                     Message: "Changes to the subject data are saved",
                                 });
                             }
-                            await load_subjects(pageSize, page, codeMatch, nameMatch);
+                            await load_subjects(pageSize, page, searchTerm);
                         } catch (err) {
                             setPopupOptions({
                                 Heading: "Operation Failed",
@@ -348,7 +364,7 @@ function Subjects() {
                                 Message: `${err.message}`,
                             });
                         } finally {
-                            setIsLoading(false);
+                            setIsOperationLoading(false);
                             setIsDialogFormOpen(false);
                         }
                     },
@@ -391,9 +407,8 @@ function Subjects() {
                     label="Lecture Hours"
                     type="number"
                     fullWidth
-                    variant="standard"
+                    variant="outlined"
                     defaultValue={subject?.LecHours || 0}
-                    slotProps={{ htmlInput: { min: 0, max: 15 } }}
                 />
                 <TextField
                     required
@@ -403,9 +418,8 @@ function Subjects() {
                     label="Lab Hours"
                     type="number"
                     fullWidth
-                    variant="standard"
+                    variant="outlined"
                     defaultValue={subject?.LabHours || 0}
-                    slotProps={{ htmlInput: { min: 0, max: 15 } }}
                 />
                 <FormControlLabel
                     control={
@@ -418,10 +432,13 @@ function Subjects() {
                 />
             </DialogContent>
             <DialogActions>
-                <Button variant="outlined" type="submit">{mode === "new" ? "Save" : "Apply Changes"}</Button>
-                <Button variant="outlined" onClick={() => setIsDialogFormOpen(false)}>Cancel</Button>
+                <Button variant="contained" type="submit" disabled={isOperationLoading}>
+                    {isOperationLoading ? <CircularProgress size={20} /> : (mode === "new" ? "Save" : "Apply Changes")}
+                </Button>
+                <Button variant="outlined" onClick={() => setIsDialogFormOpen(false)} disabled={isOperationLoading}>Cancel</Button>
             </DialogActions>
         </Dialog>
+        </MainHeader>
     </>);
 }
 

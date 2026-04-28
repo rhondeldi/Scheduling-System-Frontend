@@ -260,7 +260,7 @@ function InstructorPage() {
 
   return (
     <>
-      <MainHeader pageName={"instructors"} />
+      <MainHeader pageName={"instructors"}>
 
       <Popup
         popupOptions={popupOptions}
@@ -274,27 +274,6 @@ function InstructorPage() {
       <Box display={!mode ? "block" : "none"}>
         <Box padding={1} display={"flex"} justifyContent={"space-between"}>
           <Box sx={{ display: "flex", flexDirection: "row", gap: 2 }}>
-            <FormControl sx={{ minWidth: 150, maxWidth: 151 }} size="small">
-              <InputLabel id="label-id-department">Department</InputLabel>
-              <Select
-                id="id-department"
-                labelId="label-id-department"
-                label="Department"
-                value={departmentID}
-                disabled
-                onChange={handleDepartmentChange}
-              >
-                {departments
-                  ? departments.map((department, index) => (
-                      <MenuItem
-                        key={index}
-                        value={department.DepartmentID}
-                      >{`${department.Code} - ${department.Name}`}</MenuItem>
-                    ))
-                  : null}
-              </Select>
-            </FormControl>
-
             {Number.isInteger(Number.parseInt(departmentID, 10)) ? (
               <>
                 <TextField
@@ -554,6 +533,7 @@ function InstructorPage() {
           link for publicly accessible instructors’ page view
         </a>
       </Box>
+      </MainHeader>
     </>
   );
 }

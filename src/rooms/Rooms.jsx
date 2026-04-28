@@ -229,7 +229,7 @@ function Rooms() {
 
   return (
     <>
-      <MainHeader pageName={"rooms"} />
+      <MainHeader pageName={"rooms"}>
 
       <Popup
         popupOptions={popupOptions}
@@ -248,41 +248,6 @@ function Rooms() {
             }}
           >
             <Box sx={{ display: "flex", flexDirection: "row", gap: 2 }}>
-              <FormControl sx={{ minWidth: 150, maxWidth: 151 }} size="small">
-                <InputLabel id="label-id-department">Department</InputLabel>
-                <Select
-                  id="id-department"
-                  labelId="label-id-department"
-                  label="Department"
-                  value={departmentID}
-                  disabled
-                  onChange={async (e) => {
-                    const department_id = e.target.value;
-
-                    console.log(`selected departmentID: ${department_id}`);
-                    setDepartmentID(department_id);
-
-                    for (let i = 0; i < departmentList?.length; i++) {
-                      if (departmentList[i].DepartmentID === department_id) {
-                        setDepartment(departmentList[i]);
-                        break;
-                      }
-                    }
-
-                    setPage(0);
-                    await load_rooms(department_id, pageSize, 0);
-                  }}
-                >
-                  {departmentList
-                    ? departmentList.map((department_iter, index) => (
-                        <MenuItem
-                          key={index}
-                          value={department_iter.DepartmentID}
-                        >{`${department_iter.Code} - ${department_iter.Name}`}</MenuItem>
-                      ))
-                    : null}
-                </Select>
-              </FormControl>
 
               {Number.isInteger(Number.parseInt(departmentID, 10)) ? (
                 <>
@@ -844,6 +809,7 @@ function Rooms() {
           </Button>
         </DialogActions>
       </Dialog>
+      </MainHeader>
     </>
   );
 }

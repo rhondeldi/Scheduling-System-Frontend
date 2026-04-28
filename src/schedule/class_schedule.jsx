@@ -868,7 +868,7 @@ function TimeTable() {
 
   return (
     <>
-      <MainHeader pageName={"schedule"} />
+      <MainHeader pageName={"schedule"}>
       {/*================================= Loading Component =================================*/}
 
       <Popup
@@ -898,29 +898,6 @@ function TimeTable() {
               gap: "0.5em",
             }}
           >
-            <select
-              className="dropdown"
-              style={{ width: "100%" }}
-              value={departmentID}
-              onChange={handleDepartmentChange}
-              disabled
-            >
-              <option value="">Department</option>
-              {allDepartments
-                ? allDepartments.map((department, index) => {
-                    if (department.DepartmentID == 0) {
-                      return null;
-                    }
-
-                    return (
-                      <option
-                        key={index}
-                        value={department.DepartmentID}
-                      >{`${department.Code} - ${department.Name}`}</option>
-                    );
-                  })
-                : null}
-            </select>
 
             <select
               className="dropdown"
@@ -1544,6 +1521,7 @@ function TimeTable() {
           link for publicly accessible schedule page view
         </a>
       </Box>
+    </MainHeader>
     </>
   );
 }

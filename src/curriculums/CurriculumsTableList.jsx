@@ -9,7 +9,7 @@ import '@fontsource/roboto/700.css';
 import {
     Box, TextField, Button, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination,
     Paper, CircularProgress, Dialog, DialogContent, DialogContentText, DialogTitle, DialogActions, Select, MenuItem, FormControl, InputLabel,
-    ThemeProvider
+    ThemeProvider, IconButton
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -129,12 +129,12 @@ function CurriculumsTableList() {
     const [curriculumBasicInfo, setCurriculumBasicInfo] = useState(null)
 
     return (<>
-        <MainHeader pageName={'curriculums'} />
+        <MainHeader pageName={'curriculums'}>
 
         <Popup popupOptions={popupOptions} closeButtonActionHandler={() => setPopupOptions(null)} />
 
         <Box display={!isView ? 'block' : 'none'}>
-            <Box padding={1} sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', padding: '1.5em' }}>
                 <Box display={'flex'} gap={'0.5em'}>
                     <FormControl sx={{ minWidth: 150, maxWidth: 151 }} size="small">
                         <InputLabel id="label-id-department">Department</InputLabel>
@@ -211,17 +211,7 @@ function CurriculumsTableList() {
                 </> : null}
             </Box>
 
-            <Box
-                paddingInlineStart={0}
-                paddingInlineEnd={3}
-                display={'flex'}
-                justifyContent={'space-between'}
-            >
-                <Typography marginInline={'0.5em'} variant="h6">Curriculums</Typography>
-                <Typography fontStyle={'italic'}>{selectedDepartment ? `${selectedDepartment?.Name}` : null}</Typography>
-            </Box>
-
-            <Box paddingInline={1}>
+            <Box paddingInline={4}>
                 <TableContainer component={Paper}>
                     <Table size="small">
                         <TableHead>
@@ -245,59 +235,47 @@ function CurriculumsTableList() {
                                         <TableCell>{curriculum.CurriculumID}</TableCell>
                                         <TableCell>{curriculum.CurriculumCode}</TableCell>
                                         <TableCell>{truncateText(curriculum.CurriculumName, 90)}</TableCell>
-                                        <TableCell align="right">
-                                            <Button
-                                                variant="contained"
-                                                color="primary"
-                                                size="small"
-                                                style={{ marginRight: 8 }}
-                                                startIcon={<VisibilityIcon />}
-                                                onClick={() => {
-                                                    setCurriculumBasicInfo(curriculum);
-                                                    setMode("view");
-                                                    setIsView(true)
-                                                    console.log('view curriculum:')
-                                                    console.log(curriculum)
-
-                                                }}
-                                            >
-                                                View
-                                            </Button>
-                                            <Button
-                                                variant="contained"
-                                                color="error"
-                                                size="small"
-                                                endIcon={<DeleteIcon />}
-                                                onClick={() => {
-                                                    setCurriculumToDelete(curriculum);
-                                                    setIsDialogDeleteShow(true);
-                                                }}
-                                            >
-                                                Delete
-                                            </Button>
+                                        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
+                                                <IconButton
+                                                    sx={{ backgroundColor: '#2e6417' }}
+                                                    onClick={() => {
+                                                        setCurriculumBasicInfo(curriculum);
+                                                        setMode("view");
+                                                        setIsView(true)
+                                                        console.log('view curriculum:')
+                                                        console.log(curriculum)
+                                                    }}
+                                                >
+                                                    <VisibilityIcon />
+                                                </IconButton>
+                                                <IconButton
+                                                    sx={{ backgroundColor: '#9e0000' }}
+                                                    onClick={() => {
+                                                        setCurriculumToDelete(curriculum);
+                                                        setIsDialogDeleteShow(true);
+                                                    }}
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </Box>
                                         </TableCell>
                                     </TableRow>
                                 ))
                             )}
                         </TableBody>
                     </Table>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                         <TablePagination
-                            rowsPerPageOptions={[5, 10, 15]}
                             component="div"
                             count={totalCount}
                             rowsPerPage={pageSize}
                             page={page}
+                            rowsPerPageOptions={[]}
+                            labelRowsPerPage={() => ''}
                             onPageChange={async (_, new_page) => {
                                 setPage(new_page);
                                 await load_curriculums(pageSize, new_page, departmentID, codeMatch, nameMatch);
-                            }}
-                            onRowsPerPageChange={async (event) => {
-                                const newPageSize = parseInt(event.target.value, 10);
-                                setPageSize(newPageSize);
-                                setPage(0);
-                                await load_curriculums(newPageSize, 0, departmentID, codeMatch, nameMatch);
                             }}
                         />
                     </Box>
@@ -341,6 +319,7 @@ function CurriculumsTableList() {
 
             allDepartment={allDepartment}
         /> : null}
+        </MainHeader>
     </>);
 }
 

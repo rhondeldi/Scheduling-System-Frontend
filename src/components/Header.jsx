@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
-
-import { AppBar, Box, Container, Toolbar, Typography } from "@mui/material";
-import IconButton from "@mui/material/IconButton";
-import Menu from "@mui/material/Menu";
-import Avatar from "@mui/material/Avatar";
-import Button from "@mui/material/Button";
-import Tooltip from "@mui/material/Tooltip";
-import MenuItem from "@mui/material/MenuItem";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import {
+  Box,
+  Typography,
+  Button,
+  TextField,
+} from "@mui/material";
+import { Divider } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import BusinessIcon from "@mui/icons-material/Business";
+import SchoolIcon from "@mui/icons-material/School";
+import SubjectIcon from "@mui/icons-material/Subject";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
+import PeopleIcon from "@mui/icons-material/People";
 
 import { Popup } from "../components/Loading";
 import {
@@ -25,20 +30,32 @@ import {
 const adminPages = getAdminAllowedPages();
 const departmentPages = ["schedule", "rooms", "instructors"];
 
-export function MainHeader({ pageName }) {
-  const [anchorElUser, setAnchorElUser] = useState(null);
+const getPageDisplayInfo = (page) => {
+  const pageInfo = {
+    departments: { label: "Departments", icon: BusinessIcon },
+    curriculums: { label: "Curriculums", icon: SchoolIcon },
+    subjects: { label: "Subjects", icon: SubjectIcon },
+    schedule: { label: "Schedule", icon: CalendarTodayIcon },
+    rooms: { label: "Rooms", icon: MeetingRoomIcon },
+    instructors: { label: "Instructors", icon: PeopleIcon },
+  };
+  return pageInfo[page] || { label: page, icon: null };
+};
+
+export function MainHeader({ pageName, children }) {
   const [loggedInDepartmentLabel, setLoggedInDepartmentLabel] = useState("");
+  const [popupOptions, setPopupOptions] = useState(null);
+
   const isAdminPage = pageName ? isAllowedAdminPage(pageName) : false;
   const isDepartmentPage = pageName
     ? departmentPages.includes(pageName)
     : false;
+
   const pages = isDepartmentPage ? departmentPages : adminPages;
 
   useEffect(() => {
     const validateAccess = async () => {
-      if (!pageName) {
-        return;
-      }
+      if (!pageName) return;
 
       if (isAdminPage) {
         if (!isAdminAuthenticated()) {
@@ -56,20 +73,16 @@ export function MainHeader({ pageName }) {
           }
 
           const loggedInDepartmentID = Number(who);
-          if (!Number.isInteger(loggedInDepartmentID)) {
-            setLoggedInDepartmentLabel("");
-            return;
-          }
+          if (!Number.isInteger(loggedInDepartmentID)) return;
 
           const allDepartments = await fetchAllDepartments();
           const loggedInDepartment = allDepartments.find(
-            (department) =>
-              Number(department.DepartmentID) === loggedInDepartmentID,
+            (d) => Number(d.DepartmentID) === loggedInDepartmentID
           );
 
           if (loggedInDepartment) {
             setLoggedInDepartmentLabel(
-              `${loggedInDepartment.Code} - ${loggedInDepartment.Name}`,
+              `${loggedInDepartment.Code} - ${loggedInDepartment.Name}`
             );
           }
         } catch {
@@ -83,12 +96,6 @@ export function MainHeader({ pageName }) {
 
     validateAccess();
   }, [isAdminPage, isDepartmentPage, pageName]);
-
-  const [popupOptions, setPopupOptions] = useState(null);
-
-  const handleCloseUserMenu = () => {
-    setAnchorElUser(null);
-  };
 
   const handleLogout = async () => {
     try {
@@ -116,105 +123,103 @@ export function MainHeader({ pageName }) {
         closeButtonActionHandler={() => setPopupOptions(null)}
       />
 
-      <AppBar position="static">
-        <Container maxWidth="xl">
-          <Toolbar disableGutters>
-            <CalendarMonthIcon
-              sx={{ display: { xs: "none", md: "flex" }, mr: 1 }}
-            />
-            <Typography
-              variant="h6"
-              noWrap
-              component="a"
-              href="/"
-              sx={{
-                mr: 2,
-                display: { xs: "none", md: "flex" },
-                fontFamily: "monospace",
-                fontWeight: 700,
-                letterSpacing: ".2rem",
-                color: "inherit",
-                textDecoration: "none",
-              }}
-            >
-              Home
+      {/* MAIN LAYOUT */}
+      <Box display="flex" minHeight="100vh">
+        
+        {/* SIDEBAR */}
+        <Box
+          sx={{
+            width: 300,
+            backgroundColor: "#14400e",
+            color: "white",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            padding: 2,
+          }}
+        >
+          <Box m={2}>
+            <Typography variant="h6" fontWeight="bold">
+              Cavite State University
+            </Typography>
+            <Typography variant="body2">
+              Silang Campus
             </Typography>
 
-            <CalendarMonthIcon
-              sx={{ display: { xs: "flex", md: "none" }, mr: 1 }}
+            <Divider
+                sx={{
+                    my: 4,
+                    height: "2px",
+                    backgroundColor: "#d5d5d5",
+                }}
             />
-            <Box
-              gap={1}
-              sx={{ flexGrow: 1, display: { xs: "none", md: "flex" } }}
-            >
-              {pages.map((page) => (
-                <Button
-                  key={page}
-                  onClick={() => {}}
-                  sx={{
-                    my: 1,
-                    color: "white",
-                    display: "block",
-                    backgroundColor: pageName === page ? "#00000032" : "",
-                  }}
-                  href={`/${page}/`}
-                >
-                  {page}
-                </Button>
-              ))}
-            </Box>
 
-            <Box sx={{ flexGrow: 0 }}>
-              {isDepartmentPage ? (
-                <Typography sx={{ mr: 2, fontSize: "0.85rem" }}>
-                  {loggedInDepartmentLabel
-                    ? `Department: ${loggedInDepartmentLabel}`
-                    : "Department Account"}
-                </Typography>
-              ) : null}
-              <Tooltip title="Open settings">
-                <IconButton onClick={setAnchorElUser} sx={{ p: 0 }}>
-                  <Avatar alt="Admin User Icon" />
-                </IconButton>
-              </Tooltip>
-              <Menu
-                sx={{ mt: "45px" }}
-                id="menu-appbar"
-                anchorEl={anchorElUser}
-                anchorOrigin={{
-                  vertical: "top",
-                  horizontal: "right",
-                }}
-                keepMounted
-                transformOrigin={{
-                  vertical: "top",
-                  horizontal: "right",
-                }}
-                open={Boolean(anchorElUser)}
-                onClose={handleCloseUserMenu}
-              >
-                <MenuItem
-                  key={"Logout"}
-                  onClick={async (e, next) => {
-                    console.log("logout");
-                    await handleLogout();
-                    handleCloseUserMenu(e, next);
-                  }}
-                >
-                  <Typography sx={{ textAlign: "center" }}>
-                    {"Logout"}
-                  </Typography>
-                </MenuItem>
-              </Menu>
+            <Box mt={4} display="flex" flexDirection="column" gap={1}>
+              {pages.map((page) => {
+                const { label, icon: Icon } = getPageDisplayInfo(page);
+                return (
+                  <Button
+                    key={page}
+                    href={`/${page}/`}
+                    startIcon={Icon ? <Icon /> : null}
+                    sx={{
+                      justifyContent: "flex-start",
+                      color: "white",
+                      backgroundColor:
+                        pageName === page ? "#ffffff22" : "transparent",
+                      textTransform: "none",
+                      fontSize: "1rem",
+                      padding: "8px 16px",
+                      "&:hover": {
+                        backgroundColor: "#ffffff11",
+                      },
+                    }}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
             </Box>
-          </Toolbar>
-        </Container>
-      </AppBar>
-      <Box minHeight={"0.25em"}></Box>
+          </Box>
+
+          <Button
+            sx={{ color: "white", justifyContent: "flex-start" }}
+            onClick={handleLogout}
+          >
+            Logout
+          </Button>
+        </Box>
+
+        {/* CONTENT AREA */}
+        <Box
+          flex={1}
+          sx={{
+            backgroundColor: "#f5f5f5",
+            padding: 2,
+          }}
+        >
+          {/* TOP HEADER */}
+          <Box
+            sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 1,
+            }}
+            >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Divider orientation="vertical" flexItem sx={{ height: 40, borderRightWidth: 5, borderColor: '#000000', borderRadius: 50}} />
+                <Typography variant="h6" fontWeight="bold">
+                {isDepartmentPage
+                    ? loggedInDepartmentLabel || "Department"
+                    : "Administration Department"}
+                </Typography>
+            </Box>
+            </Box>
+          {/* PAGE CONTENT */}
+          {children}
+        </Box>
+      </Box>
     </>
   );
 }
-
-MainHeader.propTypes = {
-  pageName: () => null,
-};
