@@ -7,7 +7,7 @@ export const departmentMap = {
       code: "DAS",
       name: "Department of Arts and Sciences",
     },
-    "HM/TM": {
+    DTHM: {
       code: "HM/TM",
       name: "Department of Hospitality and Tourism Management",
     },
