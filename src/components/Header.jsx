@@ -1,111 +1,73 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { AppBar, Box, Container, Toolbar, Typography } from "@mui/material";
-import IconButton from "@mui/material/IconButton";
-import Menu from "@mui/material/Menu";
-import Avatar from "@mui/material/Avatar";
-import Button from "@mui/material/Button";
-import Tooltip from "@mui/material/Tooltip";
-import MenuItem from "@mui/material/MenuItem";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import { Box, Typography, Button, Divider } from "@mui/material";
+
+import BusinessIcon from "@mui/icons-material/Business";
+import SchoolIcon from "@mui/icons-material/School";
+import SubjectIcon from "@mui/icons-material/Subject";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
+import PeopleIcon from "@mui/icons-material/People";
+import LogoutIcon from "@mui/icons-material/Logout";
 
 import { Popup } from "../components/Loading";
 import {
-  fetchAllDepartments,
-  fetchWho,
-  logoutDepartment,
-} from "../js/departments.js";
-import {
   getAdminAllowedPages,
-  isAdminAuthenticated,
-  isAllowedAdminPage,
   logoutAdmin,
 } from "../utils/adminAuth.js";
 
-const adminPages = getAdminAllowedPages();
+import { logoutDepartment } from "../js/departments.js";
+
 const departmentPages = ["schedule", "rooms", "instructors"];
 
-export function MainHeader({ pageName }) {
-  const [anchorElUser, setAnchorElUser] = useState(null);
-  const [loggedInDepartmentLabel, setLoggedInDepartmentLabel] = useState("");
-  const isAdminPage = pageName ? isAllowedAdminPage(pageName) : false;
-  const isDepartmentPage = pageName
-    ? departmentPages.includes(pageName)
-    : false;
-  const pages = isDepartmentPage ? departmentPages : adminPages;
-
-  useEffect(() => {
-    const validateAccess = async () => {
-      if (!pageName) {
-        return;
-      }
-
-      if (isAdminPage) {
-        if (!isAdminAuthenticated()) {
-          window.location.href = "/login/";
-        }
-        return;
-      }
-
-      if (isDepartmentPage) {
-        try {
-          const who = await fetchWho();
-          if (who === "no one is logged in") {
-            window.location.href = "/department_login/";
-            return;
-          }
-
-          const loggedInDepartmentID = Number(who);
-          if (!Number.isInteger(loggedInDepartmentID)) {
-            setLoggedInDepartmentLabel("");
-            return;
-          }
-
-          const allDepartments = await fetchAllDepartments();
-          const loggedInDepartment = allDepartments.find(
-            (department) =>
-              Number(department.DepartmentID) === loggedInDepartmentID,
-          );
-
-          if (loggedInDepartment) {
-            setLoggedInDepartmentLabel(
-              `${loggedInDepartment.Code} - ${loggedInDepartment.Name}`,
-            );
-          }
-        } catch {
-          window.location.href = "/department_login/";
-        }
-        return;
-      }
-
-      window.location.href = "/departments/";
-    };
-
-    validateAccess();
-  }, [isAdminPage, isDepartmentPage, pageName]);
-
-  const [popupOptions, setPopupOptions] = useState(null);
-
-  const handleCloseUserMenu = () => {
-    setAnchorElUser(null);
+const getPageDisplayInfo = (page) => {
+  const pageInfo = {
+    departments: { label: "Departments", icon: BusinessIcon },
+    curriculums: { label: "Curriculums", icon: SchoolIcon },
+    subjects: { label: "Subjects", icon: SubjectIcon },
+    schedule: { label: "Schedule", icon: CalendarTodayIcon },
+    rooms: { label: "Rooms", icon: MeetingRoomIcon },
+    instructors: { label: "Instructors", icon: PeopleIcon },
   };
 
+  return pageInfo[page] || { label: page, icon: null };
+};
+
+export function MainHeader({ pageName, children }) {
+  const navigate = useNavigate();
+
+  const [popupOptions, setPopupOptions] = useState(null);
+  const departmentName = localStorage.getItem("departmentName");
+  const adminPages = getAdminAllowedPages();
+
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const isDepartmentPage = departmentPages.includes(pageName);
+  const pages = isDepartmentPage ? departmentPages : adminPages;
+
   const handleLogout = async () => {
+    setLoggingOut(true);
+  
     try {
       if (isDepartmentPage) {
         await logoutDepartment();
-        window.location.href = "/department_login/";
-        return;
+      } else {
+        await logoutAdmin();
       }
-
-      await logoutAdmin();
-      window.location.href = "/login/";
+  
+      setTimeout(() => {
+        navigate("/login", { replace: true });
+      }, 800);
+  
     } catch (err) {
       setPopupOptions({
         Heading: "Logout Failed",
         HeadingStyle: { background: "red", color: "white" },
         Message: `${err}`,
       });
+  
+      setLoggingOut(false);
     }
   };
 
@@ -116,105 +78,112 @@ export function MainHeader({ pageName }) {
         closeButtonActionHandler={() => setPopupOptions(null)}
       />
 
-      <AppBar position="static">
-        <Container maxWidth="xl">
-          <Toolbar disableGutters>
-            <CalendarMonthIcon
-              sx={{ display: { xs: "none", md: "flex" }, mr: 1 }}
-            />
-            <Typography
-              variant="h6"
-              noWrap
-              component="a"
-              href="/"
-              sx={{
-                mr: 2,
-                display: { xs: "none", md: "flex" },
-                fontFamily: "monospace",
-                fontWeight: 700,
-                letterSpacing: ".2rem",
-                color: "inherit",
-                textDecoration: "none",
-              }}
-            >
-              Home
+      <Box display="flex" minHeight="100vh">
+
+        {/* SIDEBAR */}
+        <Box
+          sx={{
+            width: 300,
+            backgroundColor: "#14400e",
+            color: "white",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            padding: 2,
+          }}
+        >
+          <Box m={2}>
+            <Typography variant="h6" fontWeight="bold">
+              Cavite State University
             </Typography>
 
-            <CalendarMonthIcon
-              sx={{ display: { xs: "flex", md: "none" }, mr: 1 }}
+            <Typography variant="body2">Silang Campus</Typography>
+
+            <Divider sx={{ my: 4, bgcolor: "#d5d5d5", height: 2 }} />
+
+            <Box mt={4} display="flex" flexDirection="column" gap={1}>
+              {pages.map((page) => {
+                const { label, icon: Icon } = getPageDisplayInfo(page);
+                const isActive = pageName === page;
+
+                return (
+                  <Box key={page} sx={{ display: "flex", alignItems: "center" }}>
+                    <Divider
+                      orientation="vertical"
+                      flexItem
+                      sx={{
+                        width: 4,
+                        mr: 1,
+                        borderRadius: 2,
+                        bgcolor: isActive ? "#f9fff9" : "transparent",
+                      }}
+                    />
+                    <Button
+                      onClick={() => navigate(`/${page}`)}
+                      startIcon={Icon ? <Icon /> : null}
+                      sx={{
+                        width: "100%",
+                        justifyContent: "flex-start",
+                        color: isActive ? "#0f660d" : "white",
+                        backgroundColor: isActive ? "#f9fff9" : "transparent",
+                        textTransform: "none",
+                        fontSize: "0.9rem",
+                        padding: "16px",
+                        margin: "2px",
+                        borderRadius: 2,
+                        "&:hover": {
+                          backgroundColor: isActive ? "#f9fff9" : "#ffffff11",
+                        },
+                      }}
+                    >
+                      {label}
+                    </Button>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+
+          <Button
+            sx={{
+              color: "white",
+              justifyContent: "flex-start",
+              mx: 2,
+              mb: 1,
+              borderTop: "1px solid rgba(255,255,255,0.35)",
+              borderRadius: 0,
+              pt: 2,
+            }}
+            onClick={handleLogout}
+            disabled={loggingOut}
+            startIcon={<LogoutIcon />}
+          >
+            {loggingOut ? "Logging out..." : "Logout"}
+          </Button>
+        </Box>
+
+        {/* CONTENT */}
+        <Box flex={1} sx={{ backgroundColor: "#f5f5f5", padding: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{
+                height: 40,
+                borderRightWidth: 5,
+                borderColor: "#000",
+                borderRadius: 50,
+              }}
             />
-            <Box
-              gap={1}
-              sx={{ flexGrow: 1, display: { xs: "none", md: "flex" } }}
-            >
-              {pages.map((page) => (
-                <Button
-                  key={page}
-                  onClick={() => {}}
-                  sx={{
-                    my: 1,
-                    color: "white",
-                    display: "block",
-                    backgroundColor: pageName === page ? "#00000032" : "",
-                  }}
-                  href={`/${page}/`}
-                >
-                  {page}
-                </Button>
-              ))}
+
+            <Typography variant="h6" fontWeight="bold">
+                {departmentName || "Administration Department"}
+            </Typography>
             </Box>
 
-            <Box sx={{ flexGrow: 0 }}>
-              {isDepartmentPage ? (
-                <Typography sx={{ mr: 2, fontSize: "0.85rem" }}>
-                  {loggedInDepartmentLabel
-                    ? `Department: ${loggedInDepartmentLabel}`
-                    : "Department Account"}
-                </Typography>
-              ) : null}
-              <Tooltip title="Open settings">
-                <IconButton onClick={setAnchorElUser} sx={{ p: 0 }}>
-                  <Avatar alt="Admin User Icon" />
-                </IconButton>
-              </Tooltip>
-              <Menu
-                sx={{ mt: "45px" }}
-                id="menu-appbar"
-                anchorEl={anchorElUser}
-                anchorOrigin={{
-                  vertical: "top",
-                  horizontal: "right",
-                }}
-                keepMounted
-                transformOrigin={{
-                  vertical: "top",
-                  horizontal: "right",
-                }}
-                open={Boolean(anchorElUser)}
-                onClose={handleCloseUserMenu}
-              >
-                <MenuItem
-                  key={"Logout"}
-                  onClick={async (e, next) => {
-                    console.log("logout");
-                    await handleLogout();
-                    handleCloseUserMenu(e, next);
-                  }}
-                >
-                  <Typography sx={{ textAlign: "center" }}>
-                    {"Logout"}
-                  </Typography>
-                </MenuItem>
-              </Menu>
-            </Box>
-          </Toolbar>
-        </Container>
-      </AppBar>
-      <Box minHeight={"0.25em"}></Box>
+          {children}
+        </Box>
+      </Box>
     </>
   );
 }
-
-MainHeader.propTypes = {
-  pageName: () => null,
-};

@@ -9,6 +9,16 @@ const outDir = resolve(__dirname, "dist");
 export default defineConfig({
   root,
   plugins: [react()],
+  server: {
+    proxy: {
+      "/auth_": "http://localhost:3000",
+      "/api/": "http://localhost:3000",
+      "/v1/": "http://localhost:3000",
+      "/v2/": "http://localhost:3000",
+      "/who": "http://localhost:3000",
+      "/admin_who": "http://localhost:3000",
+    },
+  },
   build: {
     outDir,
     emptyOutDir: true,

@@ -1,26 +1,37 @@
-import { StrictMode, useState, useEffect } from "react";
-import { createRoot } from "react-dom/client";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
+  Alert,
   Box,
-  Paper,
-  Typography,
-  TextField,
   Button,
   CircularProgress,
+  Paper,
   Snackbar,
-  Alert,
-  ThemeProvider,
+  TextField,
+  Typography,
 } from "@mui/material";
 
 import LoginIcon from "@mui/icons-material/Login";
-import theme from "../components/Theme";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+
+import { InputAdornment, IconButton } from "@mui/material";
 import { isAdminAuthenticated, loginAdmin } from "../utils/adminAuth";
+import { fetchAllDepartments, fetchWho, loginDepartment } from "../js/departments";
+import { departmentMap } from "../utils/departmentsMap";
+import { clearAuthData } from "../utils/authStorage";
 
 import LOGIN_LOGO from "../assets/cvsu-silang.jpg";
 
 export default function Login() {
-  const [form, setForm] = useState({ username: "", password: "" });
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    account: "",
+    password: "",
+  });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -29,60 +40,131 @@ export default function Login() {
   });
 
   useEffect(() => {
-    if (isAdminAuthenticated()) {
-      window.location.href = "/departments/";
-    }
-  }, []);
+    (async () => {
+      const ok = await isAdminAuthenticated();
+      if (ok) {
+        navigate("/departments", { replace: true });
+        return;
+      }
+
+      try {
+        const who = await fetchWho();
+        if (who !== "no one is logged in") {
+          navigate("/schedule", { replace: true });
+        }
+      } catch {}
+    })();
+  }, [navigate]);
 
   const handleChange = (e) => {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+    setForm((f) => ({
+      ...f,
+      [e.target.name]: e.target.value,
+    }));
   };
 
   const handleCloseSnackbar = () => {
     setSnackbar((s) => ({ ...s, open: false }));
   };
 
-  const handleSubmit = async (e) => {
+   const handleSubmit = async (e) => {
+     e.preventDefault();
+     setLoading(true);
+
+     if (!form.account || !form.password) {
+       setSnackbar({
+         open: true,
+         severity: "warning",
+         message: "All fields are required.",
+       });
+       setLoading(false);
+       return;
+     }
+
+     try {
+       const isAdminSuccess = await loginAdmin(form.account, form.password);
+
+       if (isAdminSuccess) {
+         clearAuthData();
+         setSnackbar({
+           open: true,
+           severity: "success",
+           message: "Login successful!",
+         });
+
+         setTimeout(() => {
+           navigate("/departments");
+         }, 600);
+
+         return;
+       }
+
+       const departments = await fetchAllDepartments();
+       const matchingDepartment = departments.find((department) => {
+         return department.Code?.toLowerCase() === form.account.trim().toLowerCase();
+       });
+
+       if (!matchingDepartment) {
+         setSnackbar({
+           open: true,
+           severity: "error",
+           message: "Invalid username or password.",
+         });
+         return;
+       }
+
+       const response = await loginDepartment({
+         id: Number(matchingDepartment.DepartmentID),
+         code: matchingDepartment.Code,
+         password: form.password,
+       });
+
+       if (response.status === 200 || response.status === 208) {
+         const deptCode = matchingDepartment.Code;
+         const deptName = departmentMap[deptCode]?.name;
+      
+         localStorage.setItem("departmentCode", deptCode);
+         localStorage.setItem("departmentName", deptName);
+
+         setSnackbar({
+           open: true,
+           severity: "success",
+           message: "Login successful!",
+         });
+
+         setTimeout(() => {
+           navigate("/schedule");
+         }, 600);
+       } else {
+         setSnackbar({
+           open: true,
+           severity: "error",
+           message: "Invalid username or password.",
+         });
+       }
+     } catch (err) {
+       setSnackbar({
+         open: true,
+         severity: "error",
+         message: `Network error: ${err}`,
+       });
+     } finally {
+       setLoading(false);
+     }
+   };
+
+   const handleBlock = (e) => {
     e.preventDefault();
-    setLoading(true);
-
-    if (!form.username || !form.password) {
-      setSnackbar({
-        open: true,
-        severity: "warning",
-        message: "All fields are required.",
-      });
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const isSuccess = await loginAdmin(form.username, form.password);
-
-      if (isSuccess) {
-        setSnackbar({
-          open: true,
-          severity: "success",
-          message: "Login successful!",
-        });
-        window.location.href = "/departments/";
-      } else {
-        setSnackbar({
-          open: true,
-          severity: "error",
-          message: "Invalid admin credentials.",
-        });
-      }
-    } catch (err) {
-      setSnackbar({
-        open: true,
-        severity: "error",
-        message: `Network error: ${err}`,
-      });
-    } finally {
-      setLoading(false);
-    }
   };
+  
+    const handleKeyDown = (e) => {
+        if (
+        (e.ctrlKey || e.metaKey) &&
+        ["a", "c", "x"].includes(e.key.toLowerCase())
+        ) {
+        e.preventDefault();
+        }
+    };
 
   return (
     <Box
@@ -90,58 +172,89 @@ export default function Login() {
       justifyContent="center"
       alignItems="center"
       minHeight="100vh"
-      bgcolor="#f5f5f5"
+      bgcolor="#1c3d0e"
       p={2}
     >
       <Paper elevation={3} sx={{ p: 4, maxWidth: 400, width: "100%" }}>
         <Box
-          marginBottom={2}
-          display={"flex"}
-          justifyContent={"space-between"}
-          alignItems={"center"}
+          mb={2}
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
         >
-          <img src={LOGIN_LOGO} height={"50px"} />
-          <Typography
-            color="purple"
-            fontWeight={"bold"}
-            variant="body1"
-            gutterBottom
-            align="center"
-          >
-            Admin Login
+          <img src={LOGIN_LOGO} height="50px" alt="Logo" />
+          <Typography color="primary" fontWeight="bold">
+            Login
           </Typography>
         </Box>
+
         <Box
           component="form"
+          autoComplete="off"
           onSubmit={handleSubmit}
           sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
           <TextField
             label="Username"
-            name="username"
-            value={form.username}
+            name="account"
+            value={form.account}
             onChange={handleChange}
-            required
+            onCopy={handleBlock}
+            onCut={handleBlock}
+            onPaste={handleBlock}
+            onContextMenu={handleBlock}
+            onKeyDown={handleKeyDown}
             fullWidth
           />
+
           <TextField
             label="Password"
             name="password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             value={form.password}
             onChange={handleChange}
-            required
+            onCopy={handleBlock}
+            onCut={handleBlock}
+            onPaste={handleBlock}
+            onContextMenu={handleBlock}
+            onKeyDown={handleKeyDown}
             fullWidth
-          />
+            InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      color="password"
+                      onClick={() =>
+                        setShowPassword((prev) => !prev)
+                      }
+                      edge="end"
+                    >
+                      {showPassword ? (
+                        <Visibility />
+                      ) : (
+                        <VisibilityOff />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
 
           <Button
             type="submit"
             variant="contained"
             size="large"
-            endIcon={loading ? <CircularProgress size={20} /> : <LoginIcon />}
+            disabled={loading}
+            endIcon={
+              loading ? (
+                <CircularProgress size={20} />
+              ) : (
+                <LoginIcon />
+              )
+            }
             disabled={loading}
           >
-            {loading ? "Logging in…" : "Login"}
+            {loading ? "Logging in..." : "Login"}
           </Button>
         </Box>
       </Paper>
@@ -163,12 +276,3 @@ export default function Login() {
     </Box>
   );
 }
-
-const root = createRoot(document.getElementById("root"));
-root.render(
-  <StrictMode>
-    <ThemeProvider theme={theme}>
-      <Login />
-    </ThemeProvider>
-  </StrictMode>,
-);

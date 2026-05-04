@@ -36,8 +36,8 @@ export function Popup({
       <div
         className="popup-component"
         style={{
-            width: Array.isArray(Message) ? 'clamp(200px, 85vh, 900px)' : 'clamp(200px, 65vh, 600px)',
-            height: Array.isArray(Message) ? 'clamp(150px, 60vh, 600px)' : 'clamp(150px, 35vh, 400px)',
+            width: Array.isArray(Message) ? 'min(90vw, 900px)' : 'min(90vw, 520px)',
+            maxHeight: Array.isArray(Message) ? 'min(80vh, 600px)' : 'min(70vh, 400px)',
 
         }}
       >

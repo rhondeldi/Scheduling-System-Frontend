@@ -4,7 +4,7 @@ const API_VERSION = "v1";
 const DEV = true;
 
 const defaultBaseUrl = `http://${window.location.hostname}:3000`;
-const base_url = import.meta.env.VITE_API_BASE_URL ?? defaultBaseUrl;
+const base_url = import.meta.env.VITE_API_BASE_URL ?? "";
 
 // this is for development only : end.
 

@@ -1,5 +1,4 @@
 import { StrictMode, useState, useEffect } from "react";
-import { createRoot } from "react-dom/client";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
@@ -373,11 +372,3 @@ function InstructorPage() {
     </>
   );
 }
-
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <ThemeProvider theme={theme}>
-      <InstructorPage />
-    </ThemeProvider>
-  </StrictMode>,
-);

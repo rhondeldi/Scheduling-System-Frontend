@@ -1,30 +1,18 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, darken } from '@mui/material/styles';
 import { alpha } from '@mui/material';
 
 const gradients = {
-  // Primary (pastel-purple → lavender) – unchanged
-  primary: 'linear-gradient(200deg,rgb(137, 94, 210) 0%,rgb(161, 128, 223) 100%)',
-  // Secondary (pastel-teal → mint) – unchanged
-  secondary: 'linear-gradient(90deg,rgb(35, 177, 163) 0%,rgb(110, 194, 185) 100%)',
-  // Header (pastel-purple → pastel-teal → lavender) – unchanged
-  header: 'linear-gradient(90deg, #9575CD 0%, #4DB6AC 50%, #B39DDB 100%)',
-  // Table header (lavender → pastel-purple) – unchanged
-  tableHeader: 'linear-gradient(230deg,rgb(163, 124, 235) 10%, #9575CD 60%)',
   // Accordion collapsed (lavender → pastel-purple) – unchanged
   accordionCollapsed: 'linear-gradient(90deg, #B39DDB 0%, #9575CD 100%)',
   // Accordion expanded (pastel-teal → mint) – unchanged
   accordionExpanded: 'linear-gradient(90deg, #4DB6AC 0%, #80CBC4 100%)',
   // Page background (very light gray → white) – unchanged
   background: 'linear-gradient(180deg, #FAFAFA 0%, #FFFFFF 100%)',
-  // Dialog header (lavender → pastel-purple) – unchanged
-  dialogHeader: 'linear-gradient(90deg, #9575CD 0%, #B39DDB 100%)',
 
   // ——— DARKER‐PASTEL VARIANTS FOR BUTTONS ———
 
   // Warning: deeper pastel amber → soft gold
   warning: 'linear-gradient(90deg, #F57F17 0%, #FFA000 100%)',
-  // Error: deep pastel red → mid-pastel rose
-  error:   'linear-gradient(90deg, #C62828 0%, #E53935 100%)',
   // Success: deep pastel green → mid-pastel mint
   success: 'linear-gradient(90deg, #2E7D32 0%, #43A047 100%)',
 };
@@ -37,11 +25,11 @@ const theme = createTheme({
       paper: '#FFFFFF',
     },
     primary: {
-      main: 'rgb(114, 59, 209)',      // pastel-purple
+      main: '#2e6417',      // dark green
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#4DB6AC',      // pastel-teal
+      main: '#000000',      // black
       contrastText: '#FFFFFF',
     },
     // DARKER‐PASTEL WARNING / ERROR / SUCCESS:
@@ -61,6 +49,22 @@ const theme = createTheme({
       primary: '#263238',
       secondary: alpha('#263238', 0.7),
     },
+    password: {
+        main: '#c0c0c0',      // gray
+        contrastText: '#FFFFFF',
+      },
+    view: {
+      main: '#2e6417',      // dark green
+      contrastText: '#FFFFFF',
+    },
+    edit: {
+      main: '#2e6417',      // dark green
+      contrastText: '#FFFFFF',
+    },
+    delete: {
+      main: '#C62828',      // deep pastel red
+      contrastText: '#FFFFFF',
+    }
   },
   shape: {
     borderRadius: 5,
@@ -101,8 +105,9 @@ const theme = createTheme({
           },
         },
         containedSecondary: {
-          backgroundImage: gradients.secondary,
+          backgroundColor: '#2e6417',
           '&:hover': {
+            backgroundColor: '#1c3d0e',
             backgroundPosition: 'right center',
             boxShadow: '0 4px 12px rgba(77, 182, 172, 0.3)', // rgba(#4DB6AC, 0.3)
           },
@@ -121,6 +126,7 @@ const theme = createTheme({
         containedError: {
           backgroundImage: gradients.error,
           '&:hover': {
+            filter: 'brightness(1)',
             backgroundPosition: 'right center',
             boxShadow: '0 4px 12px rgba(198, 40, 40, 0.3)', // rgba(#C62828, 0.3)
           },
@@ -176,7 +182,7 @@ const theme = createTheme({
     MuiTableCell: {
       styleOverrides: {
         head: {
-          backgroundImage: gradients.tableHeader,
+          backgroundColor: '#2e6417',
           color: '#FFFFFF',
           fontWeight: 700,
           padding: '0.3em 0.5em',
@@ -266,7 +272,7 @@ const theme = createTheme({
     MuiDialogTitle: {
       styleOverrides: {
         root: {
-          backgroundImage: gradients.dialogHeader,
+          backgroundColor: '#2e6417',
           color: '#FFFFFF',
           padding: '16px 24px',
           fontWeight: 600,
@@ -300,6 +306,21 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           color: '#FFFFFF',
+          '&:hover': {
+            filter: 'brightness(0.8)',
+          },
+          '&.MuiIconButton-colorPassword': {
+            backgroundColor: '#c0c0c0',
+          },
+          '&.MuiIconButton-colorView': {
+            backgroundColor: '#2e6417',
+          },
+          '&.MuiIconButton-colorEdit': {
+            backgroundColor: '#2e6417',
+          },
+          '&.MuiIconButton-colorDelete': {
+            backgroundColor: '#C62828',
+          },
           '&.dialogClose': {
             position: 'absolute',
             top: 12,
@@ -316,16 +337,18 @@ const theme = createTheme({
       styleOverrides: {
         actions: {
           '& .MuiIconButton-root': {
-            color: '#9575CD',
+            color: '#FFFFFF',
+            backgroundColor: '#2e6417',
             transition:
               'color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease',
             '&:hover': {
-              color: '#4DB6AC',
-              backgroundColor: alpha('#9575CD', 0.15),
+              color: '#FFFFFF',
+              backgroundColor: '#1c3d0e',
               boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
             },
             '&.Mui-disabled': {
-              color: alpha('#263238', 0.3),
+              color: alpha('#FFFFFF', 0.7),
+              backgroundColor: alpha('#2e6417', 0.35),
             },
           },
         },

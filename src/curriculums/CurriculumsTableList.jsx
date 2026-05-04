@@ -1,5 +1,4 @@
-import { StrictMode, useState, useEffect } from 'react';
-import { createRoot } from "react-dom/client";
+import { useCallback, useEffect, useState } from 'react';
 
 import '@fontsource/roboto/300.css';
 import '@fontsource/roboto/400.css';
@@ -7,11 +6,10 @@ import '@fontsource/roboto/500.css';
 import '@fontsource/roboto/700.css';
 
 import {
-    Box, TextField, Button, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination,
+    Box, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination,
     Paper, CircularProgress, Dialog, DialogContent, DialogContentText, DialogTitle, DialogActions, Select, MenuItem, FormControl, InputLabel,
-    ThemeProvider
+    IconButton
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AddIcon from '@mui/icons-material/Add';
@@ -21,7 +19,6 @@ import { Popup, POPUP_ERROR_COLOR, POPUP_SUCCESS_COLOR } from '../components/Loa
 
 import CurriculumView from './CurriculumView'
 import { MainHeader } from '../components/Header';
-import theme from '../components/Theme';
 
 import SearchIcon from '@mui/icons-material/Search';
 
@@ -48,12 +45,7 @@ function CurriculumsTableList() {
 
                 const all_departments = await fetchAllDepartments();
 
-
                 setAllDepartment(all_departments);
-                console.log('all_departments')
-                console.log(all_departments);
-                console.log()
-
 
                 setIsLoading(false);
             } catch (err) {
@@ -63,7 +55,6 @@ function CurriculumsTableList() {
                     Message: `${err}`
                 });
                 setIsLoading(false);
-                setSemesterIndex("");
             }
         };
 
@@ -73,13 +64,17 @@ function CurriculumsTableList() {
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(10);
     const [totalCount, setTotalCount] = useState(0);
-    const [codeMatch, setCodeMatch] = useState("");
-    const [nameMatch, setNameMatch] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
     const [curriculumList, setCurriculumList] = useState([]);
-    const load_curriculums = async (page_size, new_page, department_id, code_match = "", name_match = "") => {
+    const load_curriculums = useCallback(async (page_size, new_page, department_id, search_term = "") => {
         setIsLoading(true);
         try {
-            const curriculum_page = await fetchCurriculumPageList(page_size, new_page, department_id, code_match, name_match);
+            let curriculum_page = await fetchCurriculumPageList(page_size, new_page, department_id, search_term, "");
+
+            if (search_term && !curriculum_page.Curriculums?.length) {
+                curriculum_page = await fetchCurriculumPageList(page_size, new_page, department_id, "", search_term);
+            }
+
             setCurriculumList(curriculum_page.Curriculums);
             setTotalCount(curriculum_page.TotalCurriculums);
         } catch (err) {
@@ -90,13 +85,12 @@ function CurriculumsTableList() {
             });
         }
         setIsLoading(false);
-    };
+    }, []);
     const handleDepartmentChange = async (event) => {
-        console.log(`selected departmentID: ${event.target.value}`);
         setDepartmentID(event.target.value);
 
         setPage(0)
-        await load_curriculums(pageSize, 0, event.target.value, codeMatch, nameMatch);
+        await load_curriculums(pageSize, 0, event.target.value, searchTerm);
     }
 
 
@@ -129,12 +123,12 @@ function CurriculumsTableList() {
     const [curriculumBasicInfo, setCurriculumBasicInfo] = useState(null)
 
     return (<>
-        <MainHeader pageName={'curriculums'} />
+        <MainHeader pageName={'curriculums'}>
 
         <Popup popupOptions={popupOptions} closeButtonActionHandler={() => setPopupOptions(null)} />
 
         <Box display={!isView ? 'block' : 'none'}>
-            <Box padding={1} sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', padding: '1.5em' }}>
                 <Box display={'flex'} gap={'0.5em'}>
                     <FormControl sx={{ minWidth: 150, maxWidth: 151 }} size="small">
                         <InputLabel id="label-id-department">Department</InputLabel>
@@ -166,25 +160,24 @@ function CurriculumsTableList() {
 
                     {(Number.isInteger(Number.parseInt(departmentID, 10))) ? <>
                         <TextField
-                            sx={{ minWidth: 100, maxWidth: 130 }}
+                            sx={{ minWidth: 260, maxWidth: 360 }}
                             size="small"
-                            label="Search Code"
-                            value={codeMatch}
-                            onChange={(e) => setCodeMatch(e.target.value)}
-                        />
-                        <TextField
-                            sx={{ minWidth: 120, maxWidth: 300 }}
-                            size="small"
-                            label="Search Curriculum Name"
-                            value={nameMatch}
-                            onChange={(e) => setNameMatch(e.target.value)}
+                            label="Search curriculum"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    setPage(0);
+                                    load_curriculums(pageSize, 0, departmentID, e.target.value);
+                                }
+                            }}
                         />
                         <Button
                             size="small"
                             variant="contained"
                             onClick={() => {
                                 setPage(0);
-                                load_curriculums(pageSize, page, departmentID, codeMatch, nameMatch);
+                                load_curriculums(pageSize, 0, departmentID, searchTerm);
                             }}
                         >
                             <SearchIcon />
@@ -202,7 +195,6 @@ function CurriculumsTableList() {
                             setCurriculumBasicInfo(null);
                             setMode("new");
                             setIsView(true)
-                            console.log('new curriculum btn')
                         }}
                         disabled={!selectedDepartment}
                     >
@@ -211,17 +203,7 @@ function CurriculumsTableList() {
                 </> : null}
             </Box>
 
-            <Box
-                paddingInlineStart={0}
-                paddingInlineEnd={3}
-                display={'flex'}
-                justifyContent={'space-between'}
-            >
-                <Typography marginInline={'0.5em'} variant="h6">Curriculums</Typography>
-                <Typography fontStyle={'italic'}>{selectedDepartment ? `${selectedDepartment?.Name}` : null}</Typography>
-            </Box>
-
-            <Box paddingInline={1}>
+            <Box paddingInline={4}>
                 <TableContainer component={Paper}>
                     <Table size="small">
                         <TableHead>
@@ -245,59 +227,45 @@ function CurriculumsTableList() {
                                         <TableCell>{curriculum.CurriculumID}</TableCell>
                                         <TableCell>{curriculum.CurriculumCode}</TableCell>
                                         <TableCell>{truncateText(curriculum.CurriculumName, 90)}</TableCell>
-                                        <TableCell align="right">
-                                            <Button
-                                                variant="contained"
-                                                color="primary"
-                                                size="small"
-                                                style={{ marginRight: 8 }}
-                                                startIcon={<VisibilityIcon />}
-                                                onClick={() => {
-                                                    setCurriculumBasicInfo(curriculum);
-                                                    setMode("view");
-                                                    setIsView(true)
-                                                    console.log('view curriculum:')
-                                                    console.log(curriculum)
-
-                                                }}
-                                            >
-                                                View
-                                            </Button>
-                                            <Button
-                                                variant="contained"
-                                                color="error"
-                                                size="small"
-                                                endIcon={<DeleteIcon />}
-                                                onClick={() => {
-                                                    setCurriculumToDelete(curriculum);
-                                                    setIsDialogDeleteShow(true);
-                                                }}
-                                            >
-                                                Delete
-                                            </Button>
+                                        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
+                                                <IconButton
+                                                    color="view"
+                                                    onClick={() => {
+                                                        setCurriculumBasicInfo(curriculum);
+                                                        setMode("view");
+                                                        setIsView(true)
+                                                    }}
+                                                >
+                                                    <VisibilityIcon />
+                                                </IconButton>
+                                                <IconButton
+                                                    color="delete"
+                                                    onClick={() => {
+                                                        setCurriculumToDelete(curriculum);
+                                                        setIsDialogDeleteShow(true);
+                                                    }}
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </Box>
                                         </TableCell>
                                     </TableRow>
                                 ))
                             )}
                         </TableBody>
                     </Table>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                         <TablePagination
-                            rowsPerPageOptions={[5, 10, 15]}
                             component="div"
                             count={totalCount}
                             rowsPerPage={pageSize}
                             page={page}
+                            rowsPerPageOptions={[]}
+                            labelRowsPerPage={() => ''}
                             onPageChange={async (_, new_page) => {
                                 setPage(new_page);
-                                await load_curriculums(pageSize, new_page, departmentID, codeMatch, nameMatch);
-                            }}
-                            onRowsPerPageChange={async (event) => {
-                                const newPageSize = parseInt(event.target.value, 10);
-                                setPageSize(newPageSize);
-                                setPage(0);
-                                await load_curriculums(newPageSize, 0, departmentID, codeMatch, nameMatch);
+                                await load_curriculums(pageSize, new_page, departmentID, searchTerm);
                             }}
                         />
                     </Box>
@@ -336,18 +304,13 @@ function CurriculumsTableList() {
             popupOptions={popupOptions}
             setPopupOptions={setPopupOptions}
             reloadList={async () => {
-                await load_curriculums(pageSize, page, departmentID, codeMatch, nameMatch);
+                await load_curriculums(pageSize, page, departmentID, searchTerm);
             }}
 
             allDepartment={allDepartment}
         /> : null}
+        </MainHeader>
     </>);
 }
 
-createRoot(document.getElementById("root")).render(
-    <StrictMode>
-        <ThemeProvider theme={theme}>
-            <CurriculumsTableList />
-        </ThemeProvider>
-    </StrictMode>
-);
+export default CurriculumsTableList;

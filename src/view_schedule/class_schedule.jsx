@@ -1,5 +1,4 @@
 import { StrictMode, useState, useEffect, useRef } from "react";
-import { createRoot } from "react-dom/client";
 
 import { Loading, Popup, POPUP_ERROR_COLOR } from "../components/Loading";
 
@@ -463,11 +462,3 @@ function TimeTable() {
         </>
     );
 }
-
-createRoot(document.getElementById("root")).render(
-    <StrictMode>
-        <ThemeProvider theme={theme}>
-            <TimeTable />
-        </ThemeProvider>
-    </StrictMode>
-);

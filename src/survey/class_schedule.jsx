@@ -1,5 +1,4 @@
 import { StrictMode, useState, useEffect } from "react";
-import { createRoot } from "react-dom/client";
 
 import { Loading, Popup } from "../components/Loading";
 
@@ -565,9 +564,3 @@ function TimeTable() {
         </>
     );
 }
-
-createRoot(document.getElementById("root")).render(
-    <StrictMode>
-        <TimeTable />
-    </StrictMode>
-);

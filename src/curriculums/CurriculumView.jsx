@@ -58,6 +58,7 @@ import {
   postCreateCurriculum,
   patchUpdateCurriculum,
 } from "../js/curriculums";
+import { fetchInstructorBasic } from "../js/instructors_v2";
 import {
   Loading,
   Popup,
@@ -68,6 +69,7 @@ import {
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import { CheckBox } from "@mui/icons-material";
 import SubjectSelection from "./SubjectSelection";
+import InstructorSelection from "./InstructorSelection";
 
 const truncateText = (text, maxLength) => {
   if (text.length > maxLength) {
@@ -159,6 +161,8 @@ function CurriculumView({
   const [isAddingSubjects, setIsAddingSubjects] = useState(false);
 
   const [yearSemSubjectTarget, setYearSemSubjectTarget] = useState(null);
+
+  const [chipInstructors, setChipInstructors] = useState([]);
 
   return (
     <>
@@ -651,6 +655,9 @@ function CurriculumView({
                                     <TableCell>Name</TableCell>
                                     <TableCell>Lec Hr(s)</TableCell>
                                     <TableCell>Lab Hr(s)</TableCell>
+                                    <TableCell>
+                                      Designated Instructors
+                                    </TableCell>
                                     {mode === "edit" || mode === "new" ? (
                                       <TableCell align="right">
                                         Actions
@@ -664,8 +671,8 @@ function CurriculumView({
                                       <TableCell
                                         colSpan={
                                           mode === "edit" || mode === "new"
-                                            ? 6
-                                            : 5
+                                            ? 7
+                                            : 6
                                         }
                                         align="center"
                                       >
@@ -691,6 +698,7 @@ function CurriculumView({
                                           <TableCell>
                                             {subject.LabHours}
                                           </TableCell>
+                                          <TableCell>{`${subject?.DesignatedInstructorsID?.length ? subject?.DesignatedInstructorsID?.length + "x" : "auto assign"}`}</TableCell>
                                           {mode === "edit" || mode === "new" ? (
                                             <TableCell align="right">
                                               <Button
@@ -699,7 +707,7 @@ function CurriculumView({
                                                 size="large"
                                                 style={{ marginRight: 8 }}
                                                 startIcon={<EditIcon />}
-                                                onClick={() => {
+                                                onClick={async () => {
                                                   setSubject(subject);
 
                                                   setYearSemSubjectTarget({
@@ -710,6 +718,48 @@ function CurriculumView({
                                                     subject_index:
                                                       index_subject,
                                                   });
+
+                                                  try {
+                                                    console.log(
+                                                      "modify subject",
+                                                    );
+                                                    const new_instructors = [];
+
+                                                    if (
+                                                      subject?.DesignatedInstructorsID
+                                                    ) {
+                                                      for (let num of subject?.DesignatedInstructorsID) {
+                                                        const instructor_basic_info =
+                                                          await fetchInstructorBasic(
+                                                            num,
+                                                          );
+                                                        new_instructors.push({
+                                                          InstructorID:
+                                                            instructor_basic_info.InstructorID,
+                                                          Name: `${instructor_basic_info.FirstName} ${instructor_basic_info.MiddleInitial}. ${instructor_basic_info.LastName}`,
+                                                        });
+
+                                                        console.log(
+                                                          instructor_basic_info,
+                                                        );
+                                                      }
+                                                    }
+
+                                                    setChipInstructors(
+                                                      new_instructors,
+                                                    );
+                                                  } catch (err) {
+                                                    setPopupOptions({
+                                                      Heading:
+                                                        "Read Subject Error",
+                                                      HeadingStyle: {
+                                                        background:
+                                                          POPUP_WARNING_COLOR,
+                                                        color: "black",
+                                                      },
+                                                      Message: `${err}`,
+                                                    });
+                                                  }
 
                                                   setIsDialogFormOpen(true);
                                                 }}
@@ -864,7 +914,7 @@ function CurriculumView({
           open={isDialogFormOpen}
           onClose={() => setIsDialogFormOpen(false)}
           fullWidth
-          maxWidth="sm"
+          maxWidth="xl"
           slotProps={{
             paper: {
               component: "form",
@@ -891,6 +941,17 @@ function CurriculumView({
                     formJson.ModifySubjectDialogForm_LabHours,
                     10,
                   );
+
+                  const new_designated_instructor_ids = [];
+
+                  for (let i = 0; i < chipInstructors?.length; i++) {
+                    new_designated_instructor_ids.push(
+                      parseInt(chipInstructors[i].InstructorID, 10),
+                    );
+                  }
+
+                  subject.DesignatedInstructorsID =
+                    new_designated_instructor_ids;
 
                   console.log("if here test debug msg 5");
 
@@ -942,6 +1003,50 @@ function CurriculumView({
               defaultValue={subject?.LabHours || 0}
               slotProps={{ htmlInput: { min: 0, max: 15 } }}
             />
+
+            <Box
+              marginTop={"1em"}
+              display={"flex"}
+              flexDirection={"column"}
+              gap={1}
+            >
+              <Box
+                display={"flex"}
+                justifyContent={"space-between"}
+                alignItems={"center"}
+              >
+                <Typography variant="caption">
+                  Add one or more instructor(s) you want to assign to this
+                  subject
+                </Typography>
+              </Box>
+              <Box display={"flex"} flexWrap={"wrap"} gap={1} padding={"0.3em"}>
+                {chipInstructors.map((instructor) => (
+                  <Chip
+                    key={`chip-key-${instructor.InstructorID}`}
+                    label={`${instructor.InstructorID} | ${instructor.Name}`}
+                    onDelete={() => {
+                      setChipInstructors(
+                        chipInstructors.filter(
+                          (iter_instructor) =>
+                            iter_instructor?.InstructorID !=
+                            instructor?.InstructorID,
+                        ),
+                      );
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            <InstructorSelection
+              open={true}
+              curriculum={editedCurriculum}
+              setEditedCurriculum={setEditedCurriculum}
+              yearSemSubjectTarget={yearSemSubjectTarget}
+              chipInstructors={chipInstructors}
+              setChipInstructors={setChipInstructors}
+            />
           </DialogContent>
           <DialogActions>
             <Button variant="outlined" type="submit">
@@ -951,6 +1056,7 @@ function CurriculumView({
               variant="outlined"
               onClick={() => {
                 setIsDialogFormOpen(false);
+                setChipInstructors([]);
               }}
             >
               Cancel
