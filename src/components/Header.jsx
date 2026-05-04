@@ -1,33 +1,24 @@
-import { useEffect, useState } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-} from "@mui/material";
-import { Divider } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { Box, Typography, Button, Divider } from "@mui/material";
+
 import BusinessIcon from "@mui/icons-material/Business";
 import SchoolIcon from "@mui/icons-material/School";
 import SubjectIcon from "@mui/icons-material/Subject";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
 import PeopleIcon from "@mui/icons-material/People";
+import LogoutIcon from "@mui/icons-material/Logout";
 
 import { Popup } from "../components/Loading";
 import {
-  fetchAllDepartments,
-  fetchWho,
-  logoutDepartment,
-} from "../js/departments.js";
-import {
   getAdminAllowedPages,
-  isAdminAuthenticated,
-  isAllowedAdminPage,
   logoutAdmin,
 } from "../utils/adminAuth.js";
 
-const adminPages = getAdminAllowedPages();
+import { logoutDepartment } from "../js/departments.js";
+
 const departmentPages = ["schedule", "rooms", "instructors"];
 
 const getPageDisplayInfo = (page) => {
@@ -39,80 +30,44 @@ const getPageDisplayInfo = (page) => {
     rooms: { label: "Rooms", icon: MeetingRoomIcon },
     instructors: { label: "Instructors", icon: PeopleIcon },
   };
+
   return pageInfo[page] || { label: page, icon: null };
 };
 
 export function MainHeader({ pageName, children }) {
-  const [loggedInDepartmentLabel, setLoggedInDepartmentLabel] = useState("");
+  const navigate = useNavigate();
+
   const [popupOptions, setPopupOptions] = useState(null);
+  const departmentName = localStorage.getItem("departmentName");
+  const adminPages = getAdminAllowedPages();
 
-  const isAdminPage = pageName ? isAllowedAdminPage(pageName) : false;
-  const isDepartmentPage = pageName
-    ? departmentPages.includes(pageName)
-    : false;
+  const [loggingOut, setLoggingOut] = useState(false);
 
+  const isDepartmentPage = departmentPages.includes(pageName);
   const pages = isDepartmentPage ? departmentPages : adminPages;
 
-  useEffect(() => {
-    const validateAccess = async () => {
-      if (!pageName) return;
-
-      if (isAdminPage) {
-        if (!isAdminAuthenticated()) {
-          window.location.href = "/login/";
-        }
-        return;
-      }
-
-      if (isDepartmentPage) {
-        try {
-          const who = await fetchWho();
-          if (who === "no one is logged in") {
-            window.location.href = "/department_login/";
-            return;
-          }
-
-          const loggedInDepartmentID = Number(who);
-          if (!Number.isInteger(loggedInDepartmentID)) return;
-
-          const allDepartments = await fetchAllDepartments();
-          const loggedInDepartment = allDepartments.find(
-            (d) => Number(d.DepartmentID) === loggedInDepartmentID
-          );
-
-          if (loggedInDepartment) {
-            setLoggedInDepartmentLabel(
-              `${loggedInDepartment.Code} - ${loggedInDepartment.Name}`
-            );
-          }
-        } catch {
-          window.location.href = "/department_login/";
-        }
-        return;
-      }
-
-      window.location.href = "/departments/";
-    };
-
-    validateAccess();
-  }, [isAdminPage, isDepartmentPage, pageName]);
-
   const handleLogout = async () => {
+    setLoggingOut(true);
+  
     try {
       if (isDepartmentPage) {
         await logoutDepartment();
-        window.location.href = "/department_login/";
-        return;
+      } else {
+        await logoutAdmin();
       }
-
-      await logoutAdmin();
-      window.location.href = "/login/";
+  
+      setTimeout(() => {
+        navigate("/login", { replace: true });
+      }, 800);
+  
     } catch (err) {
       setPopupOptions({
         Heading: "Logout Failed",
         HeadingStyle: { background: "red", color: "white" },
         Message: `${err}`,
       });
+  
+      setLoggingOut(false);
     }
   };
 
@@ -123,9 +78,8 @@ export function MainHeader({ pageName, children }) {
         closeButtonActionHandler={() => setPopupOptions(null)}
       />
 
-      {/* MAIN LAYOUT */}
       <Box display="flex" minHeight="100vh">
-        
+
         {/* SIDEBAR */}
         <Box
           sx={{
@@ -142,81 +96,91 @@ export function MainHeader({ pageName, children }) {
             <Typography variant="h6" fontWeight="bold">
               Cavite State University
             </Typography>
-            <Typography variant="body2">
-              Silang Campus
-            </Typography>
 
-            <Divider
-                sx={{
-                    my: 4,
-                    height: "2px",
-                    backgroundColor: "#d5d5d5",
-                }}
-            />
+            <Typography variant="body2">Silang Campus</Typography>
+
+            <Divider sx={{ my: 4, bgcolor: "#d5d5d5", height: 2 }} />
 
             <Box mt={4} display="flex" flexDirection="column" gap={1}>
               {pages.map((page) => {
                 const { label, icon: Icon } = getPageDisplayInfo(page);
+                const isActive = pageName === page;
+
                 return (
-                  <Button
-                    key={page}
-                    href={`/${page}/`}
-                    startIcon={Icon ? <Icon /> : null}
-                    sx={{
-                      justifyContent: "flex-start",
-                      color: "white",
-                      backgroundColor:
-                        pageName === page ? "#ffffff22" : "transparent",
-                      textTransform: "none",
-                      fontSize: "1rem",
-                      padding: "8px 16px",
-                      "&:hover": {
-                        backgroundColor: "#ffffff11",
-                      },
-                    }}
-                  >
-                    {label}
-                  </Button>
+                  <Box key={page} sx={{ display: "flex", alignItems: "center" }}>
+                    <Divider
+                      orientation="vertical"
+                      flexItem
+                      sx={{
+                        width: 4,
+                        mr: 1,
+                        borderRadius: 2,
+                        bgcolor: isActive ? "#f9fff9" : "transparent",
+                      }}
+                    />
+                    <Button
+                      onClick={() => navigate(`/${page}`)}
+                      startIcon={Icon ? <Icon /> : null}
+                      sx={{
+                        width: "100%",
+                        justifyContent: "flex-start",
+                        color: isActive ? "#0f660d" : "white",
+                        backgroundColor: isActive ? "#f9fff9" : "transparent",
+                        textTransform: "none",
+                        fontSize: "0.9rem",
+                        padding: "16px",
+                        margin: "2px",
+                        borderRadius: 2,
+                        "&:hover": {
+                          backgroundColor: isActive ? "#f9fff9" : "#ffffff11",
+                        },
+                      }}
+                    >
+                      {label}
+                    </Button>
+                  </Box>
                 );
               })}
             </Box>
           </Box>
 
           <Button
-            sx={{ color: "white", justifyContent: "flex-start" }}
+            sx={{
+              color: "white",
+              justifyContent: "flex-start",
+              mx: 2,
+              mb: 1,
+              borderTop: "1px solid rgba(255,255,255,0.35)",
+              borderRadius: 0,
+              pt: 2,
+            }}
             onClick={handleLogout}
+            disabled={loggingOut}
+            startIcon={<LogoutIcon />}
           >
-            Logout
+            {loggingOut ? "Logging out..." : "Logout"}
           </Button>
         </Box>
 
-        {/* CONTENT AREA */}
-        <Box
-          flex={1}
-          sx={{
-            backgroundColor: "#f5f5f5",
-            padding: 2,
-          }}
-        >
-          {/* TOP HEADER */}
-          <Box
-            sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 1,
-            }}
-            >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Divider orientation="vertical" flexItem sx={{ height: 40, borderRightWidth: 5, borderColor: '#000000', borderRadius: 50}} />
-                <Typography variant="h6" fontWeight="bold">
-                {isDepartmentPage
-                    ? loggedInDepartmentLabel || "Department"
-                    : "Administration Department"}
-                </Typography>
+        {/* CONTENT */}
+        <Box flex={1} sx={{ backgroundColor: "#f5f5f5", padding: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{
+                height: 40,
+                borderRightWidth: 5,
+                borderColor: "#000",
+                borderRadius: 50,
+              }}
+            />
+
+            <Typography variant="h6" fontWeight="bold">
+                {departmentName || "Administration Department"}
+            </Typography>
             </Box>
-            </Box>
-          {/* PAGE CONTENT */}
+
           {children}
         </Box>
       </Box>

@@ -1,375 +1,316 @@
-import { StrictMode, useState, useEffect } from "react";
-import { createRoot } from "react-dom/client";
-
-import '@fontsource/roboto/300.css';
-import '@fontsource/roboto/400.css';
-import '@fontsource/roboto/500.css';
-import '@fontsource/roboto/700.css';
+import { useState, useCallback, useEffect } from "react";
 
 import {
-    Box, TextField, Button, Typography,
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination,
-    Paper, CircularProgress, Dialog, DialogContent, DialogContentText, DialogTitle, DialogActions,
-    FormControlLabel, Checkbox,
-    ThemeProvider, IconButton,
+  Box,
+  TextField,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Paper,
+  CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  DialogActions,
+  IconButton,
 } from "@mui/material";
 
-import DoneIcon from '@mui/icons-material/Done';
-import CancelIcon from '@mui/icons-material/Cancel';
-import ClearAllIcon from '@mui/icons-material/ClearAll';
-import EditIcon from '@mui/icons-material/Edit';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SearchIcon from '@mui/icons-material/Search';
+import EditIcon from "@mui/icons-material/Edit";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 import "../assets/main.css";
-import { fetchDepartmentsPaginated, deleteRemoveDepartment, patchUpdateDepartment, postCreateDepartment } from "../js/departments";
-import { Popup, POPUP_ERROR_COLOR, POPUP_SUCCESS_COLOR, POPUP_WARNING_COLOR } from "../components/Loading";
+
+import {
+  fetchDepartmentsPaginated,
+  deleteRemoveDepartment,
+  patchUpdateDepartment,
+  postCreateDepartment,
+} from "../js/departments";
+
+import {
+  Popup,
+  POPUP_ERROR_COLOR,
+  POPUP_SUCCESS_COLOR,
+} from "../components/Loading";
+
 import { MainHeader } from "../components/Header";
-import theme from "../components/Theme";
 
-const truncateText = (text, maxLength) => {
-    if (text.length > maxLength) {
-        return text.substring(0, maxLength) + '...';
+const truncateText = (text, maxLength) =>
+  text ? (text.length > maxLength ? text.substring(0, maxLength) + "..." : text) : "";
+
+export default function Departments() {
+  const [mode, setMode] = useState("new");
+  const [isDialogFormOpen, setIsDialogFormOpen] = useState(false);
+  const [isDialogDeleteShow, setIsDialogDeleteShow] = useState(false);
+
+  const [popupOptions, setPopupOptions] = useState(null);
+
+  const [department, setDepartment] = useState({
+    DepartmentID: null,
+    Code: "",
+    Name: "",
+  });
+
+  const [departmentToDelete, setDepartmentToDelete] = useState(null);
+
+  const [departmentList, setDepartmentList] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const loadDepartments = useCallback(async (size, currentPage, search) => {
+    setIsLoading(true);
+
+    try {
+      const data = await fetchDepartmentsPaginated(size, currentPage, search, "");
+
+      setDepartmentList(data.Departments || []);
+      setTotalCount(data.TotalDepartments || 0);
+    } catch (err) {
+      setPopupOptions({
+        Heading: "Fetch Failed",
+        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
+        Message: err.message,
+      });
     }
-    return text;
-};
 
-function Departments() {
-    const [mode, setMode] = useState(""); // "new" or "edit"
-    const [isDialogFormOpen, setIsDialogFormOpen] = useState(false);
-    const [popupOptions, setPopupOptions] = useState(null);
-    const [isDialogDeleteShow, setIsDialogDeleteShow] = useState(false);
-    const [departmentToDelete, setDepartmentToDelete] = useState(null);
+    setIsLoading(false);
+  }, []);
 
-    const [department, setDepartment] = useState({
-        Code: "",
-        Name: "",
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadDepartments(pageSize, page, searchTerm);
+    }, 300);
 
+    return () => clearTimeout(timer);
+  }, [loadDepartments, page, pageSize, searchTerm]);
 
-    });
+  const handleDelete = async (id) => {
+    setIsLoading(true);
 
-    const [departmentList, setDepartmentList] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [page, setPage] = useState(0);
-    const [pageSize, setPageSize] = useState(10);
-    const [totalCount, setTotalCount] = useState(0);
+    try {
+      await deleteRemoveDepartment(id);
 
-    const [codeMatch, setCodeMatch] = useState("");
-    const [nameMatch, setNameMatch] = useState("");
+      await loadDepartments(pageSize, page, searchTerm);
 
-    const load_departments = async (page_size, new_page, code_match = "", name_match = "") => {
-        setIsLoading(true);
-        try {
-            const departmentsData = await fetchDepartmentsPaginated(page_size, new_page, code_match, name_match);
+      setPopupOptions({
+        Heading: "Deleted",
+        HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
+        Message: "Department removed successfully",
+      });
+    } catch (err) {
+      setPopupOptions({
+        Heading: "Delete Failed",
+        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
+        Message: err.message,
+      });
+    }
 
-            console.log('departmentsData: ', departmentsData)
+    setIsLoading(false);
+    setIsDialogDeleteShow(false);
+    setDepartmentToDelete(null);
+  };
 
-            setDepartmentList(departmentsData.Departments);
-            setTotalCount(departmentsData.TotalDepartments);
-        } catch (err) {
-            setPopupOptions({
-                Heading: "Failed to Fetch Departments",
-                HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-                Message: `${err.message}`,
-            });
-        }
-        setIsLoading(false);
-    };
+  const handleSave = async () => {
+    try {
+      if (mode === "new") {
+        await postCreateDepartment(department);
+      } else {
+        await patchUpdateDepartment(department);
+      }
 
-    const handleDepartmentDelete = async (department_id) => {
-        setIsLoading(true);
-        try {
-            await deleteRemoveDepartment(department_id);
-            await load_departments(pageSize, page, codeMatch, nameMatch);
-            setPopupOptions({
-                Heading: "Delete Success",
-                HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
-                Message: "The department was successfully deleted",
-            });
-        } catch (err) {
-            setPopupOptions({
-                Heading: "Delete Failed",
-                HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-                Message: `${err.message}`,
-            });
-        }
-        setDepartmentToDelete(null);
-        setIsLoading(false);
-        setIsDialogDeleteShow(false);
-    };
+      await loadDepartments(pageSize, page, searchTerm);
 
+      setIsDialogFormOpen(false);
 
-    useEffect(() => {
-        load_departments(pageSize, page, codeMatch, nameMatch);
-    }, []);
+      setPopupOptions({
+        Heading: "Success",
+        HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
+        Message: "Saved successfully",
+      });
+    } catch (err) {
+      setPopupOptions({
+        Heading: "Save Failed",
+        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
+        Message: err.message,
+      });
+    }
+  };
 
-    return (<>
+  return (
+    <>
+      <MainHeader pageName="departments">
 
-        <MainHeader pageName={'departments'}>
+      <Popup
+        popupOptions={popupOptions}
+        closeButtonActionHandler={() => setPopupOptions(null)}
+      />
 
-        <Popup popupOptions={popupOptions} closeButtonActionHandler={() => setPopupOptions(null)} />
-
-        <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', padding: '1.5em' }}>
-                <Box display={'flex'} gap={'0.5em'}>
-                    <TextField
-                        sx={{ minWidth: 100, maxWidth: 130 }}
-                        size="small"
-                        label="Search Code"
-                        value={codeMatch}
-                        onChange={(e) => setCodeMatch(e.target.value)}
-                    />
-                    <TextField
-                        sx={{ minWidth: 100, maxWidth: 500 }}
-                        size="small"
-                        label="Search Department Name"
-                        value={nameMatch}
-                        onChange={(e) => setNameMatch(e.target.value)}
-                    />
-                    <Button
-                        size="small"
-                        variant="contained"
-                        onClick={() => {
-                            setPage(0);
-                            load_departments(pageSize, 0, codeMatch, nameMatch);
-                        }}
-                    >
-                        <SearchIcon/>
-                    </Button>
-                </Box>
-
-                <Button
-                    endIcon={<AddIcon />}
-                    size="medium"
-                    color="secondary"
-                    variant="contained"
-                    onClick={() => {
-                        setMode("new");
-                        setIsDialogFormOpen(true);
-                    }}
-                >
-                    Add New Department
-                </Button>
-            </Box>
-
-            <Box paddingInline={4}>
-                <TableContainer component={Paper}>
-                    <Table size="small">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>ID</TableCell>
-                            <TableCell>Code</TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell align="right">Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell colSpan={4} align="center">
-                                    <CircularProgress />
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            departmentList.map((department) => ((department.DepartmentID) ?
-                                <TableRow key={department.DepartmentID}>
-                                    <TableCell>{department.DepartmentID}</TableCell>
-                                    <TableCell>{department.Code}</TableCell>
-                                    <TableCell>{truncateText(department.Name, 90)}</TableCell>
-                                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
-                                            <IconButton
-                                                disabled={department.DepartmentID == 0}
-                                                sx={{ backgroundColor: '#2e6417' }}
-                                                onClick={() => {
-                                                    setDepartment(department);
-                                                    setMode("edit");
-                                                    setIsDialogFormOpen(true);
-                                                }}
-                                            >
-                                                <EditIcon />
-                                            </IconButton>
-                                            <IconButton
-                                                disabled={department.DepartmentID == 0}
-                                                sx={{ backgroundColor: '#9e0000' }}
-                                                onClick={() => {
-                                                    setDepartmentToDelete(department);
-                                                    setIsDialogDeleteShow(true);
-                                                }}
-                                            >
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        </Box>
-                                    </TableCell>
-                                </TableRow> : null
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                    <TablePagination
-                        component="div"
-                        count={totalCount}
-                        rowsPerPage={pageSize}
-                        page={page}
-                        rowsPerPageOptions={[]}
-                        labelRowsPerPage={() => ''}
-                        onPageChange={async (_, new_page) => {
-                            setPage(new_page);
-                            await load_departments(pageSize, new_page, codeMatch, nameMatch);
-                        }}
-                    />
-                </Box>
-            </TableContainer>
-        </Box>
-    </Box>
-        
-        <Dialog
-            open={isDialogDeleteShow}
-            onClose={() => setIsDialogDeleteShow(false)}
-            aria-labelledby="alert-dialog-title"
-            aria-describedby="alert-dialog-description"
-        >
-            <DialogTitle id="alert-dialog-title">Remove Department</DialogTitle>
-            <DialogContent>
-                <DialogContentText id="alert-dialog-description">
-                    {`Are you sure you want to remove "${departmentToDelete?.Name}"?`}
-                </DialogContentText>
-            </DialogContent>
-            <DialogActions>
-                <Button variant='outlined' onClick={() => handleDepartmentDelete(departmentToDelete?.DepartmentID)}>Yes</Button>
-                <Button variant='outlined' onClick={() => setIsDialogDeleteShow(false)}>No</Button>
-            </DialogActions>
-        </Dialog>
-
-        <Dialog
-            open={isDialogFormOpen}
-            onClose={() => setIsDialogFormOpen(false)}
-            slotProps={{
-                paper: {
-                    component: 'form',
-                    onSubmit: async (event) => {
-                        event.preventDefault();
-                        const formData = new FormData(event.currentTarget);
-                        const formJson = Object.fromEntries(formData.entries());
-
-                        const departmentData = {
-                            Code: formJson.Code,
-                            Name: formJson.Name,
-                            SaltedHashedPassword: formJson.SaltedHashedPassword
-                        };
-
-                        if (mode === "edit") {
-                            departmentData.DepartmentID = department.DepartmentID;
-                        }
-
-                        try {
-                            setIsLoading(true);
-
-                            if (formJson.SaltedHashedPassword !== formJson.RetypedPassword) {
-                                throw Error('password not the same')
-                            }
-
-                            if (mode === "new") {
-                                await postCreateDepartment(departmentData);
-                                setPopupOptions({
-                                    Heading: "Add Successful",
-                                    HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
-                                    Message: "A new department was added",
-                                });
-                            } else if (mode === "edit") {
-                                await patchUpdateDepartment(departmentData);
-                                setPopupOptions({
-                                    Heading: "Edit Successful",
-                                    HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
-                                    Message: "Changes to the department data are saved",
-                                });
-                            }
-                            await load_departments(pageSize, page, codeMatch, nameMatch);
-                        } catch (err) {
-                            setPopupOptions({
-                                Heading: "Operation Failed",
-                                HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-                                Message: `${err.message}`,
-                            });
-                        } finally {
-                            setIsLoading(false);
-                            setIsDialogFormOpen(false);
-                        }
-                    },
-                },
+      <Box>
+        <Box sx={{ display: "flex", justifyContent: "space-between", p: 2 }}>
+          <TextField
+            size="small"
+            label="Search department"
+            value={searchTerm}
+            onChange={(e) => {
+              setPage(0);
+              setSearchTerm(e.target.value);
             }}
-        >
-            <DialogTitle>{mode === "new" ? "Add New Department" : "Edit Department"}</DialogTitle>
-            <DialogContent>
-                <DialogContentText>
-                    {mode === "new" ? "Enter the department details and save it to add a new department." : "Edit the current department information and apply your changes"}
-                </DialogContentText>
+          />
 
-                <TextField
-                    autoFocus
-                    required
-                    margin="dense"
-                    id="Code"
-                    name="Code"
-                    label="Code"
-                    type="text"
-                    fullWidth
-                    variant="standard"
-                    defaultValue={department?.Code || ""}
-                />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setMode("new");
+              setDepartment({ Code: "", Name: "" });
+              setIsDialogFormOpen(true);
+            }}
+          >
+            Add Department
+          </Button>
+        </Box>
 
-                <TextField
-                    required
-                    margin="dense"
-                    id="Name"
-                    name="Name"
-                    label="Name"
-                    type="text"
-                    fullWidth
-                    variant="standard"
-                    defaultValue={department?.Name || ""}
-                />
+        <Box px={4}>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>CODE</TableCell>
+                  <TableCell>NAME</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableHead>
 
-                <TextField
-                    required={mode === "new"}
-                    margin="dense"
-                    id="SaltedHashedPassword"
-                    name="SaltedHashedPassword"
-                    label={mode === "new" ? "Password" : "New Password"}
-                    type="password"
-                    fullWidth
-                    variant="standard"
-                    defaultValue={""}
-                />
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={3} align="center">
+                      <CircularProgress />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  departmentList.map((d) => (
+                    <TableRow key={d.DepartmentID}>
+                      <TableCell>{d.Code}</TableCell>
+                      <TableCell>{truncateText(d.Name, 80)}</TableCell>
 
-                <TextField
-                    required={mode === "new"}
-                    margin="dense"
-                    id="retype-password"
-                    name="RetypedPassword"
-                    label={mode === "new" ? "Re-Type Password" : "New Re-Type Password"}
-                    type="password"
-                    fullWidth
-                    variant="standard"
-                    defaultValue={""}
-                />
+                      <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            gap: 1,
+                          }}
+                        >
+                          <IconButton
+                            color="edit"
+                            onClick={() => {
+                              setDepartment(d);
+                              setMode("edit");
+                              setIsDialogFormOpen(true);
+                            }}
+                          >
+                            <EditIcon />
+                          </IconButton>
 
-            </DialogContent>
-            <DialogActions>
-                <Button variant="outlined" type="submit">{mode === "new" ? "Save" : "Apply Changes"}</Button>
-                <Button variant="outlined" onClick={() => setIsDialogFormOpen(false)}>Cancel</Button>
-            </DialogActions>
-        </Dialog>
-        </MainHeader>
-    </>);
+                          <IconButton
+                            color="delete"
+                            onClick={() => {
+                              setDepartmentToDelete(d);
+                              setIsDialogDeleteShow(true);
+                            }}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            <TablePagination
+              component="div"
+              count={totalCount}
+              rowsPerPage={pageSize}
+              page={page}
+              rowsPerPageOptions={[5, 10, 25]}
+              onPageChange={(_, newPage) => {
+                setPage(newPage);
+              }}
+              onRowsPerPageChange={(event) => {
+                setPageSize(Number.parseInt(event.target.value, 10));
+                setPage(0);
+              }}
+            />
+          </TableContainer>
+        </Box>
+      </Box>
+
+      {/* DELETE DIALOG */}
+      <Dialog open={isDialogDeleteShow} onClose={() => setIsDialogDeleteShow(false)}>
+        <DialogTitle>Delete Department</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Delete <b>{departmentToDelete?.Name}</b>?
+          </DialogContentText>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={() => handleDelete(departmentToDelete?.DepartmentID)}>
+            Yes
+          </Button>
+          <Button onClick={() => setIsDialogDeleteShow(false)}>No</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* FORM DIALOG */}
+      <Dialog open={isDialogFormOpen} onClose={() => setIsDialogFormOpen(false)}>
+        <DialogTitle>{mode === "new" ? "Add Department" : "Edit Department"}</DialogTitle>
+
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="Code"
+            fullWidth
+            value={department.Code}
+            onChange={(e) =>
+              setDepartment((p) => ({ ...p, Code: e.target.value }))
+            }
+          />
+
+          <TextField
+            margin="dense"
+            label="Name"
+            fullWidth
+            value={department.Name}
+            onChange={(e) =>
+              setDepartment((p) => ({ ...p, Name: e.target.value }))
+            }
+          />
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handleSave} variant="contained">
+            Save
+          </Button>
+          <Button onClick={() => setIsDialogFormOpen(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+      </MainHeader>
+    </>
+  );
 }
-
-createRoot(document.getElementById("root")).render(
-    <StrictMode>
-        <ThemeProvider theme={theme}>
-            <Departments />
-        </ThemeProvider>
-    </StrictMode>
-);

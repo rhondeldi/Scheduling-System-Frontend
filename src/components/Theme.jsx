@@ -49,8 +49,16 @@ const theme = createTheme({
       primary: '#263238',
       secondary: alpha('#263238', 0.7),
     },
+    password: {
+        main: '#c0c0c0',      // gray
+        contrastText: '#FFFFFF',
+      },
+    view: {
+      main: '#2e6417',      // dark green
+      contrastText: '#FFFFFF',
+    },
     edit: {
-      main: '#2e6417',      // deep pastel red
+      main: '#2e6417',      // dark green
       contrastText: '#FFFFFF',
     },
     delete: {
@@ -301,6 +309,12 @@ const theme = createTheme({
           '&:hover': {
             filter: 'brightness(0.8)',
           },
+          '&.MuiIconButton-colorPassword': {
+            backgroundColor: '#c0c0c0',
+          },
+          '&.MuiIconButton-colorView': {
+            backgroundColor: '#2e6417',
+          },
           '&.MuiIconButton-colorEdit': {
             backgroundColor: '#2e6417',
           },
@@ -323,16 +337,18 @@ const theme = createTheme({
       styleOverrides: {
         actions: {
           '& .MuiIconButton-root': {
-            color: '#9575CD',
+            color: '#FFFFFF',
+            backgroundColor: '#2e6417',
             transition:
               'color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease',
             '&:hover': {
-              color: '#4DB6AC',
-              backgroundColor: alpha('#9575CD', 0.15),
+              color: '#FFFFFF',
+              backgroundColor: '#1c3d0e',
               boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
             },
             '&.Mui-disabled': {
-              color: alpha('#263238', 0.3),
+              color: alpha('#FFFFFF', 0.7),
+              backgroundColor: alpha('#2e6417', 0.35),
             },
           },
         },
