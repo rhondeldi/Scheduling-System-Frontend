@@ -218,11 +218,17 @@ export default function Subjects() {
                       <CircularProgress />
                     </TableCell>
                   </TableRow>
+                ) : subjectList.length === 0 ? (
+                        <TableRow>
+                            <TableCell colSpan={6} align="center" sx={{ fontWeight: 'bold', py: 15 }}>
+                                No subjects found.
+                            </TableCell>
+                        </TableRow>
                 ) : (
                   subjectList.map((s) => (
                     <TableRow key={s.ID}>
                       <TableCell sx={{ fontWeight: "bold" }}>{s.Code}</TableCell>
-                      <TableCell>{truncateText(s.Name, 80)}</TableCell>
+                      <TableCell sx={{ fontStyle: "italic" }}>{truncateText(s.Name, 80)}</TableCell>
                       <TableCell>{s.LecHours}</TableCell>
                       <TableCell>{s.LabHours}</TableCell>
 
@@ -289,7 +295,7 @@ export default function Subjects() {
           setSubjectToDelete(null);
         }}
       >
-        <DialogTitle>Delete Subject</DialogTitle>
+        <DialogTitle sx={{backgroundColor: '#C62828',}}>Delete Subject</DialogTitle>
         <DialogContent sx={{ textAlign: "center", pt: 3 }}>
           <img
             src={warning}
@@ -339,7 +345,7 @@ export default function Subjects() {
 
       {/* FORM DIALOG */}
       <Dialog open={isDialogFormOpen} onClose={closeFormDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{mode === "new" ? "Add New Subject" : "Edit Subject"}</DialogTitle>
+        <DialogTitle sx={{backgroundColor: '#2e6417',}}>{mode === "new" ? "Add New Subject" : "Edit Subject"}</DialogTitle>
 
         <DialogContent>
           <DialogContentText sx={{ mb: 1 }}>

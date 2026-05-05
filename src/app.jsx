@@ -15,6 +15,7 @@ function App() {
   return (
     <Routes>
       {/* PUBLIC */}
+      <Route path="" element={<Login />} />
       <Route path="/login" element={<Login />} />
 
       {/* DEPARTMENT ROUTES */}
