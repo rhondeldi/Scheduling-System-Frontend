@@ -25,6 +25,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 
+import warning from "../assets/warning.png";
+
 import "../assets/main.css";
 
 import {
@@ -51,7 +53,7 @@ export default function Departments() {
   const [isDialogDeleteShow, setIsDialogDeleteShow] = useState(false);
 
   const [popupOptions, setPopupOptions] = useState(null);
-
+  const [isOperationLoading, setIsOperationLoading] = useState(false);
   const [department, setDepartment] = useState({
     DepartmentID: null,
     Code: "",
@@ -200,11 +202,17 @@ export default function Departments() {
                       <CircularProgress />
                     </TableCell>
                   </TableRow>
+                ) : departmentList.length === 0 ? (
+                        <TableRow>
+                            <TableCell colSpan={6} align="center" sx={{ fontWeight: 'bold', py: 15 }}>
+                                No departments found.
+                            </TableCell>
+                        </TableRow>
                 ) : (
                   departmentList.map((d) => (
                     <TableRow key={d.DepartmentID}>
-                      <TableCell>{d.Code}</TableCell>
-                      <TableCell>{truncateText(d.Name, 80)}</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>{d.Code}</TableCell>
+                      <TableCell sx={{ fontStyle: "italic" }}>{truncateText(d.Name, 80)}</TableCell>
 
                       <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                         <Box
@@ -261,30 +269,69 @@ export default function Departments() {
       </Box>
 
       {/* DELETE DIALOG */}
-      <Dialog open={isDialogDeleteShow} onClose={() => setIsDialogDeleteShow(false)}>
-        <DialogTitle>Delete Department</DialogTitle>
-        <DialogContent>
+      <Dialog
+        open={isDialogDeleteShow}
+        onClose={() => {
+          setIsDialogDeleteShow(false);
+          setDepartmentToDelete(null);
+        }}
+      >
+        <DialogTitle sx={{backgroundColor: '#C62828',}}>Delete Department</DialogTitle>
+        <DialogContent sx={{ textAlign: "center", pt: 3 }}>
+          <img
+            src={warning}
+            alt="Warning"
+            style={{
+              width: 80,
+              height: 80,
+              marginBottom: 8,
+            }}
+          />
           <DialogContentText>
-            Delete <b>{departmentToDelete?.Name}</b>?
+            {`This action cannot be undone. All data associated with ${departmentToDelete?.Code || "this department"} will be lost.`}
           </DialogContentText>
         </DialogContent>
 
-        <DialogActions>
-          <Button onClick={() => handleDelete(departmentToDelete?.DepartmentID)}>
-            Yes
+        <DialogActions
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 1.5,
+            pb: 3,
+          }}
+        >
+          <Button
+            color="error"
+            variant="contained"
+            disabled={isOperationLoading}
+            onClick={() => handleDelete(departmentToDelete?.ID)}
+            sx={{ width: "50%" }}
+          >
+            {isOperationLoading ? <CircularProgress size={20} /> : "Confirm"}
           </Button>
-          <Button onClick={() => setIsDialogDeleteShow(false)}>No</Button>
+          <Button
+            variant="outlined"
+            disabled={isOperationLoading}
+            sx={{ width: "50%" }}
+            onClick={() => {
+              setIsDialogDeleteShow(false);
+              setDepartmentToDelete(null);
+            }}
+          >
+            Cancel
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* FORM DIALOG */}
       <Dialog open={isDialogFormOpen} onClose={() => setIsDialogFormOpen(false)}>
-        <DialogTitle>{mode === "new" ? "Add Department" : "Edit Department"}</DialogTitle>
+        <DialogTitle sx={{ backgroundColor: '#2e6417' }}>{mode === "new" ? "Add Department" : "Edit Department"}</DialogTitle>
 
         <DialogContent>
           <TextField
             margin="dense"
-            label="Code"
+            label="Department Code"
             fullWidth
             value={department.Code}
             onChange={(e) =>
@@ -294,7 +341,7 @@ export default function Departments() {
 
           <TextField
             margin="dense"
-            label="Name"
+            label="Department Name"
             fullWidth
             value={department.Name}
             onChange={(e) =>

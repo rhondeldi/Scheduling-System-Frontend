@@ -4,6 +4,7 @@ import {
   Loading,
   Popup,
   POPUP_ERROR_COLOR,
+  POPUP_SUCCESS_COLOR,
 } from "../components/Loading";
 
 import "../assets/main.css";
@@ -11,6 +12,8 @@ import "./TimeTable.css";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import IconButton from "@mui/material/IconButton";
+
+import warning from "../assets/warning.png";
 
 import "./TimeTableDropdowns.css";
 import "./instructors.css";
@@ -57,6 +60,7 @@ function InstructorPage() {
   const [mode, setMode] = useState(""); // 3 mode - new, view, edit
   const [popupOptions, setPopupOptions] = useState(null);
 
+  const [isOperationLoading, setIsOperationLoading] = useState(false);
   const [instructors, setInstructors] = useState([]); // load array of instructs when a department is selected
   const [selectedInstructor, setSelectedInstructor] = useState(null);
 
@@ -214,7 +218,7 @@ function InstructorPage() {
   const [isDialogDeleteShow, setIsDialogDeleteShow] = useState(false);
   const [instructorToDelete, setInstructorToDelete] = useState(null);
   const handleInstructorDelete = async (instructor_id) => {
-    setLoading(true);
+    setIsOperationLoading(true);
 
     try {
       await deleteRemoveInsturctor(instructor_id);
@@ -224,6 +228,11 @@ function InstructorPage() {
         page,
         searchTerm,
       );
+      setPopupOptions({
+        Heading: "Delete Success",
+        HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
+        Message: "The instructor was successfully deleted.",
+      });
     } catch (err) {
       setPopupOptions({
         Heading: "Delete Failed",
@@ -232,7 +241,8 @@ function InstructorPage() {
       });
     }
 
-    setLoading(false);
+    setInstructorToDelete(null);
+    setIsOperationLoading(false);
     setIsDialogDeleteShow(false);
 
   };
@@ -332,7 +342,13 @@ function InstructorPage() {
                         <CircularProgress />
                       </TableCell>
                     </TableRow>
-                  ) : (
+                    ) : instructors.length === 0 ? (
+                        <TableRow>
+                            <TableCell colSpan={6} align="center" sx={{ fontWeight: 'bold', py: 15 }}>
+                                No instructors found.
+                            </TableCell>
+                        </TableRow>
+                    ) : (
                     instructors.map((instructor) => (
                       <TableRow key={instructor.InstructorID}>
                         <TableCell>{instructor.LastName}</TableCell>
@@ -390,7 +406,7 @@ function InstructorPage() {
             </TableContainer>
           ) : null}
         </Box>
-
+        {/* Delete Dialog */}
         <Dialog
           open={isDialogDeleteShow}
           onClose={() => {
@@ -407,6 +423,7 @@ function InstructorPage() {
               {`Are you sure you want to remove "${instructorToDelete?.FirstName} ${instructorToDelete?.MiddleInitial} ${instructorToDelete?.LastName}"?`}
             </DialogContentText>
           </DialogContent>
+    
 
           <DialogActions>
             <Button
@@ -429,6 +446,61 @@ function InstructorPage() {
             </Button>
           </DialogActions>
         </Dialog>
+
+    <Dialog
+        open={isDialogDeleteShow}
+        onClose={() => {
+          setIsDialogDeleteShow(false);
+          setInstructorToDelete(null);
+        }}
+      >
+        <DialogTitle sx={{backgroundColor: '#C62828',}}>Delete Instructor</DialogTitle>
+        <DialogContent sx={{ textAlign: "center", pt: 3 }}>
+          <img
+            src={warning}
+            alt="Warning"
+            style={{
+              width: 80,
+              height: 80,
+              marginBottom: 8,
+            }}
+          />
+          <DialogContentText>
+            {`This action cannot be undone. All data associated with ${instructorToDelete?.FirstName} ${instructorToDelete?.MiddleInitial} ${instructorToDelete?.LastName} will be lost.`}
+          </DialogContentText>
+        </DialogContent>
+
+        <DialogActions
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 1.5,
+            pb: 3,
+          }}
+        >
+          <Button
+            color="error"
+            variant="contained"
+            disabled={isOperationLoading}
+            onClick={() => handleInstructorDelete(instructorToDelete?.InstructorID)}
+            sx={{ width: "50%" }}
+          >
+            {isOperationLoading ? <CircularProgress size={20} /> : "Confirm"}
+          </Button>
+          <Button
+            variant="outlined"
+            disabled={isOperationLoading}
+            sx={{ width: "50%" }}
+            onClick={() => {
+              setIsDialogDeleteShow(false);
+              setInstructorToDelete(null);
+            }}
+          >
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
 
         {mode === "" ? null : (
           <InstructorDataView

@@ -75,7 +75,7 @@ export function MainHeader({ pageName, children }) {
       }
       
       localStorage.removeItem("sidebarCollapsed");
-      
+
       setTimeout(() => {
         navigate("/login", { replace: true });
       }, 800);
@@ -221,20 +221,23 @@ export function MainHeader({ pageName, children }) {
         </Box>
 
         {/* CONTENT */}
-        <Box
-          flex={1}
-          sx={{
-            backgroundColor: "#f5f5f5",
-            padding: 2,
-          }}
-        >
-          <Typography variant="h6" fontWeight="bold" mb={2}>
-            {departmentName ||
-              "Administration Department"}
-          </Typography>
-
-          {children}
-        </Box>
+        <Box flex={1} sx={{ backgroundColor: "#f5f5f5", padding: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Divider
+                orientation="vertical"
+                flexItem sx={{ height: 40,
+                borderRightWidth: 5,
+                borderColor: "#000",
+                borderRadius: 50,
+            }}
+            />
+            <Typography variant="h6" fontWeight="bold" mb={2}>
+                {departmentName ||
+                "Administration Department"}
+            </Typography>
+            </Box>
+            {children}
+          </Box>
       </Box>
     </>
   );

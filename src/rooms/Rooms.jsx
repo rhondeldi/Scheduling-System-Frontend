@@ -41,6 +41,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 
+import warning from "../assets/warning.png";
+
 import "../assets/main.css";
 
 import { fetchAllDepartments, fetchWho } from "../js/departments";
@@ -74,20 +76,22 @@ function Rooms() {
   const [mode, setMode] = useState("");
   const [isDialogFormOpen, setIsDialogFormOpen] = useState(false);
 
+  const [isOperationLoading, setIsOperationLoading] = useState(false);
   const [popupOptions, setPopupOptions] = useState(null);
   const [isDialogDeleteShow, setIsDialogDeleteShow] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState(null);
-  const handleRoomDelete = async (room_id) => {
-    setLoading(true);
 
+  const handleRoomDelete = async (room_id) => {
+    setIsOperationLoading(true);
+  
     try {
       await deleteRemoveRoom(room_id);
       await load_rooms(departmentID, pageSize, page, searchTerm);
-
+  
       setPopupOptions({
         Heading: "Delete Success",
         HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
-        Message: "the room was succesfully deleted",
+        Message: "The room was successfully deleted.",
       });
     } catch (err) {
       setPopupOptions({
@@ -96,11 +100,10 @@ function Rooms() {
         Message: `${err}`,
       });
     }
-
+  
     setRoomToDelete(null);
-    setLoading(false);
+    setIsOperationLoading(false);
     setIsDialogDeleteShow(false);
-
   };
 
   const [room, setRoom] = useState({
@@ -277,10 +280,9 @@ function Rooms() {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ height: 1 }}>
-                    <TableCell>Room ID</TableCell>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Capacity</TableCell>
+                    <TableCell>Room Name</TableCell>
                     <TableCell>Room Type</TableCell>
+                    <TableCell>Capacity</TableCell>
                     {departmentID == 0 ? (
                       <TableCell>Department Sharing</TableCell>
                     ) : null}
@@ -297,13 +299,18 @@ function Rooms() {
                         <CircularProgress />
                       </TableCell>
                     </TableRow>
+                    ) : roomList.length === 0 ? (
+                        <TableRow>
+                            <TableCell colSpan={6} align="center" sx={{ fontWeight: 'bold', py: 15 }}>
+                                No rooms found.
+                            </TableCell>
+                        </TableRow>
                   ) : (
                     roomList?.map((room, index) => (
                       <TableRow key={room.RoomID}>
-                        <TableCell>{room.RoomID}</TableCell>
-                        <TableCell>{room.Name}</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>{room.Name}</TableCell>
+                        <TableCell sx={{ fontStyle: "italic" }}>{RoomTypeName(room.RoomType)}</TableCell>
                         <TableCell>{room.Capacity}</TableCell>
-                        <TableCell>{RoomTypeName(room.RoomType)}</TableCell>
                         {departmentID == 0 ? (
                           <TableCell>
                             {room?.SharingDepartments
@@ -401,40 +408,57 @@ function Rooms() {
       )}
 
       {/* delete dialog */}
-      <Dialog
+    <Dialog
         open={isDialogDeleteShow}
         onClose={() => {
           setIsDialogDeleteShow(false);
           setRoomToDelete(null);
         }}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
       >
-        <DialogTitle id="alert-dialog-title">Remove Room</DialogTitle>
-
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            {`Are you sure you want to remove "${roomToDelete?.Name}"?`}
+        <DialogTitle sx={{backgroundColor: '#C62828',}}>Delete Room</DialogTitle>
+        <DialogContent sx={{ textAlign: "center", pt: 3 }}>
+          <img
+            src={warning}
+            alt="Warning"
+            style={{
+              width: 80,
+              height: 80,
+              marginBottom: 8,
+            }}
+          />
+          <DialogContentText>
+            {`This action cannot be undone. All data associated with ${roomToDelete?.Name || "this room"} will be lost.`}
           </DialogContentText>
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 1.5,
+            pb: 3,
+          }}
+        >
           <Button
-            variant="outlined"
-            onClick={() => {
-              handleRoomDelete(roomToDelete?.RoomID);
-            }}
+            color="error"
+            variant="contained"
+            disabled={isOperationLoading}
+            onClick={() => handleRoomDelete(roomToDelete?.RoomID)}
+            sx={{ width: "50%" }}
           >
-            Yes
+            {isOperationLoading ? <CircularProgress size={20} /> : "Confirm"}
           </Button>
-
           <Button
             variant="outlined"
+            disabled={isOperationLoading}
+            sx={{ width: "50%" }}
             onClick={() => {
               setIsDialogDeleteShow(false);
+              setRoomToDelete(null);
             }}
           >
-            No
+            Cancel
           </Button>
         </DialogActions>
       </Dialog>
@@ -518,7 +542,7 @@ function Rooms() {
           },
         }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ backgroundColor: '#2e6417' }}>
           {mode === "new"
             ? `Add New Room to ${department.Code}`
             : mode === "edit"
