@@ -95,7 +95,6 @@ const theme = createTheme({
           fontWeight: 600,
           transition: 'all 0.3s ease',
           // Subtle base shadow on all contained buttons:
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
         },
         containedPrimary: {
           backgroundImage: gradients.primary,
