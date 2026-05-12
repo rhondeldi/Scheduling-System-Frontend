@@ -18,6 +18,7 @@ import {
   TablePagination,
   Paper,
   CircularProgress,
+  Skeleton,
   Dialog,
   DialogContent,
   DialogContentText,
@@ -46,7 +47,6 @@ import {
 import CurriculumView from "./CurriculumView";
 import { MainHeader } from "../components/Header";
 
-import SearchIcon from "@mui/icons-material/Search";
 
 const truncateText = (text, maxLength) => {
   if (text.length > maxLength) {
@@ -92,9 +92,9 @@ function CurriculumsTableList() {
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [curriculumList, setCurriculumList] = useState([]);
+  const [isPaginating, setIsPaginating] = useState(false);
   const load_curriculums = useCallback(
     async (page_size, new_page, department_id, search_term = "") => {
-      setIsLoading(true);
       try {
         let curriculum_page = await fetchCurriculumPageList(
           page_size,
@@ -124,15 +124,24 @@ function CurriculumsTableList() {
         });
       }
       setIsLoading(false);
+      setIsPaginating(false);
     },
     [],
   );
-  const handleDepartmentChange = async (event) => {
+  const handleDepartmentChange = (event) => {
     setDepartmentID(event.target.value);
-
     setPage(0);
-    await load_curriculums(pageSize, 0, event.target.value, searchTerm);
+    if (event.target.value) setIsLoading(true);
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (departmentID) {
+        load_curriculums(pageSize, page, departmentID, searchTerm);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [load_curriculums, page, pageSize, departmentID, searchTerm]);
 
   const [isDialogDeleteShow, setIsDialogDeleteShow] = useState(false);
   const [curriculumToDelete, setCurriculumToDelete] = useState(null);
@@ -175,7 +184,7 @@ function CurriculumsTableList() {
             sx={{
               display: "flex",
               justifyContent: "space-between",
-              padding: "1.5em",
+              paddingBlock: "0.75em",
             }}
           >
             <Box display={"flex"} gap={"0.5em"}>
@@ -221,29 +230,12 @@ function CurriculumsTableList() {
                     size="small"
                     label="Search curriculum"
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        setPage(0);
-                        load_curriculums(
-                          pageSize,
-                          0,
-                          departmentID,
-                          e.target.value,
-                        );
-                      }
+                    onChange={(e) => {
+                      setPage(0);
+                      setIsLoading(true);
+                      setSearchTerm(e.target.value);
                     }}
                   />
-                  <Button
-                    size="small"
-                    variant="contained"
-                    onClick={() => {
-                      setPage(0);
-                      load_curriculums(pageSize, 0, departmentID, searchTerm);
-                    }}
-                  >
-                    <SearchIcon />
-                  </Button>
                 </>
               ) : null}
             </Box>
@@ -268,65 +260,86 @@ function CurriculumsTableList() {
             ) : null}
           </Box>
 
-          <Box paddingInline={4}>
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
+          <Box>
+            <TableContainer component={Paper} sx={{ minHeight: 120 }}>
+              <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                   <TableRow>
-                    <TableCell>ID</TableCell>
-                    <TableCell>Code</TableCell>
-                    <TableCell>Name</TableCell>
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell sx={{ width: "20%" }}>COURSE CODE</TableCell>
+                    <TableCell>COURSE NAME</TableCell>
+                    <TableCell sx={{ width: "100px" }}></TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={4} align="center">
-                        <CircularProgress />
+                <TableBody sx={{ opacity: isLoading ? 0 : 1, transform: isLoading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
+                  {isPaginating
+                    ? Array.from({ length: pageSize }).map((_, i) => (
+                        <TableRow key={i} sx={{ height: 50 }}>
+                          <TableCell><Skeleton /></TableCell>
+                          <TableCell><Skeleton /></TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: "0.5em" }}>
+                              <Skeleton variant="circular" width={32} height={32} />
+                              <Skeleton variant="circular" width={32} height={32} />
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    : <>
+                        {departmentID && curriculumList.length == 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={3} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                              Please select a department first
+                            </TableCell>
+                          </TableRow>
+                        ) : curriculumList.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={3} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                              No curriculums found
+                            </TableCell>
+                          </TableRow>
+                        ) : null}
+                        {curriculumList.map((curriculum) => (
+                    <TableRow key={curriculum.CurriculumID}>
+                      <TableCell fontWeight="bold">{curriculum.CurriculumCode}</TableCell>
+                      <TableCell fontStyle="italic">
+                        {truncateText(curriculum.CurriculumName, 90)}
                       </TableCell>
-                    </TableRow>
-                  ) : (
-                    curriculumList.map((curriculum) => (
-                      <TableRow key={curriculum.CurriculumID}>
-                        <TableCell>{curriculum.CurriculumID}</TableCell>
-                        <TableCell>{curriculum.CurriculumCode}</TableCell>
-                        <TableCell>
-                          {truncateText(curriculum.CurriculumName, 90)}
-                        </TableCell>
-                        <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "flex-end",
-                              gap: "0.5em",
-                              flexWrap: "nowrap",
+                      <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            gap: "0.5em",
+                            flexWrap: "nowrap",
+                          }}
+                        >
+                          <IconButton
+                            title="View"
+                            color="view"
+                            onClick={() => {
+                              setCurriculumBasicInfo(curriculum);
+                              setMode("view");
+                              setIsView(true);
                             }}
                           >
-                            <IconButton
-                              color="view"
-                              onClick={() => {
-                                setCurriculumBasicInfo(curriculum);
-                                setMode("view");
-                                setIsView(true);
-                              }}
-                            >
-                              <VisibilityIcon />
-                            </IconButton>
-                            <IconButton
-                              color="delete"
-                              onClick={() => {
-                                setCurriculumToDelete(curriculum);
-                                setIsDialogDeleteShow(true);
-                              }}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                            <VisibilityIcon />
+                          </IconButton>
+                          <IconButton
+                            title="Delete"
+                            color="delete"
+                            onClick={() => {
+                              setCurriculumToDelete(curriculum);
+                              setIsDialogDeleteShow(true);
+                            }}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                        ))}
+                      </>
+                  }
                 </TableBody>
               </Table>
               <Box
@@ -334,24 +347,33 @@ function CurriculumsTableList() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "flex-end",
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "#f8f9fa",
                 }}
               >
                 <TablePagination
+                  sx={{
+                    "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
+                    "& .MuiIconButton-root": {
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: "4px",
+                      mx: 0.25,
+                      "&:hover:not(.Mui-disabled)": {
+                        bgcolor: "primary.main",
+                        color: "white",
+                        borderColor: "primary.main",
+                      },
+                    },
+                  }}
                   component="div"
                   count={totalCount}
                   rowsPerPage={pageSize}
                   page={page}
                   rowsPerPageOptions={[]}
                   labelRowsPerPage={() => ""}
-                  onPageChange={async (_, new_page) => {
-                    setPage(new_page);
-                    await load_curriculums(
-                      pageSize,
-                      new_page,
-                      departmentID,
-                      searchTerm,
-                    );
-                  }}
+                  onPageChange={(_, new_page) => { setIsPaginating(true); setPage(new_page); }}
                 />
               </Box>
             </TableContainer>

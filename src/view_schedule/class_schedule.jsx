@@ -1,4 +1,6 @@
+// ===================== IMPORTS =====================
 import { StrictMode, useState, useEffect, useRef } from "react";
+import { createRoot } from "react-dom/client";
 
 import { Loading, Popup, POPUP_ERROR_COLOR } from "../components/Loading";
 
@@ -11,6 +13,7 @@ import { fetchClassJsonSchedule, fetchResourceEstimates, generateSchedule, getVa
 
 import { generateTimeSlotRowLabels } from "../js/week-time-table-grid-functions";
 
+// ===================== CONSTANTS =====================
 const SECTION_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz";
 
 import '@fontsource/roboto/300.css';
@@ -23,27 +26,22 @@ import { Box, Typography } from "@mui/material";
 
 import "../assets/SubjectColors.css";
 
+// ===================== MAIN COMPONENT =====================
 function TimeTable() {
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                     LOAD GUARD COMPONENT STATES
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- LOAD GUARD COMPONENT STATES ----
 
     const [IsLoading, setIsLoading] = useState(false);
     const [popupOptions, setPopupOptions] = useState(null);
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       TIME TABLE GRID STATES
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- TIME TABLE GRID STATES ----
 
     const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const [startHour, setStartHour] = useState(7);
     const [timeSlotMinuteInterval, setTimeSlotMinuteInterval] = useState(30);
     const [dailyTimeSlots, setDailyTimeSlots] = useState(24);
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       STATES FOR FETCHED DATA
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- STATES FOR FETCHED DATA ----
 
     const [allDepartments, setAllDepartment] = useState([]);                // fetch on page load
     const [departmentCurriculumsData, setDepartmentCurriculumsData] = useState([]);              // fetch on semester selection
@@ -52,9 +50,7 @@ function TimeTable() {
     const [pickedUpSubject, setPickedUpSubject] = useState(null);
     const [pickedUpColor, setPickedUpColor] = useState(null);
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       DROPDOWN SELECTION STATES
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- DROPDOWN SELECTION STATES ----
 
     const [departmentID, setDepartmentID] = useState("");
     const [semesterIndex, setSemesterIndex] = useState("");
@@ -62,9 +58,7 @@ function TimeTable() {
     const [yearLevelIndex, setYearLevelIndex] = useState("");
     const [sectionIndex, setSectionIndex] = useState("");
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       PAGE LOAD PROCESS
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- PAGE LOAD PROCESS ----
 
     useEffect(() => {
 
@@ -90,7 +84,6 @@ function TimeTable() {
             const all_departments = await fetchAllDepartments();
 
             setAllDepartment(all_departments);
-            console.log('fetched departments: ', all_departments);
 
             setIsLoading(false);
         } catch (err) {
@@ -104,12 +97,9 @@ function TimeTable() {
         }
     }
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       DROPDOWN HANDLERS
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- DROPDOWN HANDLERS ----
 
     const handleDepartmentChange = async (event) => {
-        console.log(`selected departmentID: ${event.target.value}`);
         setDepartmentID(event.target.value);
         setSemesterIndex("");
         setCurriculumIndex("");
@@ -132,7 +122,6 @@ function TimeTable() {
     }
 
     const handleSemesterChange = async (event) => {
-        console.log(`selected semesterIndex: ${event.target.value}`);
         setSemesterIndex(event.target.value);
         setCurriculumIndex("");
         setYearLevelIndex("");
@@ -167,7 +156,6 @@ function TimeTable() {
     };
 
     const handleCurriculumChange = (event) => {
-        console.log(`selected curriculumIndex: ${event.target.value}`);
         setCurriculumIndex(event.target.value);
         setYearLevelIndex("");
         setSectionIndex("");
@@ -183,7 +171,6 @@ function TimeTable() {
     };
 
     const handleYearLevelChange = (event) => {
-        console.log(`selected yearLevelIndex: ${event.target.value}`);
         setYearLevelIndex(event.target.value);
         setSectionIndex("");
         setClassAssignedSubjects([]);
@@ -268,7 +255,6 @@ function TimeTable() {
 
             // Update state to trigger re-render with new data
             setClassAssignedSubjects(classScheduledSubjects);
-            console.log('fetched subjects: ', classScheduledSubjects)
 
             // Assign colors to subjects for display
             const subjectColors = {};
@@ -298,15 +284,11 @@ function TimeTable() {
         }
     };
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                             DROPDOWN HANDLERS
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- SUBJECT COLORS STATE ----
 
     const [subjectColors, setSubjectColors] = useState({});
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                              COMPONENT UI CODE
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- COMPONENT UI STATE ----
 
     const [availableSubjectTimeSlotMove, setAvailableSubjectTimeSlotMove] = useState(null);
 
@@ -326,7 +308,7 @@ function TimeTable() {
 
             <div className="table-container">
 
-                {/*================================= Dropdown Container =================================*/}
+                {/* ===================== DROPDOWN CONTAINER ===================== */}
 
                 <div className="dropdown-container" style={{ display: 'flex', flexDirection: 'column' }}>
                     <div id="left-dropdown-container" style={{ width: '100%', display: 'flex', justifyContent: 'space-evenly', padding: '0.2em', gap: '0.5em' }}>
@@ -391,7 +373,7 @@ function TimeTable() {
                     </div>
                 </div>
 
-                {/*================================= TimeTable Table =================================*/}
+                {/* ===================== TIMETABLE TABLE ===================== */}
 
                 <table className="time-table" style={{ display: sectionIndex ? 'revert' : 'none' }}>
                     <thead>
@@ -462,3 +444,11 @@ function TimeTable() {
         </>
     );
 }
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <ThemeProvider theme={theme}>
+      <TimeTable />
+    </ThemeProvider>
+  </StrictMode>
+);

@@ -1,5 +1,5 @@
-import { StrictMode, useState, useEffect } from "react";
-import { createRoot } from "react-dom/client";
+// ===================== IMPORTS =====================
+import { useState, useEffect, useCallback } from "react";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
@@ -27,7 +27,6 @@ import {
   DialogActions,
   Checkbox,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 import {
   Popup,
   POPUP_ERROR_COLOR,
@@ -35,6 +34,7 @@ import {
 } from "../components/Loading";
 import { fetchSubjects } from "../js/subjects";
 
+// ===================== HELPERS =====================
 const truncateText = (text, maxLength) => {
   if (!text) {
     return "";
@@ -71,6 +71,7 @@ const has_subject = (curriculum, subject_id) => {
   return false;
 };
 
+// ===================== MAIN COMPONENT =====================
 export default function SubjectSelection({
   open,
   onClose,
@@ -78,18 +79,16 @@ export default function SubjectSelection({
   setEditedCurriculum,
   yearSemSubjectTarget,
 }) {
+  // ---- STATE ----
   const [popupOptions, setPopupOptions] = useState(null);
 
   const [subjectList, setSubjectList] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(7);
   const [totalCount, setTotalCount] = useState(0);
 
-  const [codeMatch, setCodeMatch] = useState("");
-  const [nameMatch, setNameMatch] = useState("");
-  const [appliedCodeMatch, setAppliedCodeMatch] = useState("");
-  const [appliedNameMatch, setAppliedNameMatch] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [jumpToPage, setJumpToPage] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState(new Set());
@@ -100,19 +99,19 @@ export default function SubjectSelection({
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const emptyRows = Math.max(0, pageSize - subjectList.length);
 
-  const load_subjects = async (
+  // ---- HANDLERS ----
+  const load_subjects = useCallback(async (
     page_size,
     new_page,
-    code_match = "",
-    name_match = "",
+    search = "",
   ) => {
     setIsLoading(true);
     try {
       const subjectsData = await fetchSubjects(
         page_size,
         new_page,
-        code_match,
-        name_match,
+        search,
+        search,
       );
       setSubjectList(subjectsData.Subjects);
       setTotalCount(subjectsData.TotalSubjects);
@@ -124,14 +123,12 @@ export default function SubjectSelection({
       });
     }
     setIsLoading(false);
-  };
+  }, []);
 
   const handleJumpToPage = () => {
     const pageNumber = parseInt(jumpToPage, 10);
     if (pageNumber > 0 && pageNumber <= totalPages) {
-      const newPage = pageNumber - 1; // Convert to 0-based index
-      setPage(newPage);
-      load_subjects(pageSize, newPage, appliedCodeMatch, appliedNameMatch);
+      setPage(pageNumber - 1);
       setJumpToPage("");
     } else {
       setPopupOptions({
@@ -205,19 +202,24 @@ export default function SubjectSelection({
     onClose();
   };
 
+  // ---- EFFECTS ----
   useEffect(() => {
-    if (open) {
-      load_subjects(pageSize, page, appliedCodeMatch, appliedNameMatch);
-    }
-  }, [open, pageSize, page, appliedCodeMatch, appliedNameMatch]);
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      load_subjects(pageSize, page, searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [load_subjects, pageSize, page, searchTerm]);
 
   return (
     <>
+      {/* ===================== POPUP ===================== */}
       <Popup
         popupOptions={popupOptions}
         closeButtonActionHandler={() => setPopupOptions(null)}
       />
 
+      {/* ===================== DIALOG ===================== */}
       <Dialog
         open={open}
         onClose={onClose}
@@ -238,100 +240,89 @@ export default function SubjectSelection({
               Search and select a subject to add
             </DialogContentText>
 
-            <Box display={"flex"} gap={"0.5em"}>
-              <TextField
-                sx={{ width: "7.5em" }}
-                size="small"
-                label="Search Code"
-                value={codeMatch}
-                variant="filled"
-                onChange={(e) => setCodeMatch(e.target.value)}
-              />
-              <TextField
-                sx={{ width: "8em" }}
-                size="small"
-                label="Search Name"
-                value={nameMatch}
-                variant="filled"
-                onChange={(e) => setNameMatch(e.target.value)}
-              />
-              <Button
-                size="small"
-                variant="contained"
-                onClick={() => {
-                  setAppliedCodeMatch(codeMatch);
-                  setAppliedNameMatch(nameMatch);
-                  setPage(0);
-                  load_subjects(pageSize, 0, codeMatch, nameMatch);
-                }}
-              >
-                <SearchIcon />
-              </Button>
-            </Box>
+            <TextField
+              sx={{ width: "16em" }}
+              size="small"
+              label="Search subject"
+              value={searchTerm}
+              variant="filled"
+              onChange={(e) => { setPage(0); setSearchTerm(e.target.value); }}
+            />
           </Box>
 
           <TableContainer
             component={Paper}
             sx={{
               minHeight: TABLE_BODY_HEIGHT + 56,
+              position: "relative",
             }}
           >
-            <Table size="small">
+            {isLoading && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(255, 255, 255, 0.7)",
+                  zIndex: 1,
+                }}
+              >
+                <CircularProgress />
+              </Box>
+            )}
+            <Table size="small" sx={{ tableLayout: "fixed" }}>
               <TableHead>
                 <TableRow>
-                  <TableCell align="center" style={{ width: "50px" }}>
+                  <TableCell align="center" sx={{ width: "70px" }}>
                     Select
                   </TableCell>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Code</TableCell>
+                  <TableCell sx={{ width: "55px" }}>ID</TableCell>
+                  <TableCell sx={{ width: "110px" }}>Code</TableCell>
                   <TableCell>Name</TableCell>
-                  <TableCell>Lec Hours</TableCell>
-                  <TableCell>Lab Hours</TableCell>
+                  <TableCell sx={{ width: "85px" }}>Lec Hours</TableCell>
+                  <TableCell sx={{ width: "85px" }}>Lab Hours</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {isLoading ? (
-                  <TableRow sx={{ height: TABLE_BODY_HEIGHT }}>
-                    <TableCell colSpan={6} align="center">
-                      <CircularProgress />
-                    </TableCell>
+                {subjectList
+                  .filter((subject) => !has_subject(curriculum, subject.ID))
+                  .map((subject) => (
+                    <TableRow key={subject.ID}>
+                      <TableCell align="center">
+                        <Checkbox
+                          checked={selectedSubjects.has(subject.ID)}
+                          onChange={() =>
+                            handleSubjectToggle(subject.ID, subject)
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>{subject.ID}</TableCell>
+                      <TableCell>{subject.Code}</TableCell>
+                      <TableCell>
+                        {truncateText(subject.Name, 50)}
+                      </TableCell>
+                      <TableCell>{subject.LecHours}</TableCell>
+                      <TableCell>{subject.LabHours}</TableCell>
+                    </TableRow>
+                  ))}
+                {Array.from({
+                  length: Math.max(
+                    0,
+                    pageSize -
+                      subjectList.filter(
+                        (s) => !has_subject(curriculum, s.ID),
+                      ).length,
+                  ),
+                }).map((_, index) => (
+                  <TableRow
+                    key={`empty-row-${index}`}
+                    sx={{ height: TABLE_ROW_HEIGHT }}
+                  >
+                    <TableCell colSpan={6} />
                   </TableRow>
-                ) : (
-                  <>
-                    {subjectList.map((subject) => {
-                      const alreadyAdded = has_subject(curriculum, subject.ID);
-
-                      return (
-                        <TableRow key={subject.ID}>
-                          <TableCell align="center">
-                            <Checkbox
-                              checked={selectedSubjects.has(subject.ID)}
-                              onChange={() =>
-                                handleSubjectToggle(subject.ID, subject)
-                              }
-                              disabled={alreadyAdded}
-                            />
-                          </TableCell>
-                          <TableCell>{subject.ID}</TableCell>
-                          <TableCell>{subject.Code}</TableCell>
-                          <TableCell>
-                            {truncateText(subject.Name, 50)}
-                          </TableCell>
-                          <TableCell>{subject.LecHours}</TableCell>
-                          <TableCell>{subject.LabHours}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    {Array.from({ length: emptyRows }).map((_, index) => (
-                      <TableRow
-                        key={`empty-row-${index}`}
-                        sx={{ height: TABLE_ROW_HEIGHT }}
-                      >
-                        <TableCell colSpan={6} />
-                      </TableRow>
-                    ))}
-                  </>
-                )}
+                ))}
               </TableBody>
             </Table>
 
@@ -348,25 +339,10 @@ export default function SubjectSelection({
                 count={totalCount}
                 rowsPerPage={pageSize}
                 page={page}
-                onPageChange={async (_, new_page) => {
-                  setPage(new_page);
-                  await load_subjects(
-                    pageSize,
-                    new_page,
-                    appliedCodeMatch,
-                    appliedNameMatch,
-                  );
-                }}
-                onRowsPerPageChange={async (event) => {
-                  const newPageSize = parseInt(event.target.value, 10);
-                  setPageSize(newPageSize);
+                onPageChange={(_, new_page) => setPage(new_page)}
+                onRowsPerPageChange={(event) => {
+                  setPageSize(parseInt(event.target.value, 10));
                   setPage(0);
-                  await load_subjects(
-                    newPageSize,
-                    0,
-                    appliedCodeMatch,
-                    appliedNameMatch,
-                  );
                 }}
               />
               {/* page jump controls */}

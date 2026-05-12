@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { useState, useEffect } from "react";
 
 import '@fontsource/roboto/300.css';
@@ -21,10 +22,12 @@ import { fetchInstructors } from "../js/instructors_v2"
 import { Box, FormControl, InputLabel, MenuItem, Select, Button, Typography, Paper, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination, Dialog, DialogTitle, DialogContentText, DialogContent, DialogActions, TextField } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 
+// ===================== MAIN COMPONENT =====================
 export default function InstructorSelection({
     chipInstructors, setChipInstructors,
     curriculum, yearSemSubjectTarget
 }) {
+    // ---- STATE ----
     const [popupOptions, setPopupOptions] = useState(null);
 
     const [instructors, setInstructors] = useState([]);
@@ -41,6 +44,7 @@ export default function InstructorSelection({
     const [middleInitialMatch, setMiddleInitialMatch] = useState("");
     const [lastNameMatch, setLastNameMatch] = useState("");
 
+    // ---- HANDLERS ----
     const load_instructors = async (department_id, page_size, new_page, firstname_match, middle_initial_match, lastname_match) => {
         setIsLoading(true);
         try {
@@ -65,6 +69,7 @@ export default function InstructorSelection({
         }
     }
 
+    // ---- EFFECTS ----
     useEffect(() => {
         const useEffectAsyncs = async () => {
             try {
@@ -158,7 +163,6 @@ export default function InstructorSelection({
                     variant="contained"
                     onClick={async () => {
                         setPage(0);
-                        console.log('departmentID : ', departmentID)
                         load_instructors(departmentID, pageSize, 0, firstNameMatch, middleInitialMatch, lastNameMatch);
                     }}
                 ><SearchIcon /></Button>
@@ -202,9 +206,7 @@ export default function InstructorSelection({
                                             let has_instructor = false
 
                                             for (let i = 0; i < chipInstructors?.length; i++) {
-                                                console.log('has instructor id? ')
                                                 if (chipInstructors[i]?.InstructorID == instructor.InstructorID) {
-                                                    console.log('has instructor id yes!!!')
                                                     has_instructor = true;
                                                     break
                                                 }

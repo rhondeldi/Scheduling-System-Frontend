@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
@@ -7,6 +8,7 @@ import theme from "./components/Theme.jsx";
 import App from "./app.jsx";
 import "./assets/main.css";
 
+// ===================== ENTRY POINT =====================
 createRoot(document.getElementById("root")).render(
   <ThemeProvider theme={theme}>
     <BrowserRouter>

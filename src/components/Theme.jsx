@@ -1,6 +1,8 @@
+// ===================== IMPORTS =====================
 import { createTheme, darken } from '@mui/material/styles';
 import { alpha } from '@mui/material';
 
+// ===================== GRADIENTS =====================
 const gradients = {
   // Accordion collapsed (lavender → pastel-purple) – unchanged
   accordionCollapsed: 'linear-gradient(90deg, #B39DDB 0%, #9575CD 100%)',
@@ -17,6 +19,7 @@ const gradients = {
   success: 'linear-gradient(90deg, #2E7D32 0%, #43A047 100%)',
 };
 
+// ===================== THEME =====================
 const theme = createTheme({
   palette: {
     mode: 'light',
@@ -87,6 +90,9 @@ const theme = createTheme({
       },
     },
     MuiButton: {
+      defaultProps: {
+        tabIndex: -1,
+      },
       styleOverrides: {
         root: {
           borderRadius: 20,
@@ -301,6 +307,9 @@ const theme = createTheme({
       },
     },
     MuiIconButton: {
+      defaultProps: {
+        tabIndex: -1,
+      },
       styleOverrides: {
         root: {
           color: '#FFFFFF',

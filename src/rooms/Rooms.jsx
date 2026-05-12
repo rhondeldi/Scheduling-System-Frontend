@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+// ===================== IMPORTS =====================
+import { useCallback, useEffect, useState, useRef } from "react";
 import PreviewIcon from "@mui/icons-material/Preview";
 
 import {
@@ -19,6 +20,7 @@ import {
   TablePagination,
   Paper,
   CircularProgress,
+  Skeleton,
   Dialog,
   DialogContent,
   DialogContentText,
@@ -55,6 +57,7 @@ import {
 import { MainHeader } from "../components/Header";
 import RoomSchedule from "./RoomSchedule";
 
+// ===================== HELPERS =====================
 function RoomTypeName(room_type) {
   switch (room_type) {
     case 0:
@@ -66,6 +69,7 @@ function RoomTypeName(room_type) {
   }
 }
 
+// ===================== MAIN COMPONENT =====================
 function Rooms() {
   const ROOM_TYPES = [
     0, // lecture
@@ -73,6 +77,7 @@ function Rooms() {
     2, // gym
   ];
 
+  // ---- STATE ----
   const [mode, setMode] = useState("");
   const [isDialogFormOpen, setIsDialogFormOpen] = useState(false);
 
@@ -81,6 +86,7 @@ function Rooms() {
   const [isDialogDeleteShow, setIsDialogDeleteShow] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState(null);
 
+  // ---- HANDLERS ----
   const handleRoomDelete = async (room_id) => {
     setIsOperationLoading(true);
   
@@ -115,11 +121,14 @@ function Rooms() {
   const [roomList, setRoomList] = useState([]);
 
   const [loading, setLoading] = useState(false);
+  const [isPaginating, setIsPaginating] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [totalCount, setTotalCount] = useState(0);
 
   const [departmentList, setDepartmentList] = useState("");
+
+  // ---- EFFECTS ----
   useEffect(() => {
     const useEffectAsyncs = async () => {
       try {
@@ -159,9 +168,9 @@ function Rooms() {
     useEffectAsyncs();
   }, []);
 
-  const load_rooms = useCallback(async (department_id, page_size, new_page, name_match = "") => {
-    setLoading(true);
+  const skipAnimRef = useRef(false);
 
+  const load_rooms = useCallback(async (department_id, page_size, new_page, name_match = "") => {
     try {
       const rooms = await fetchDepartmentRooms(
         department_id,
@@ -183,6 +192,7 @@ function Rooms() {
     setSharingDepartments([]);
 
     setLoading(false);
+    setIsPaginating(false);
   }, []);
 
   const [departmentID, setDepartmentID] = useState("");
@@ -199,6 +209,8 @@ function Rooms() {
       return;
     }
 
+    if (!skipAnimRef.current) setLoading(true);
+    skipAnimRef.current = false;
     const debounceTimer = setTimeout(() => {
       load_rooms(departmentID, pageSize, page, searchTerm);
     }, 300);
@@ -215,6 +227,7 @@ function Rooms() {
     <>
       <MainHeader pageName={"rooms"}>
 
+      {/* ===================== POPUP ===================== */}
       <Popup
         popupOptions={popupOptions}
         closeButtonActionHandler={() => {
@@ -228,83 +241,87 @@ function Rooms() {
             sx={{
               display: "flex",
               justifyContent: "space-between",
-              padding: "0.5em",
+              paddingBlock: "0.6em",
             }}
           >
             <Box sx={{ display: "flex", flexDirection: "row", gap: 2 }}>
 
-              {Number.isInteger(Number.parseInt(departmentID, 10)) ? (
-                <TextField
-                  disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
-                  sx={{ minWidth: 300 }}
-                  size="small"
-                  label="Search room name"
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setPage(0);
-                    setSearchTerm(e.target.value);
-                  }}
-                />
-              ) : null}
+              <TextField
+                disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
+                sx={{ minWidth: 300 }}
+                size="small"
+                label="Search room name"
+                value={searchTerm}
+                onChange={(e) => {
+                  setPage(0);
+                  setSearchTerm(e.target.value);
+                }}
+              />
             </Box>
 
-            {Number.isInteger(Number.parseInt(departmentID, 10)) ? (
-              <Button
-                disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
-                endIcon={<AddIcon />}
-                size="medium"
-                color="secondary"
-                variant="contained"
-                onClick={() => {
-                  const new_empty_room_fields = {
-                    Name: null,
-                    Capacity: null,
-                    RoomType: null,
-                  };
+            <Button
+              disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
+              endIcon={<AddIcon />}
+              size="medium"
+              color="secondary"
+              variant="contained"
+              onClick={() => {
+                const new_empty_room_fields = {
+                  Name: null,
+                  Capacity: null,
+                  RoomType: null,
+                };
 
-                  setSharingDepartmentIDs([]);
-                  setSharingDepartments([]);
+                setSharingDepartmentIDs([]);
+                setSharingDepartments([]);
 
-                  setRoom(new_empty_room_fields);
-                  setMode("new");
-                  setIsDialogFormOpen(true);
-                }}
-              >
-                Add New Room to {department.Code}
-              </Button>
-            ) : null}
+                setRoom(new_empty_room_fields);
+                setMode("new");
+                setIsDialogFormOpen(true);
+              }}
+            >
+              Add New Room to {department.Code}
+            </Button>
           </Box>
 
-          <Box paddingInline={1}>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
+          {/* ===================== TABLE ===================== */}
+          <Box>
+            <TableContainer sx={{ minHeight: 120 }}>
+              <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                   <TableRow sx={{ height: 1 }}>
-                    <TableCell>Room Name</TableCell>
-                    <TableCell>Room Type</TableCell>
-                    <TableCell>Capacity</TableCell>
+                    <TableCell sx={{ width: "25%" }}>Room Name</TableCell>
+                    <TableCell sx={{ width: "20%" }}>Room Type</TableCell>
+                    <TableCell sx={{ width: "12%" }}>Capacity</TableCell>
                     {departmentID == 0 ? (
-                      <TableCell>Department Sharing</TableCell>
+                      <TableCell sx={{ width: "18%" }}>Department Sharing</TableCell>
                     ) : null}
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell sx={{ width: "112px" }} align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={departmentID == 0 ? 6 : 5}
-                        align="center"
-                      >
-                        <CircularProgress />
-                      </TableCell>
-                    </TableRow>
-                    ) : roomList.length === 0 ? (
-                        <TableRow>
-                            <TableCell colSpan={6} align="center" sx={{ fontWeight: 'bold', py: 15 }}>
-                                No rooms found.
-                            </TableCell>
+                <TableBody sx={{ opacity: loading ? 0 : 1, transform: loading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
+                  {isPaginating
+                    ? Array.from({ length: pageSize }).map((_, i) => (
+                        <TableRow key={i} sx={{ height: 50 }}>
+                          <TableCell><Skeleton /></TableCell>
+                          <TableCell><Skeleton /></TableCell>
+                          <TableCell><Skeleton /></TableCell>
+                          {departmentID == 0 ? <TableCell><Skeleton /></TableCell> : null}
+                          <TableCell align="right">
+                            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: "0.5em" }}>
+                              <Skeleton variant="circular" width={32} height={32} />
+                              <Skeleton variant="circular" width={32} height={32} />
+                              <Skeleton variant="circular" width={32} height={32} />
+                            </Box>
+                          </TableCell>
                         </TableRow>
+                      ))
+                    : roomList.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={departmentID == 0 ? 5 : 4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                          No rooms found
+                        </TableCell>
+                      </TableRow>
                   ) : (
                     roomList?.map((room, index) => (
                       <TableRow key={room.RoomID}>
@@ -321,6 +338,7 @@ function Rooms() {
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
                             <IconButton
+                              title="View Schedule"
                               color="view"
                               disabled={loading}
                               onClick={() => {
@@ -331,6 +349,7 @@ function Rooms() {
                               <PreviewIcon />
                             </IconButton>
                             <IconButton
+                              title="Edit"
                               color="edit"
                               disabled={loading}
                               onClick={() => {
@@ -362,6 +381,7 @@ function Rooms() {
                               <EditIcon />
                             </IconButton>
                             <IconButton
+                              title="Delete"
                               color="delete"
                               disabled={loading}
                               onClick={async () => {
@@ -375,20 +395,50 @@ function Rooms() {
                         </TableCell>
                       </TableRow>
                     ))
-                  )}
+                    )
+                  }
                 </TableBody>
               </Table>
 
               <TablePagination
+                sx={{
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "#f8f9fa",
+                  "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
+                  "& .MuiTablePagination-select": { fontWeight: 500 },
+                  "& .MuiIconButton-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    mx: 0.25,
+                    "&:hover:not(.Mui-disabled)": {
+                      bgcolor: "primary.main",
+                      color: "white",
+                      borderColor: "primary.main",
+                    },
+                  },
+                  "& .MuiInputBase-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    px: 1,
+                    "&:hover": { borderColor: "text.secondary" },
+                  },
+                }}
                 component="div"
                 count={totalCount}
                 rowsPerPage={pageSize}
                 page={page}
                 rowsPerPageOptions={[5, 10, 25]}
                 onPageChange={(_, new_page) => {
+                  skipAnimRef.current = true;
+                  setIsPaginating(true);
                   setPage(new_page);
                 }}
                 onRowsPerPageChange={(event) => {
+                  skipAnimRef.current = true;
+                  setIsPaginating(true);
                   setPageSize(Number.parseInt(event.target.value, 10));
                   setPage(0);
                 }}
@@ -397,6 +447,7 @@ function Rooms() {
           </Box>
         </Box>
       ) : (
+        // ===================== ROOM SCHEDULE VIEW =====================
         <RoomSchedule
           roomToView={roomToView}
           setRoomToView={setRoomToView}
@@ -407,7 +458,7 @@ function Rooms() {
         />
       )}
 
-      {/* delete dialog */}
+      {/* ===================== DELETE DIALOG ===================== */}
     <Dialog
         open={isDialogDeleteShow}
         onClose={() => {
@@ -463,7 +514,7 @@ function Rooms() {
         </DialogActions>
       </Dialog>
 
-      {/* add/edit room dialog */}
+      {/* ===================== FORM DIALOG ===================== */}
       <Dialog
         open={isDialogFormOpen}
         onClose={() => {

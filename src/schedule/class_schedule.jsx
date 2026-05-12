@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { StrictMode, useState, useEffect, useRef } from "react";
 
 import {
@@ -46,7 +47,9 @@ import {
   Typography,
 } from "@mui/material";
 import PrintIcon from "@mui/icons-material/Print";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
+// ===================== CONSTANTS =====================
 const SECTION_CHARACTERS =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz";
 
@@ -65,6 +68,8 @@ import { PrintHeader } from "../components/PrintHeader";
 const NUMBER_OF_GENERATIONS = 32;
 
 const SEMESTER_NAMES = ["1st Semester", "2nd Semester", "Mid-year"];
+
+// ===================== HELPER FUNCTIONS =====================
 
 function LinearProgressWithLabel(props) {
   return (
@@ -113,22 +118,19 @@ function getScheduleGenerationStatusColor(status) {
   }
 }
 
+// ===================== MAIN COMPONENT =====================
 function TimeTable() {
   const focusRef = useRef(null);
 
   const scrollToTable = () => focusRef.current.scrollIntoView();
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                     LOAD GUARD COMPONENT STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- LOAD GUARD COMPONENT STATES ----
 
   const [schedGenStatus, setSchedGenStatus] = useState(null);
   const [IsLoading, setIsLoading] = useState(false);
   const [popupOptions, setPopupOptions] = useState(null);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       TIME TABLE GRID STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- TIME TABLE GRID STATES ----
 
   const DAYS = [
     "Monday",
@@ -142,9 +144,7 @@ function TimeTable() {
   const [timeSlotMinuteInterval, setTimeSlotMinuteInterval] = useState(30);
   const [dailyTimeSlots, setDailyTimeSlots] = useState(24);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       STATES FOR FETCHED DATA
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- STATES FOR FETCHED DATA ----
 
   const [allDepartments, setAllDepartment] = useState([]); // fetch on page load
   const [departmentCurriculumsData, setDepartmentCurriculumsData] = useState(
@@ -155,9 +155,7 @@ function TimeTable() {
   const [pickedUpSubject, setPickedUpSubject] = useState(null);
   const [pickedUpColor, setPickedUpColor] = useState(null);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       DROPDOWN SELECTION STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- DROPDOWN SELECTION STATES ----
 
   const [departmentID, setDepartmentID] = useState("");
   const [semesterIndex, setSemesterIndex] = useState("");
@@ -165,9 +163,7 @@ function TimeTable() {
   const [yearLevelIndex, setYearLevelIndex] = useState("");
   const [sectionIndex, setSectionIndex] = useState("");
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       PAGE LOAD PROCESS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- PAGE LOAD PROCESS ----
 
   const [resourceEstimates, setResourceEstimates] = useState("");
 
@@ -210,7 +206,6 @@ function TimeTable() {
 
       setAllDepartment([loggedInDepartment]);
       setDepartmentID(loggedInDepartment.DepartmentID);
-      console.log("fetched logged in department: ", loggedInDepartment);
 
       setIsLoading(false);
     } catch (err) {
@@ -224,12 +219,9 @@ function TimeTable() {
     }
   }
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       DROPDOWN HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- DROPDOWN HANDLERS ----
 
   const handleDepartmentChange = async (event) => {
-    console.log(`selected departmentID: ${event.target.value}`);
     setDepartmentID(event.target.value);
     setSemesterIndex("");
     setCurriculumIndex("");
@@ -258,7 +250,6 @@ function TimeTable() {
   };
 
   const handleSemesterChange = async (event) => {
-    console.log(`selected semesterIndex: ${event.target.value}`);
     setSemesterIndex(event.target.value);
     setCurriculumIndex("");
     setYearLevelIndex("");
@@ -305,7 +296,6 @@ function TimeTable() {
   };
 
   const handleCurriculumChange = (event) => {
-    console.log(`selected curriculumIndex: ${event.target.value}`);
     setCurriculumIndex(event.target.value);
     setYearLevelIndex("");
     setSectionIndex("");
@@ -321,7 +311,6 @@ function TimeTable() {
   };
 
   const handleYearLevelChange = (event) => {
-    console.log(`selected yearLevelIndex: ${event.target.value}`);
     setYearLevelIndex(event.target.value);
     setSectionIndex("");
     setClassAssignedSubjects([]);
@@ -418,7 +407,6 @@ function TimeTable() {
 
       // Update state to trigger re-render with new data
       setClassAssignedSubjects(classScheduledSubjects);
-      console.log("fetched subjects: ", classScheduledSubjects);
 
       // Assign colors to subjects for display
       const subjectColors = {};
@@ -505,9 +493,7 @@ function TimeTable() {
     setIsLoading(false);
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                             DROPDOWN HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- SCHEDULE GENERATION HANDLERS ----
 
   const generateDepartmentSchedules = async () => {
     setIsLoading(true);
@@ -571,9 +557,7 @@ function TimeTable() {
 
   const [subjectColors, setSubjectColors] = useState({});
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                              COMPONENT UI CODE
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- SUBJECT DRAG-AND-DROP HANDLERS ----
 
   const [availableSubjectTimeSlotMove, setAvailableSubjectTimeSlotMove] =
     useState(null);
@@ -592,10 +576,6 @@ function TimeTable() {
           sectionIndex,
         );
 
-      console.log(
-        "subject_move_time_slot_availability : ",
-        subject_move_time_slot_availability,
-      );
       setAvailableSubjectTimeSlotMove(subject_move_time_slot_availability);
     } catch (err) {
       setPopupOptions({
@@ -633,13 +613,8 @@ function TimeTable() {
     const max_height = Math.max(...heights);
     setCellHeight(max_height * 0.875);
 
-    console.log("max height : ", max_height);
-
     setClassAssignedSubjects(new_assigned_subjects);
     setPickedUpSubject(current_picked_up_subject);
-
-    console.log("picked up subject: ", current_picked_up_subject);
-    console.log("new assigned subject: ", new_assigned_subjects);
 
     setIsLoading(false);
   };
@@ -663,7 +638,6 @@ function TimeTable() {
     setIsLoading(true);
 
     if (!pickedUpSubject) {
-      console.log("nothing to move");
       setIsLoading(false);
       return;
     }
@@ -757,9 +731,7 @@ function TimeTable() {
 
   const [cellHeight, setCellHeight] = useState(0);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                      PRINTING STATES, REFS AND HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- PRINTING STATES, REFS AND HANDLERS ----
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [isBlackAndWhite, setIsBlackAndWhite] = useState(false);
@@ -863,12 +835,12 @@ function TimeTable() {
     );
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- RENDER ----
 
   return (
     <>
       <MainHeader pageName={"schedule"}>
-      {/*================================= Loading Component =================================*/}
+      {/* ===================== LOADING / POPUP ===================== */}
 
       <Popup
         popupOptions={popupOptions}
@@ -880,7 +852,7 @@ function TimeTable() {
       <Loading IsLoading={IsLoading} />
 
       <div className="table-container">
-        {/*================================= Dropdown Container =================================*/}
+        {/* ===================== DROPDOWN CONTAINER ===================== */}
 
         <div
           className="dropdown-container"
@@ -893,7 +865,7 @@ function TimeTable() {
               width: "100%",
               display: "flex",
               justifyContent: "space-evenly",
-              padding: "0.2em",
+              paddingBlock: "0.6em",
               gap: "0.5em",
             }}
           >
@@ -980,7 +952,7 @@ function TimeTable() {
           </div>
         </div>
 
-        {/*================================= TimeTable Table =================================*/}
+        {/* ===================== TIMETABLE TABLE ===================== */}
 
         {pickedUpSubject ? (
           <div
@@ -1008,15 +980,17 @@ function TimeTable() {
           </div>
         ) : null}
 
+        {/* ===================== PRINT CONTENT WRAPPER ===================== */}
         <div
           ref={contentRef}
           style={{
             padding:
               isPrinting && Number.isInteger(Number.parseInt(sectionIndex, 10))
-                ? "1em"
+                ? "1in"
                 : "0px",
           }}
         >
+          {/* ===================== PRINT HEADER ===================== */}
           {isPrinting && Number.isInteger(Number.parseInt(sectionIndex, 10)) ? (
             <>
               <PrintHeader isBlackAndWhite={isBlackAndWhite} />
@@ -1247,6 +1221,7 @@ function TimeTable() {
 
         {!sectionIndex ? <Box height={200}></Box> : null}
 
+        {/* ===================== PRINT BUTTON ===================== */}
         <Box
           gap={1}
           display={
@@ -1266,6 +1241,7 @@ function TimeTable() {
           </Button>
         </Box>
 
+        {/* ===================== PRINT DIALOG ===================== */}
         <Dialog
           open={isPrintDialogShow}
           onClose={() => {
@@ -1392,6 +1368,7 @@ function TimeTable() {
           </DialogActions>
         </Dialog>
 
+        {/* ===================== ACTION BUTTONS ===================== */}
         <Box
           padding={1}
           gap={1}
@@ -1457,6 +1434,7 @@ function TimeTable() {
         </Box>
       </div>
 
+      {/* ===================== SCHEDULE GENERATION STATUS ===================== */}
       {schedGenStatus ? (
         <>
           <Box padding={2}>
@@ -1499,6 +1477,7 @@ function TimeTable() {
         </>
       ) : null}
 
+      {/* ===================== RESOURCE ESTIMATES ===================== */}
       {resourceEstimates ? (
         <Box padding={2}>
           <Typography
@@ -1510,15 +1489,22 @@ function TimeTable() {
         </Box>
       ) : null}
 
+      {/* ===================== PUBLIC SCHEDULE LINK ===================== */}
       <Box
         display={"flex"}
         justifyContent={"center"}
         alignItems={"center"}
         padding={5}
       >
-        <a href="/view_schedule/">
-          link for publicly accessible schedule page view
-        </a>
+        <Button
+          variant="contained"
+          color="primary"
+          size="small"
+          endIcon={<OpenInNewIcon />}
+          onClick={() => navigate("/view_schedule/")}
+        >
+          Public Schedule View
+        </Button>
       </Box>
     </MainHeader>
     </>

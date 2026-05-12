@@ -49,25 +49,27 @@ const getPageDisplayInfo = (page) => {
 export function MainHeader({ pageName, children }) {
   const navigate = useNavigate();
 
+  // ---- STATE ----
   const [popupOptions, setPopupOptions] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem("sidebarCollapsed") === "true";
   });
 
+  // ---- DERIVED ----
+  const departmentName = localStorage.getItem("departmentName");
+  const adminPages = getAdminAllowedPages();
+  const isDepartmentPage = departmentPages.includes(pageName);
+  const pages = isDepartmentPage ? departmentPages : adminPages;
+  const { label: pageLabel, icon: PageIcon } = getPageDisplayInfo(pageName);
+
+  // ---- HANDLERS ----
   const toggleSidebar = () => {
     const newState = !collapsed;
     setCollapsed(newState);
     localStorage.setItem("sidebarCollapsed", newState);
   };
-
-  const departmentName = localStorage.getItem("departmentName");
-  const adminPages = getAdminAllowedPages();
-
-  const isDepartmentPage = departmentPages.includes(pageName);
-  const pages = isDepartmentPage ? departmentPages : adminPages;
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -128,7 +130,7 @@ export function MainHeader({ pageName, children }) {
       </Dialog>
 
       {/* ===================== LAYOUT ===================== */}
-      <Box display="flex" minHeight="100vh">
+      <Box display="flex" height="100vh" overflow="hidden">
 
         {/* ===================== SIDEBAR ===================== */}
         <Box
@@ -152,18 +154,35 @@ export function MainHeader({ pageName, children }) {
             <Box
               display="flex"
               alignItems="center"
-              margin="10px"
+              sx={{ margin: "10px 10px 10px 20px" }}
               justifyContent="flex-start"
               gap={1}
             >
               <Box
                 sx={{
-                  width: 220,
+                  width: 40,
+                  minWidth: 40,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <IconButton
+                  onClick={toggleSidebar}
+                  sx={{ color: "white", padding: 0 }}
+                >
+                  {collapsed ? <MenuIcon /> : <MenuOpenIcon />}
+                </IconButton>
+              </Box>
+
+              <Box
+                sx={{
+                  width: collapsed ? 0 : 220,
                   opacity: collapsed ? 0 : 1,
-                  visibility: collapsed ? "hidden" : "visible",
                   overflow: "hidden",
                   whiteSpace: "nowrap",
-                  transition: "opacity 0.2s ease",
+                  transition: "width 0.3s ease-in-out, opacity 0.2s ease",
                 }}
               >
                 <Typography variant="h6" fontWeight="bold">
@@ -172,26 +191,6 @@ export function MainHeader({ pageName, children }) {
                 <Typography variant="subtitle2">
                   Silang Campus
                 </Typography>
-              </Box>
-
-              <Box
-                sx={{
-                    width: 40,
-                    minWidth: 40,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                }}
-                >
-                <IconButton
-                    onClick={toggleSidebar}
-                    sx={{
-                    color: "white",
-                    }}
-                >
-                    {collapsed ? <MenuIcon /> : <MenuOpenIcon />}
-                </IconButton>
               </Box>
             </Box>
 
@@ -271,12 +270,13 @@ export function MainHeader({ pageName, children }) {
             onClick={() => setLogoutConfirmOpen(true)}
             disabled={loggingOut}
             sx={{
-                width: "100%",
+                width: "calc(100% - 16px)",
                 minHeight: 48,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "flex-start",
-                p: 2,
+                p: 1.5,
+                mx: 1,
                 borderRadius: 2,
                 textTransform: "none",
 
@@ -324,25 +324,52 @@ export function MainHeader({ pageName, children }) {
         </Box>
 
         {/* ===================== MAIN CONTENT ===================== */}
-        <Box flex={1} sx={{ backgroundColor: "#f5f5f5", padding: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{
-                height: 40,
-                borderRightWidth: 5,
-                borderColor: "#000",
-                borderRadius: 50,
-              }}
-            />
+        <Box flex={1} sx={{ backgroundColor: "#f5f5f5", overflow: "auto" }}>
 
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-              {departmentName || "Administration Department"}
-            </Typography>
+          {/* CONTENT */}
+          <Box sx={{ px: 3, py: 2, flex: 1, overflow: "auto" }}>
+
+            {/* ===================== TITLE ===================== */}
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, mb: 1, minHeight: 58 }}>
+
+              {/* DIVIDER BAR */}
+              <Box sx={{
+                width: 5,
+                minWidth: 5,
+                height: collapsed ? 55 : 34,
+                bgcolor: "#000",
+                borderRadius: "50px",
+                flexShrink: 0,
+                transition: "height 0.3s ease",
+              }} />
+
+              {/* TITLE TEXT */}
+              <Box sx={{ position: "relative" }}>
+                <Typography variant="h5" fontWeight={700}>
+                  {departmentName || "Administration Department"}
+                </Typography>
+
+                {/* SUBTITLE (visible when sidebar is collapsed) */}
+                <Box sx={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  mt: 0.4,
+                  overflow: "hidden",
+                  maxHeight: collapsed ? "30px" : "0px",
+                  opacity: collapsed ? 1 : 0,
+                  transition: "max-height 0.3s ease, opacity 0.25s ease",
+                }}>
+                  <Typography variant="body2" sx={{ color: "text.secondary", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: "0.8rem", fontWeight: "bold" }}>
+                    {pageLabel}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* ===================== PAGE ===================== */}
+            {children}
           </Box>
-
-          {children}
         </Box>
       </Box>
     </>

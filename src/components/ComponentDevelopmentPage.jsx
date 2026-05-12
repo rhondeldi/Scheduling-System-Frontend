@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { StrictMode } from "react";
 
 import theme from "../components/Theme";

@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { Routes, Route } from "react-router-dom";
 
 import Login from "./login/Login";
@@ -11,6 +12,7 @@ import Instructors from "./instructors/InstructorPage";
 import AdminRoute from "./routes/adminRoute";
 import ProtectedRoute from "./routes/protectedRoute";
 
+// ===================== MAIN COMPONENT =====================
 function App() {
   return (
     <Routes>

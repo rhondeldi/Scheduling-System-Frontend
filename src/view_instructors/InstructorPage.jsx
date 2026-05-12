@@ -1,4 +1,6 @@
+// ===================== IMPORTS =====================
 import { StrictMode, useState, useEffect } from "react";
+import { createRoot } from "react-dom/client";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
@@ -49,6 +51,7 @@ import InstructorDataView from "./InstructorDataView";
 
 import theme from "../components/Theme";
 
+// ===================== MAIN COMPONENT =====================
 function InstructorPage() {
   const [mode, setMode] = useState(""); // 3 mode - new, view, edit
   const [popupOptions, setPopupOptions] = useState(null);
@@ -56,18 +59,11 @@ function InstructorPage() {
   const [instructors, setInstructors] = useState([]); // load array of instructs when a department is selected
   const [selectedInstructor, setSelectedInstructor] = useState(null);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                     LOAD GUARD COMPONENT STATES
-  /////////////////////////////////////////////////////////////////////////////////
-
+  // ---- STATE ----
   const [IsLoading, setIsLoading] = useState(false);
-
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       STATES FOR FETCHED DATA
-  /////////////////////////////////////////////////////////////////////////////////
-
   const [departments, setDepartments] = useState([]); // fetch on page load
 
+  // ---- EFFECTS ----
   useEffect(() => {
     const useEffectAsyncs = async () => {
       try {
@@ -127,17 +123,9 @@ function InstructorPage() {
     }
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       DROPDOWN SELECTION STATES
-  /////////////////////////////////////////////////////////////////////////////////
-
+  // ---- HANDLERS ----
   const [departmentID, setDepartmentID] = useState(""); // use for department selection drop down
   const [selectedDepartment, setSelectedDepartment] = useState(""); // will be use when viewing the instructor to display which department name is that instructor
-
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       PAGE LOAD PROCESS
-  /////////////////////////////////////////////////////////////////////////////////
-
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -187,6 +175,7 @@ function InstructorPage() {
 
   return (
     <>
+      {/* ===================== BANNER ===================== */}
       <Box
         display={"flex"}
         justifyContent={"center"}
@@ -199,6 +188,7 @@ function InstructorPage() {
         </Typography>
       </Box>
 
+      {/* ===================== POPUP ===================== */}
       <Popup
         popupOptions={popupOptions}
         closeButtonActionHandler={() => {
@@ -208,6 +198,7 @@ function InstructorPage() {
 
       <Loading IsLoading={IsLoading} />
 
+      {/* ===================== FILTERS ===================== */}
       <Box display={!mode ? "block" : "none"}>
         <Box
           sx={{ display: "flex", flexDirection: "row", gap: 2, padding: "1em" }}
@@ -284,6 +275,7 @@ function InstructorPage() {
         </Typography>
       </Box>
 
+      {/* ===================== TABLE ===================== */}
       {mode === "" ? (
         <TableContainer component={Paper}>
           <Table size="small">
@@ -343,6 +335,7 @@ function InstructorPage() {
         </TableContainer>
       ) : null}
 
+      {/* ===================== INSTRUCTOR VIEW ===================== */}
       {mode === "" ? null : (
         <InstructorDataView
           mode={mode}
@@ -372,3 +365,11 @@ function InstructorPage() {
     </>
   );
 }
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <ThemeProvider theme={theme}>
+      <InstructorPage />
+    </ThemeProvider>
+  </StrictMode>
+);
