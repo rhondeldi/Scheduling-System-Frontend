@@ -135,7 +135,7 @@ export function MainHeader({ pageName, children }) {
         {/* ===================== SIDEBAR ===================== */}
         <Box
           sx={{
-            width: collapsed ? 110 : 320,
+            width: collapsed ? 110 : 340,
             transition: "width 0.3s ease-in-out",
             overflow: "hidden",
             backgroundColor: "#14400e",

@@ -285,7 +285,7 @@ function CurriculumsTableList() {
                         </TableRow>
                       ))
                     : <>
-                        {departmentID && curriculumList.length == 0 ? (
+                        {!departmentID ? (
                           <TableRow>
                             <TableCell colSpan={3} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
                               Please select a department first

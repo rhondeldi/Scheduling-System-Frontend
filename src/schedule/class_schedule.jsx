@@ -1501,7 +1501,7 @@ function TimeTable() {
           color="primary"
           size="small"
           endIcon={<OpenInNewIcon />}
-          onClick={() => navigate("/view_schedule/")}
+          onClick={() => window.open("/view_schedule/", "_blank")}
         >
           Public Schedule View
         </Button>
