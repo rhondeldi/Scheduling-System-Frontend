@@ -1,4 +1,3 @@
-// ===================== IMPORTS =====================
 import { useState, useEffect, useCallback } from "react";
 
 import "@fontsource/roboto/300.css";
@@ -26,6 +25,7 @@ import {
   DialogTitle,
   DialogActions,
   Checkbox,
+  Tooltip,
 } from "@mui/material";
 
 import {
@@ -40,21 +40,32 @@ import { fetchSubjects } from "../js/subjects";
 
 const truncateText = (text, maxLength) => {
   if (!text) return "";
-  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+  return text.length > maxLength
+    ? text.substring(0, maxLength) + "..."
+    : text;
 };
 
-const has_subject = (curriculum, subject_id) => {
-  if (!curriculum?.YearLevels?.length) return false;
+const get_subject_location = (curriculum, subject_id) => {
+  if (!curriculum?.YearLevels?.length) return null;
 
-  for (const yl of curriculum.YearLevels) {
-    for (const sem of yl?.Semesters || []) {
+  for (let y = 0; y < curriculum.YearLevels.length; y++) {
+    const yl = curriculum.YearLevels[y];
+
+    for (let s = 0; s < (yl?.Semesters || []).length; s++) {
+      const sem = yl.Semesters[s];
+
       for (const sub of sem?.Subjects || []) {
-        if (sub.ID === subject_id) return true;
+        if (sub.ID === subject_id) {
+          return {
+            yearLevel: y + 1,
+            semester: s + 1,
+          };
+        }
       }
     }
   }
 
-  return false;
+  return null;
 };
 
 // ===================== COMPONENT =====================
@@ -66,44 +77,29 @@ export default function SubjectSelection({
   setEditedCurriculum,
   yearSemSubjectTarget,
 }) {
-  // state
+  // ===================== STATE =====================
+
   const [popupOptions, setPopupOptions] = useState(null);
 
   const [subjectList, setSubjectList] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
 
   const [page, setPage] = useState(0);
-  const [pageSize] = useState(7);
+  const [pageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [selectedSubjects, setSelectedSubjects] = useState(new Set());
   const [selectedSubjectsData, setSelectedSubjectsData] = useState(new Map());
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  // ===================== FIX 1: DEBOUNCE SEARCH =====================
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(0);
-      setDebouncedSearch(searchTerm);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
   // ===================== FETCH =====================
-  const load_subjects = useCallback(async () => {
-    setIsLoading(true);
 
+  const load_subjects = useCallback(async () => {
     try {
-      const data = await fetchSubjects(
-        pageSize,
-        page,
-        debouncedSearch
-      );
+      const data = await fetchSubjects(pageSize, page, searchTerm);
 
       setSubjectList(data.Subjects || []);
       setTotalCount(data.TotalSubjects || 0);
@@ -114,12 +110,19 @@ export default function SubjectSelection({
         Message: err.message,
       });
     } finally {
-      setIsLoading(false);
+      setIsTableLoading(false);
     }
-  }, [page, pageSize, debouncedSearch]);
+  }, [page, pageSize, searchTerm]);
+
+  // ===================== SEARCH + TRANSITION =====================
 
   useEffect(() => {
-    load_subjects();
+    const timer = setTimeout(() => {
+      setIsTableLoading(true);
+      load_subjects();
+    }, 250);
+
+    return () => clearTimeout(timer);
   }, [load_subjects]);
 
   // ===================== HANDLERS =====================
@@ -165,7 +168,7 @@ export default function SubjectSelection({
     const duplicates = [];
 
     for (const sub of subjects) {
-      if (has_subject(curriculum, sub.ID)) {
+      if (get_subject_location(curriculum, sub.ID)) {
         duplicates.push(sub.Code);
         continue;
       }
@@ -181,9 +184,9 @@ export default function SubjectSelection({
 
     if (duplicates.length) {
       setPopupOptions({
-        Heading: "Duplicates Found",
+        Heading: "Already Existing Subjects",
         HeadingStyle: { background: POPUP_WARNING_COLOR, color: "white" },
-        Message: `${duplicates.join(", ")} already exist.`,
+        Message: `${duplicates.join(", ")} already exist in the curriculum.`,
       });
     }
 
@@ -201,90 +204,139 @@ export default function SubjectSelection({
         closeButtonActionHandler={() => setPopupOptions(null)}
       />
 
-      <Dialog open={open} onClose={onClose} fullWidth maxWidth="xl">
-        <DialogTitle>Add Subject</DialogTitle>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            height: "85vh",
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+      >
+        <DialogTitle sx={{ backgroundColor: "#2e6417", color: "white" }}>
+          ADD SUBJECT
+        </DialogTitle>
 
-        <DialogContent>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <DialogContentText>
-              Search and select subjects
-            </DialogContentText>
-
+        <DialogContent sx={{ display: "flex", flexDirection: "column", flex: 1 }}>
+          {/* SEARCH */}
+          <Box display="flex" justifyContent="flex-end" p={1}>
             <TextField
               size="small"
               label="Search"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setPage(0);
+                setSearchTerm(e.target.value);
+              }}
             />
           </Box>
 
-          <TableContainer component={Paper} sx={{ mt: 2, position: "relative" }}>
-            {isLoading && (
-              <Box
+          {/* TABLE */}
+          <TableContainer
+            component={Paper}
+            sx={{
+              flex: 1,
+              position: "relative",
+              overflowY: "auto",
+            }}
+          >
+            <Table size="small" sx={{ tableLayout: "fixed" }}>
+              <TableHead
                 sx={{
-                  position: "absolute",
-                  inset: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "rgba(255,255,255,0.6)",
-                  zIndex: 1,
-                }}
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 3,
+                    backgroundColor: "white",
+                  }}
               >
-                <CircularProgress />
-              </Box>
-            )}
-
-            <Table size="small">
-              <TableHead>
                 <TableRow>
-                  <TableCell>Select</TableCell>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Code</TableCell>
+                  <TableCell sx={{ width: "60px" }}>Select</TableCell>
+                  <TableCell sx={{ width: "70px" }}>ID</TableCell>
+                  <TableCell sx={{ width: "120px" }}>Code</TableCell>
                   <TableCell>Name</TableCell>
-                  <TableCell>Lec</TableCell>
-                  <TableCell>Lab</TableCell>
+                  <TableCell sx={{ width: "80px" }}>Lec</TableCell>
+                  <TableCell sx={{ width: "80px" }}>Lab</TableCell>
                 </TableRow>
               </TableHead>
 
-              <TableBody>
-                {subjectList.map((s) => (
-                  <TableRow key={s.ID}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedSubjects.has(s.ID)}
-                        onChange={() => handleSubjectToggle(s.ID, s)}
-                      />
+              <TableBody
+                sx={{
+                  opacity: isTableLoading ? 0 : 1,
+                  transform: isTableLoading
+                    ? "translateY(10px)"
+                    : "translateY(0)",
+                  transition: "opacity 0.25s ease, transform 0.25s ease",
+                }}
+              >
+                {!isTableLoading && subjectList.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      align="center"
+                      sx={{
+                        py: 3,
+                        fontStyle: "italic",
+                        color: "text.secondary",
+                      }}
+                    >
+                      No subjects found
                     </TableCell>
-                    <TableCell>{s.ID}</TableCell>
-                    <TableCell>{s.Code}</TableCell>
-                    <TableCell>{truncateText(s.Name, 50)}</TableCell>
-                    <TableCell>{s.LecHours}</TableCell>
-                    <TableCell>{s.LabHours}</TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  subjectList.map((subject) => {
+                    const location = get_subject_location(curriculum, subject.ID);
+                    const isDisabled = !!location;
+
+                    return (
+                      <TableRow
+                        key={subject.ID}
+                        sx={{
+                          opacity: isDisabled ? 0.5 : 1,
+                          transition: "all 0.2s ease",
+                        }}
+                        title={
+                          isDisabled
+                            ? `Already in Year ${location.yearLevel}, Semester ${location.semester}`
+                            : ""
+                        }
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={
+                              selectedSubjects.has(subject.ID) || isDisabled
+                            }
+                            disabled={isDisabled}
+                            onChange={() =>
+                              handleSubjectToggle(subject.ID, subject)
+                            }
+                          />
+                        </TableCell>
+
+                        <TableCell>{subject.ID}</TableCell>
+                        <TableCell>{subject.Code}</TableCell>
+
+                        <TableCell>
+                          <span>{truncateText(subject.Name, 50)}</span>
+                        </TableCell>
+
+                        <TableCell>{subject.LecHours}</TableCell>
+                        <TableCell>{subject.LabHours}</TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </TableContainer>
-
-          <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
-            <TablePagination
-              component="div"
-              count={totalCount}
-              page={page}
-              rowsPerPage={pageSize}
-              rowsPerPageOptions={[7]}
-              onPageChange={(_, p) => setPage(p)}
-            />
-
-            <Typography>
-              {page + 1} / {totalPages}
-            </Typography>
-          </Box>
         </DialogContent>
 
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
+
           <Button
             variant="contained"
             disabled={!selectedSubjects.size}
