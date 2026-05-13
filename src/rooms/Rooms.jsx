@@ -296,7 +296,7 @@ function Rooms() {
                     {departmentID == 0 ? (
                       <TableCell sx={{ width: "18%" }}>Department Sharing</TableCell>
                     ) : null}
-                    <TableCell sx={{ width: "112px" }} align="right">Actions</TableCell>
+                    <TableCell sx={{ width: "112px" }} align="right"></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody sx={{ opacity: loading ? 0 : 1, transform: loading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>

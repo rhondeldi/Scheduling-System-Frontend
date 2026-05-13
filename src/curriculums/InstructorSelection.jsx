@@ -178,7 +178,7 @@ export default function InstructorSelection({
                         <TableCell>Last Name</TableCell>
                         <TableCell>First Name</TableCell>
                         <TableCell>Middle Initial</TableCell>
-                        <TableCell align="right">Actions</TableCell>
+                        <TableCell align="right"></TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
