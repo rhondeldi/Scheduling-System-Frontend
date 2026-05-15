@@ -5,9 +5,9 @@ import { alpha } from '@mui/material';
 // ===================== GRADIENTS =====================
 const gradients = {
   // Accordion collapsed (lavender → pastel-purple) – unchanged
-  accordionCollapsed: 'linear-gradient(90deg, #B39DDB 0%, #9575CD 100%)',
+  accordionCollapsed: "linear-gradient(90deg, #4a9919 0%, #59be1f 100%)",
   // Accordion expanded (pastel-teal → mint) – unchanged
-  accordionExpanded: 'linear-gradient(90deg, #4DB6AC 0%, #80CBC4 100%)',
+  accordionExpanded: "linear-gradient(90deg, #2e6417 0%, #3f7f22 100%)",
   // Page background (very light gray → white) – unchanged
   background: 'linear-gradient(180deg, #FAFAFA 0%, #FFFFFF 100%)',
 
@@ -177,25 +177,37 @@ const theme = createTheme({
       },
     },
     MuiTableContainer: {
-      styleOverrides: {
-        root: {
-          borderRadius: 6,
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+        styleOverrides: {
+          root: {
+            borderRadius: 6,
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+      
+            display: 'flex',
+            flexDirection: 'column',
+      
+            height: 'calc(100vh - 220px)',
+      
+            overflow: 'hidden',
+          },
         },
       },
-    },
     MuiTableCell: {
       styleOverrides: {
         head: {
-          backgroundColor: '#2e6417',
-          color: '#FFFFFF',
-          fontWeight: 700,
-          padding: '0.3em 0.5em',
-        },
-        body: {
-          padding: '0.3em 0.5em',
-          color: '#263238',
-        },
+            backgroundColor: '#2e6417',
+            color: '#FFFFFF',
+            fontWeight: 700,
+            padding: '0.3em 0.5em',
+      
+            position: 'sticky',
+            top: 0,
+            zIndex: 2,
+          },
+
+          body: {
+            padding: '0.3em 0.5em',
+            color: '#263238',
+          },
       },
     },
     MuiTableRow: {
@@ -234,6 +246,7 @@ const theme = createTheme({
           },
           '&.Mui-expanded': {
             backgroundImage: gradients.accordionExpanded,
+            color: "#FFFFFF",
           },
         },
         title: {

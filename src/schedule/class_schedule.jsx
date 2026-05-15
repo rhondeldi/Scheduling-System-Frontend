@@ -48,6 +48,11 @@ import {
 } from "@mui/material";
 import PrintIcon from "@mui/icons-material/Print";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
+import ClearIcon from "@mui/icons-material/Clear";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 // ===================== CONSTANTS =====================
 const SECTION_CHARACTERS =
@@ -114,7 +119,7 @@ function getScheduleGenerationStatusColor(status) {
     case "on queue":
       return "orange";
     case "not started":
-      return "black";
+      return "gray";
   }
 }
 
@@ -835,6 +840,12 @@ function TimeTable() {
     );
   };
 
+  const isScheduleReady =
+  semesterIndex !== "" &&
+  curriculumIndex !== "" &&
+  yearLevelIndex !== "" &&
+  sectionIndex !== "";
+
   // ---- RENDER ----
 
   return (
@@ -859,16 +870,22 @@ function TimeTable() {
           style={{ display: "flex", flexDirection: "column" }}
           ref={focusRef}
         >
-          <div
-            id="left-dropdown-container"
-            style={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "space-evenly",
-              paddingBlock: "0.6em",
-              gap: "0.5em",
+          <Box
+            sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                xs: "1fr",
+                sm: "1fr 1fr",
+                md: "repeat(4, 1fr)",
+                },
+                gap: 2,
+                mb: 3,
+                p: 2,
+                borderRadius: 4,
+                background: "#fff",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
             }}
-          >
+            >
 
             <select
               className="dropdown"
@@ -949,7 +966,7 @@ function TimeTable() {
                   )
                 : null}
             </select>
-          </div>
+          </Box>
         </div>
 
         {/* ===================== TIMETABLE TABLE ===================== */}
@@ -1221,26 +1238,6 @@ function TimeTable() {
 
         {!sectionIndex ? <Box height={200}></Box> : null}
 
-        {/* ===================== PRINT BUTTON ===================== */}
-        <Box
-          gap={1}
-          display={
-            Number.isInteger(Number.parseInt(semesterIndex, 10))
-              ? "flex"
-              : "none"
-          }
-          justifyContent={"center"}
-        >
-          <Button
-            variant="outlined"
-            size="medium"
-            onClick={handleOpenSignatoriesDialog}
-            endIcon={<PrintIcon />}
-          >
-            Print
-          </Button>
-        </Box>
-
         {/* ===================== PRINT DIALOG ===================== */}
         <Dialog
           open={isPrintDialogShow}
@@ -1367,145 +1364,378 @@ function TimeTable() {
             </Button>
           </DialogActions>
         </Dialog>
-
+        
         {/* ===================== ACTION BUTTONS ===================== */}
         <Box
-          padding={1}
-          gap={1}
-          display={"flex"}
-          justifyContent={"space-evenly"}
+        sx={{
+            display: "flex",
+            gap: 2,
+            mt: 3,
+            alignItems: "stretch",
+
+            flexDirection: {
+            xs: "column",
+            lg: "row",
+            },
+        }}
         >
-          <Button
-            size="small"
+        {/* ===================== LEFT SIDE ===================== */}
+        <Box
+            sx={{
+            flex: 1.2,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 2,
+            p: 2,
+            borderRadius: 4,
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+            alignContent: "flex-start",
+            minHeight: 180,
+            }}
+        >
+            <Button
+            size="medium"
             fullWidth
             onClick={generateDepartmentSchedules}
             disabled={!semesterIndex || pickedUpSubject}
             variant="contained"
             color="success"
-          >
-            Generate Department Semester Schedules
-          </Button>
+            startIcon={<PlayArrowIcon />}
+            sx={{
+                borderRadius: 3,
+                py: 1.2,
+                fontWeight: 600,
+                textTransform: "none",
+                boxShadow: "none",
+            }}
+            >
+            Generate Semester Schedule
+            </Button>
 
-          <Button
-            size="small"
+            <Button
+            size="medium"
             fullWidth
             onClick={handleValidateSchedules}
             disabled={!semesterIndex || pickedUpSubject}
-            variant="contained"
+            variant="outlined"
             color="warning"
-          >
-            Validate Schedules
-          </Button>
+            startIcon={<CheckCircleIcon />}
+            sx={{
+                borderRadius: 3,
+                py: 1.2,
+                fontWeight: 600,
+                textTransform: "none",
+            }}
+            >
+            Validate Schedule
+            </Button>
 
-          <Button
-            size="small"
+            <Button
+            size="medium"
             fullWidth
             onClick={handleClearDepartmentSchedule}
             disabled={!semesterIndex || pickedUpSubject}
-            variant="contained"
+            variant="outlined"
             color="error"
-          >
-            Clear Department Semester Schedules
-          </Button>
+            startIcon={<DeleteSweepIcon />}
+            sx={{
+                borderRadius: 3,
+                py: 1.2,
+                fontWeight: 600,
+                textTransform: "none",
+            }}
+            >
+            Clear Department
+            </Button>
 
-          <Button
-            size="small"
+            <Button
+            size="medium"
             fullWidth
             onClick={handleClearClassSchedule}
             disabled={!sectionIndex || pickedUpSubject}
             variant="outlined"
             color="error"
-          >
-            Clear Section Semester Schedule
-          </Button>
-
-          {pickedUpSubject ? (
-            <Button
-              size="small"
-              fullWidth
-              onClick={handleCancelPickupSubject}
-              disabled={!pickedUpSubject}
-              variant="contained"
-              color="primary"
+            startIcon={<ClearIcon />}
+            sx={{
+                borderRadius: 3,
+                py: 1.2,
+                fontWeight: 600,
+                textTransform: "none",
+            }}
             >
-              Cancel Move
+            Clear Section
             </Button>
-          ) : null}
-        </Box>
-      </div>
 
-      {/* ===================== SCHEDULE GENERATION STATUS ===================== */}
-      {schedGenStatus ? (
-        <>
-          <Box padding={2}>
-            <Typography
-              variant="h6"
-              style={{
-                color: getScheduleGenerationStatusColor(schedGenStatus.Status),
-                textAlign: "center",
-              }}
+            {pickedUpSubject && (
+            <Button
+                size="medium"
+                fullWidth
+                onClick={handleCancelPickupSubject}
+                variant="contained"
+                color="primary"
+                startIcon={<ClearIcon />}
+                sx={{
+                borderRadius: 3,
+                py: 1.2,
+                fontWeight: 600,
+                textTransform: "none",
+                boxShadow: "none",
+                }}
             >
-              {schedGenStatus.Status}
-            </Typography>
-            <Typography
-              variant="body2"
-              style={{ color: "black", textAlign: "center" }}
-            >
-              {schedGenStatus.Message}
-            </Typography>
-
-            {sectionIndex ? (
-              <LinearProgressWithLabel
-                value={
-                  Number.isNaN(
-                    Number.parseInt(
-                      extractGenerationNumber(schedGenStatus.Message),
-                      10,
-                    ),
-                  )
-                    ? 0
-                    : (Number.parseInt(
-                        extractGenerationNumber(schedGenStatus.Message),
-                        10,
-                      ) /
-                        NUMBER_OF_GENERATIONS) *
-                      100
-                }
-              />
-            ) : null}
-          </Box>
-        </>
-      ) : null}
-
-      {/* ===================== RESOURCE ESTIMATES ===================== */}
-      {resourceEstimates ? (
-        <Box padding={2}>
-          <Typography
-            variant="body1"
-            style={{ color: "black", textAlign: "center" }}
-          >
-            {resourceEstimates}
-          </Typography>
+                Cancel Move
+            </Button>
+            )}
         </Box>
-      ) : null}
 
-      {/* ===================== PUBLIC SCHEDULE LINK ===================== */}
-      <Box
-        display={"flex"}
-        justifyContent={"center"}
-        alignItems={"center"}
-        padding={5}
-      >
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          endIcon={<OpenInNewIcon />}
-          onClick={() => window.open("/view_schedule/", "_blank")}
+        {/* ===================== RIGHT SIDE ===================== */}
+        <Box
+        sx={{
+            flex: 1,
+            p: 2.5,
+            borderRadius: 4,
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+
+            minHeight: 180,
+
+            opacity: isScheduleReady ? 1 : 0.6,
+            pointerEvents: isScheduleReady ? "auto" : "none",
+
+            transition: "0.2s ease",
+        }}
         >
-          Public Schedule View
-        </Button>
-      </Box>
+        {/* EMPTY STATE */}
+        {!isScheduleReady || !schedGenStatus ? (
+            <Box
+            sx={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                textAlign: "center",
+                gap: 1,
+            }}
+            >
+            <InfoOutlinedIcon
+                sx={{
+                fontSize: 40,
+                color: "#9ca3af",
+                }}
+            />
+
+            <Typography
+                sx={{
+                fontWeight: 600,
+                color: "#374151",
+                }}
+            >
+                No Schedule Status
+            </Typography>
+
+            <Typography
+                sx={{
+                fontSize: "0.9rem",
+                color: "#6b7280",
+                maxWidth: 260,
+                }}
+            >
+                Select semester and generate a schedule to
+                view generation progress and actions.
+            </Typography>
+            </Box>
+        ) : (
+            <>
+            {/* STATUS + PERCENT */}
+            <Box
+                sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+                }}
+            >
+                <Box
+                sx={{
+                    px: 1.5,
+                    py: 0.5,
+                    borderRadius: 10,
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+
+                    background:
+                    schedGenStatus.Status === "success"
+                        ? "#dcfce7"
+                        : schedGenStatus.Status === "failed"
+                        ? "#fee2e2"
+                        : schedGenStatus.Status === "in progress"
+                            ? "#dbeafe"
+                            : "#fef3c7",
+
+                    color:
+                    schedGenStatus.Status === "success"
+                        ? "#166534"
+                        : schedGenStatus.Status === "failed"
+                        ? "#991b1b"
+                        : schedGenStatus.Status === "in progress"
+                            ? "#1d4ed8"
+                            : "#92400e",
+                }}
+                >
+                {schedGenStatus.Status}
+                </Box>
+
+                <Typography
+                sx={{
+                    fontSize: "1.2rem",
+                    fontWeight: 700,
+                    color: "#111827",
+                }}
+                >
+                {(() => {
+                    const gen = parseInt(
+                    extractGenerationNumber(schedGenStatus.Message),
+                    10
+                    );
+
+                    const progress = Number.isNaN(gen)
+                    ? 0
+                    : Math.min(
+                        (gen / NUMBER_OF_GENERATIONS) * 100,
+                        100
+                        );
+
+                    return `${Math.round(progress)}%`;
+                })()}
+                </Typography>
+            </Box>
+
+            {/* PROGRESS BAR */}
+            <Box
+                sx={{
+                width: "100%",
+                height: 10,
+                borderRadius: 999,
+                overflow: "hidden",
+                background: "#f3f4f6",
+                mb: 2,
+                }}
+            >
+                <Box
+                sx={{
+                    height: "100%",
+                    transition: "0.3s ease",
+                    width: `${(() => {
+                    const gen = parseInt(
+                        extractGenerationNumber(schedGenStatus.Message),
+                        10
+                    );
+
+                    return Number.isNaN(gen)
+                        ? 0
+                        : Math.min(
+                            (gen / NUMBER_OF_GENERATIONS) * 100,
+                            100
+                        );
+                    })()}%`,
+
+                    background:
+                    schedGenStatus.Status === "success"
+                        ? "#22c55e"
+                        : schedGenStatus.Status === "failed"
+                        ? "#ef4444"
+                        : "#3b82f6",
+                }}
+                />
+            </Box>
+
+            {/* MESSAGE */}
+            <Box
+                sx={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 1,
+                mt: 1,
+                p: 1.5,
+                borderRadius: 3,
+                background: "#f9fafb",
+                border: "1px solid #f1f5f9",
+                }}
+            >
+                <InfoOutlinedIcon
+                sx={{
+                    fontSize: 18,
+                    color: "#6b7280",
+                    mt: "2px",
+                }}
+                />
+
+                <Typography
+                sx={{
+                    fontSize: "0.88rem",
+                    color: "#4b5563",
+                    lineHeight: 1.5,
+                }}
+                >
+                {schedGenStatus.Message}
+                </Typography>
+            </Box>
+
+            {/* ACTION BUTTONS */}
+            <Box
+                sx={{
+                display: "flex",
+                gap: 1.5,
+                mt: 2,
+                flexWrap: "wrap",
+                }}
+            >
+                <Button
+                variant="outlined"
+                size="small"
+                onClick={handleOpenSignatoriesDialog}
+                endIcon={<PrintIcon />}
+                sx={{
+                    borderRadius: 3,
+                    textTransform: "none",
+                    fontWeight: 600,
+                    flex: 1,
+                    minWidth: 140,
+                }}
+                >
+                Print
+                </Button>
+
+                <Button
+                variant="contained"
+                size="small"
+                endIcon={<OpenInNewIcon />}
+                onClick={() => window.open("/view_schedule/", "_blank")}
+                sx={{
+                    borderRadius: 3,
+                    textTransform: "none",
+                    fontWeight: 600,
+                    boxShadow: "none",
+                    flex: 1,
+                    minWidth: 180,
+                }}
+                >
+                Public View
+                </Button>
+            </Box>
+            </>
+        )}
+        </Box>
+        </Box>
+        </div>
     </MainHeader>
     </>
   );

@@ -330,7 +330,7 @@ export function MainHeader({ pageName, children }) {
           <Box sx={{ px: 3, py: 2, flex: 1, overflow: "auto" }}>
 
             {/* ===================== TITLE ===================== */}
-            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, mb: 1, minHeight: 58 }}>
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, mb: 1, minHeight: 58}}>
 
               {/* DIVIDER BAR */}
               <Box sx={{
