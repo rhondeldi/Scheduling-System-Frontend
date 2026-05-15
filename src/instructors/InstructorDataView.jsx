@@ -19,6 +19,7 @@ import {
   Typography,
   TextField,
   FormControl,
+  InputAdornment,
   InputLabel,
   Select,
   MenuItem,
@@ -98,6 +99,77 @@ export default function InstructorDataView({
   /////////////////////////////////////////////////////////////////////////////////
 
   const [IsLoading, setIsLoading] = useState(false);
+  const [firstName, setFirstName] = useState(selectedInstructor?.FirstName ?? "");
+  const [middleInitial, setMiddleInitial] = useState(
+    selectedInstructor?.MiddleInitial ?? "",
+  );
+  const [lastName, setLastName] = useState(selectedInstructor?.LastName ?? "");
+
+  const sanitizeNameValue = (value = "") => {
+    return value
+      .toUpperCase()
+      .replace(/[^A-Z\s\-']/g, "")
+      .replace(/^\s+/, "");
+  };
+
+  const sanitizeMiddleInitialValue = (value = "") => {
+    return value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 1);
+  };
+
+  const handleNameKeyDown = (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if ([
+      "Backspace",
+      "Delete",
+      "Tab",
+      "Enter",
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowDown",
+      "Home",
+      "End",
+    ].includes(e.key)) {
+      return;
+    }
+
+    if (!/^[a-zA-Z\s\-']$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleMiddleInitialKeyDown = (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if ([
+      "Backspace",
+      "Delete",
+      "Tab",
+      "Enter",
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowDown",
+      "Home",
+      "End",
+    ].includes(e.key)) {
+      return;
+    }
+
+    if (!/^[a-zA-Z]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const updateInstructorField = (field, value) => {
+    if (!selectedInstructor) return;
+    setSelectedInstructor({ ...selectedInstructor, [field]: value });
+  };
+
+  useEffect(() => {
+    setFirstName(selectedInstructor?.FirstName ?? "");
+    setMiddleInitial(selectedInstructor?.MiddleInitial ?? "");
+    setLastName(selectedInstructor?.LastName ?? "");
+  }, [selectedInstructor]);
 
   /////////////////////////////////////////////////////////////////////////////////
   //                       TIME TABLE GRID STATES
@@ -496,7 +568,7 @@ export default function InstructorDataView({
         setPopupOptions({
           Heading: "Add Successful",
           HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
-          Message: "a new instructor was added",
+          Message: "A NEW INSTRUCTOR HAS BEEN ADDED",
         });
 
         reloadInstructorsTable();
@@ -1009,64 +1081,148 @@ export default function InstructorDataView({
                   variant="outlined"
                   size="small"
                   label="First Name"
-                  defaultValue={selectedInstructor.FirstName}
-                  onChange={(e) => {
-                    selectedInstructor.FirstName = e.target.value;
-                    console.log(`FirstName : ${e.target.value}`);
+                  value={firstName}
+                  helperText="Letters, spaces, hyphens, apostrophes only"
+                  inputProps={{
+                    style: { textTransform: "uppercase" },
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeNameValue(e.target.value);
+                    setFirstName(sanitized);
+                    updateInstructorField("FirstName", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeNameValue(pasted);
+                    setFirstName(sanitized);
+                    updateInstructorField("FirstName", sanitized);
+                  }}
+                  onKeyDown={handleNameKeyDown}
                 />
                 <TextField
                   variant="outlined"
                   size="small"
                   label="M.I."
-                  defaultValue={selectedInstructor.MiddleInitial}
-                  onChange={(e) => {
-                    selectedInstructor.MiddleInitial = e.target.value;
-                    console.log(`MiddleInitial : ${e.target.value}`);
+                  value={middleInitial}
+                  helperText="Single initial only"
+                  inputProps={{ maxLength: 1 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">.</InputAdornment>
+                    ),
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeMiddleInitialValue(e.target.value);
+                    setMiddleInitial(sanitized);
+                    updateInstructorField("MiddleInitial", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeMiddleInitialValue(pasted);
+                    setMiddleInitial(sanitized);
+                    updateInstructorField("MiddleInitial", sanitized);
+                  }}
+                  onKeyDown={handleMiddleInitialKeyDown}
                 />
                 <TextField
                   variant="outlined"
                   size="small"
                   label="Last Name"
-                  defaultValue={selectedInstructor.LastName}
-                  onChange={(e) => {
-                    selectedInstructor.LastName = e.target.value;
-                    console.log(`LastName : ${e.target.value}`);
+                  value={lastName}
+                  helperText="Letters, spaces, hyphens, apostrophes only"
+                  inputProps={{
+                    style: { textTransform: "uppercase" },
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeNameValue(e.target.value);
+                    setLastName(sanitized);
+                    updateInstructorField("LastName", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeNameValue(pasted);
+                    setLastName(sanitized);
+                    updateInstructorField("LastName", sanitized);
+                  }}
+                  onKeyDown={handleNameKeyDown}
                 />
               </>
             ) : mode === "new" ? (
-              <>
+              <>  
                 <TextField
                   variant="outlined"
                   size="small"
                   label="First Name"
-                  defaultValue=""
-                  onChange={(e) => {
-                    selectedInstructor.FirstName = e.target.value;
-                    console.log(`FirstName : ${e.target.value}`);
+                  value={firstName}
+                  helperText="Letters, spaces, hyphens, apostrophes only"
+                  inputProps={{
+                    style: { textTransform: "uppercase" },
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeNameValue(e.target.value);
+                    setFirstName(sanitized);
+                    updateInstructorField("FirstName", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeNameValue(pasted);
+                    setFirstName(sanitized);
+                    updateInstructorField("FirstName", sanitized);
+                  }}
+                  onKeyDown={handleNameKeyDown}
                 />
                 <TextField
                   variant="outlined"
                   size="small"
                   label="M.I."
-                  defaultValue=""
-                  onChange={(e) => {
-                    selectedInstructor.MiddleInitial = e.target.value;
-                    console.log(`MiddleInitial : ${e.target.value}`);
+                  value={middleInitial}
+                  helperText="Single initial only"
+                  inputProps={{ maxLength: 1 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">.</InputAdornment>
+                    ),
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeMiddleInitialValue(e.target.value);
+                    setMiddleInitial(sanitized);
+                    updateInstructorField("MiddleInitial", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeMiddleInitialValue(pasted);
+                    setMiddleInitial(sanitized);
+                    updateInstructorField("MiddleInitial", sanitized);
+                  }}
+                  onKeyDown={handleMiddleInitialKeyDown}
                 />
                 <TextField
                   variant="outlined"
                   size="small"
                   label="Last Name"
-                  defaultValue=""
-                  onChange={(e) => {
-                    selectedInstructor.LastName = e.target.value;
-                    console.log(`LastName : ${e.target.value}`);
+                  value={lastName}
+                  helperText="Letters, spaces, hyphens, apostrophes only"
+                  inputProps={{
+                    style: { textTransform: "uppercase" },
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeNameValue(e.target.value);
+                    setLastName(sanitized);
+                    updateInstructorField("LastName", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeNameValue(pasted);
+                    setLastName(sanitized);
+                    updateInstructorField("LastName", sanitized);
+                  }}
+                  onKeyDown={handleNameKeyDown}
                 />
               </>
             ) : (

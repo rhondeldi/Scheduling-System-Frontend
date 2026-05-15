@@ -10,6 +10,7 @@ import "../assets/main.css";
 import "./TimeTable.css";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import IconButton from "@mui/material/IconButton";
 
 import "./TimeTableDropdowns.css";
@@ -45,6 +46,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 
@@ -189,6 +191,11 @@ function InstructorPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Sanitize function to allow only letters, spaces, hyphens, and apostrophes
+  const sanitizeSearchTerm = (value) => {
+    return value.replace(/[^a-zA-Z\s\-']/g, '');
+  };
+
   useEffect(() => {
     if (!Number.isInteger(Number.parseInt(departmentID, 10))) {
       return;
@@ -275,11 +282,32 @@ function InstructorPage() {
                 disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
                 sx={{ minWidth: 300 }}
                 size="small"
-                label="Search instructors"
+                label="Search Instructors"
                 value={searchTerm}
+                helperText="Enter instructor name, last name, or middle initial "
                 onChange={(e) => {
+                  const sanitized = sanitizeSearchTerm(e.target.value);
                   setPage(0);
-                  setSearchTerm(e.target.value);
+                  setSearchTerm(sanitized);
+                }}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const pasted = e.clipboardData.getData('text');
+                  const sanitized = sanitizeSearchTerm(pasted);
+                  setSearchTerm(sanitized);
+                  setPage(0);
+                }}
+                inputProps={{
+                  onKeyDown: (e) => {
+                    // Allow control keys
+                    if (e.ctrlKey || e.metaKey || e.altKey) return;
+                    // Allow navigation and editing keys
+                    if (['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+                    // Prevent invalid characters
+                    if (!/[a-zA-Z\s\-']/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }
                 }}
               />
             ) : null}
@@ -399,33 +427,73 @@ function InstructorPage() {
           }}
           aria-labelledby="alert-dialog-title"
           aria-describedby="alert-dialog-description"
+          fullWidth
+          maxWidth="sm"
         >
-          <DialogTitle id="alert-dialog-title">Remove Instructor</DialogTitle>
+          <DialogTitle
+            id="alert-dialog-title"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              color: "white",
+            }}
+          >
+            <WarningAmberIcon fontSize="large" />
+            Confirm removal
+          </DialogTitle>
 
-          <DialogContent>
-            <DialogContentText id="alert-dialog-description">
-              {`Are you sure you want to remove "${instructorToDelete?.FirstName} ${instructorToDelete?.MiddleInitial} ${instructorToDelete?.LastName}"?`}
+          <DialogContent sx={{ pt: 0, pb: 1 }}>
+            <DialogContentText
+              id="alert-dialog-description"
+              sx={{ mb: 2, color: "text.secondary" }}
+            >
+              This action will permanently remove the selected instructor from the system.
+              Please confirm that you want to continue.
             </DialogContentText>
-          </DialogContent>
 
-          <DialogActions>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                handleInstructorDelete(instructorToDelete?.InstructorID);
+            <Box
+              sx={{
+                px: 1,
+                py: 1.5,
+                borderRadius: 1,
+                backgroundColor: "rgba(244, 67, 54, 0.08)",
+                border: "1px solid",
+                borderColor: "error.light",
               }}
             >
-              Yes
-            </Button>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 700, color: "error.dark" }}
+              >
+                {`${instructorToDelete?.FirstName ?? ""} ${instructorToDelete?.MiddleInitial ?? ""} ${instructorToDelete?.LastName ?? ""}`}
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                Instructor record will be deleted.
+              </Typography>
+            </Box>
+          </DialogContent>
 
+          <DialogActions sx={{ px: 2, pb: 2, pt: 0 }}>
             <Button
               variant="outlined"
               onClick={() => {
                 setIsDialogDeleteShow(false);
                 setInstructorToDelete(null);
               }}
+              sx={{ minWidth: 130 }}
             >
-              No
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => {
+                handleInstructorDelete(instructorToDelete?.InstructorID);
+              }}
+              sx={{ minWidth: 160 }}
+            >
+              Remove Instructor
             </Button>
           </DialogActions>
         </Dialog>

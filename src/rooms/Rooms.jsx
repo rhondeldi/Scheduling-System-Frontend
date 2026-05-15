@@ -40,6 +40,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import "../assets/main.css";
 
@@ -81,7 +82,9 @@ function Rooms() {
     setLoading(true);
 
     try {
+      console.log(`Attempting to delete room with ID: ${room_id}`);
       await deleteRemoveRoom(room_id);
+      console.log(`Successfully deleted room with ID: ${room_id}`);
       await load_rooms(departmentID, pageSize, page, searchTerm);
 
       setPopupOptions({
@@ -89,18 +92,19 @@ function Rooms() {
         HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
         Message: "the room was succesfully deleted",
       });
+
+      setIsDialogDeleteShow(false);
+      setRoomToDelete(null);
     } catch (err) {
+      console.error(`Delete failed for room ID ${room_id}:`, err);
       setPopupOptions({
         Heading: "Delete Failed",
         HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-        Message: `${err}`,
+        Message: `${err.message || err}`,
       });
+    } finally {
+      setLoading(false);
     }
-
-    setRoomToDelete(null);
-    setLoading(false);
-    setIsDialogDeleteShow(false);
-
   };
 
   const [room, setRoom] = useState({
@@ -409,32 +413,76 @@ function Rooms() {
         }}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
+        fullWidth
+        maxWidth="sm"
+        TransitionProps={{
+          timeout: 300, // Smooth transition
+        }}
       >
-        <DialogTitle id="alert-dialog-title">Remove Room</DialogTitle>
+        <DialogTitle
+          id="alert-dialog-title"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            color: "white",
+          }}
+        >
+          <WarningAmberIcon fontSize="large" />
+          Confirm removal
+        </DialogTitle>
 
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            {`Are you sure you want to remove "${roomToDelete?.Name}"?`}
+        <DialogContent sx={{ pt: 0, pb: 1 }}>
+          <DialogContentText
+            id="alert-dialog-description"
+            sx={{ mb: 2, color: "text.secondary" }}
+          >
+            This action will permanently remove the selected room from the system.
+            Please confirm that you want to continue.
           </DialogContentText>
-        </DialogContent>
 
-        <DialogActions>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              handleRoomDelete(roomToDelete?.RoomID);
+          <Box
+            sx={{
+              px: 1,
+              py: 1.5,
+              borderRadius: 1,
+              backgroundColor: "rgba(244, 67, 54, 0.08)",
+              border: "1px solid",
+              borderColor: "error.light",
             }}
           >
-            Yes
-          </Button>
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: 700, color: "error.dark" }}
+            >
+              {`${roomToDelete?.Name ?? ""}`}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Room record will be deleted.
+            </Typography>
+          </Box>
+        </DialogContent>
 
+        <DialogActions sx={{ px: 2, pb: 2, pt: 0 }}>
           <Button
             variant="outlined"
             onClick={() => {
               setIsDialogDeleteShow(false);
+              setRoomToDelete(null);
             }}
+            sx={{ minWidth: 130 }}
           >
-            No
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              handleRoomDelete(roomToDelete?.RoomID);
+            }}
+            sx={{ minWidth: 160 }}
+          >
+            Remove Room
           </Button>
         </DialogActions>
       </Dialog>
