@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 
 import {
   Loading,
   Popup,
   POPUP_ERROR_COLOR,
+  POPUP_SUCCESS_COLOR,
 } from "../components/Loading";
 
 import "../assets/main.css";
@@ -12,6 +13,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import IconButton from "@mui/material/IconButton";
+
+import warning from "../assets/warning.png";
 
 import "./TimeTableDropdowns.css";
 import "./instructors.css";
@@ -39,6 +42,7 @@ import {
   TableCell,
   TableBody,
   CircularProgress,
+  Skeleton,
   TablePagination,
   Dialog,
   DialogTitle,
@@ -49,6 +53,7 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 import InstructorDataView from "./InstructorDataView";
 import { deleteRemoveInsturctor } from "../js/instructors";
@@ -59,6 +64,7 @@ function InstructorPage() {
   const [mode, setMode] = useState(""); // 3 mode - new, view, edit
   const [popupOptions, setPopupOptions] = useState(null);
 
+  const [isOperationLoading, setIsOperationLoading] = useState(false);
   const [instructors, setInstructors] = useState([]); // load array of instructs when a department is selected
   const [selectedInstructor, setSelectedInstructor] = useState(null);
 
@@ -113,13 +119,14 @@ function InstructorPage() {
     useEffectAsyncs();
   }, []);
 
+  const skipAnimRef = useRef(false);
+
   const load_instructors = useCallback(async (
     department_id,
     page_size,
     new_page,
     search_term = "",
   ) => {
-    setLoading(true);
     try {
       let fetched_instructors;
 
@@ -172,6 +179,7 @@ function InstructorPage() {
     }
 
     setLoading(false);
+    setIsPaginating(false);
   }, []);
 
   /////////////////////////////////////////////////////////////////////////////////
@@ -186,6 +194,7 @@ function InstructorPage() {
   /////////////////////////////////////////////////////////////////////////////////
 
   const [loading, setLoading] = useState(false);
+  const [isPaginating, setIsPaginating] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [totalCount, setTotalCount] = useState(0);
@@ -201,6 +210,8 @@ function InstructorPage() {
       return;
     }
 
+    if (!skipAnimRef.current) setLoading(true);
+    skipAnimRef.current = false;
     const debounceTimer = setTimeout(() => {
       load_instructors(departmentID, pageSize, page, searchTerm);
     }, 300);
@@ -209,10 +220,14 @@ function InstructorPage() {
   }, [departmentID, load_instructors, page, pageSize, searchTerm]);
 
   const handleChangePage = (event, new_page) => {
+    skipAnimRef.current = true;
+    setIsPaginating(true);
     setPage(new_page);
   };
 
   const handleChangeRowsPerPage = (event) => {
+    skipAnimRef.current = true;
+    setIsPaginating(true);
     const new_page_size = parseInt(event.target.value, 10);
     setPageSize(new_page_size);
     setPage(0);
@@ -221,7 +236,7 @@ function InstructorPage() {
   const [isDialogDeleteShow, setIsDialogDeleteShow] = useState(false);
   const [instructorToDelete, setInstructorToDelete] = useState(null);
   const handleInstructorDelete = async (instructor_id) => {
-    setLoading(true);
+    setIsOperationLoading(true);
 
     try {
       await deleteRemoveInsturctor(instructor_id);
@@ -231,6 +246,11 @@ function InstructorPage() {
         page,
         searchTerm,
       );
+      setPopupOptions({
+        Heading: "Delete Success",
+        HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
+        Message: "The instructor was successfully deleted.",
+      });
     } catch (err) {
       setPopupOptions({
         Heading: "Delete Failed",
@@ -239,7 +259,8 @@ function InstructorPage() {
       });
     }
 
-    setLoading(false);
+    setInstructorToDelete(null);
+    setIsOperationLoading(false);
     setIsDialogDeleteShow(false);
 
   };
@@ -272,7 +293,7 @@ function InstructorPage() {
 
         <Box display={!mode ? "block" : "none"}>
           <Box
-            padding={1.5}
+            py={1}
             display={"flex"}
             justifyContent={"space-between"}
             alignItems={"center"}
@@ -282,85 +303,83 @@ function InstructorPage() {
                 disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
                 sx={{ minWidth: 300 }}
                 size="small"
-                label="Search Instructors"
+                label="Search instructors"
                 value={searchTerm}
-                helperText="Enter instructor name, last name, or middle initial "
                 onChange={(e) => {
-                  const sanitized = sanitizeSearchTerm(e.target.value);
                   setPage(0);
-                  setSearchTerm(sanitized);
-                }}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const pasted = e.clipboardData.getData('text');
-                  const sanitized = sanitizeSearchTerm(pasted);
-                  setSearchTerm(sanitized);
-                  setPage(0);
-                }}
-                inputProps={{
-                  onKeyDown: (e) => {
-                    // Allow control keys
-                    if (e.ctrlKey || e.metaKey || e.altKey) return;
-                    // Allow navigation and editing keys
-                    if (['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
-                    // Prevent invalid characters
-                    if (!/[a-zA-Z\s\-']/.test(e.key)) {
-                      e.preventDefault();
-                    }
-                  }
+                  setSearchTerm(e.target.value);
                 }}
               />
             ) : null}
 
-            {Number.isInteger(Number.parseInt(departmentID, 10)) ? (
-              <Button
-                disabled={!Number.isInteger(departmentID)}
-                endIcon={<AddIcon />}
-                size="small"
-                color="secondary"
-                variant="contained"
-                onClick={() => {
-                  setIsLoading(true);
+            <Button
+              disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
+              endIcon={<AddIcon />}
+              size="small"
+              color="secondary"
+              variant="contained"
+              onClick={() => {
+                setIsLoading(true);
 
-                  const new_instructor = {
-                    DepartmentID: departmentID,
-                    FirstName: "",
-                    LastName: "",
-                    MiddleInitial: "",
-                  };
+                const new_instructor = {
+                  DepartmentID: departmentID,
+                  FirstName: "",
+                  LastName: "",
+                  MiddleInitial: "",
+                };
 
-                  setSelectedInstructor(new_instructor);
-                  setIsLoading(false);
+                setSelectedInstructor(new_instructor);
+                setIsLoading(false);
 
-                  setMode("new");
-                }}
-              >
-                Add New Instructor
-              </Button>
-            ) : null}
+                setMode("new");
+              }}
+            >
+              Add New Instructor
+            </Button>
           </Box>
         </Box>
 
-        <Box paddingInline={2}>
+        <Box>
           {mode === "" ? (
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
+            <TableContainer component={Paper} sx={{ minHeight: 120 }}>
+              <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                   <TableRow sx={{ height: 1 }}>
-                    <TableCell>LAST NAME</TableCell>
-                    <TableCell>FIRST NAME</TableCell>
-                    <TableCell>MIDDLE INITIAL</TableCell>
-                    <TableCell></TableCell>
+                    <TableCell sx={{ width: "32%" }}>LAST NAME</TableCell>
+                    <TableCell sx={{ width: "32%" }}>FIRST NAME</TableCell>
+                    <TableCell sx={{ width: "20%" }}>MIDDLE INITIAL</TableCell>
+                    <TableCell sx={{ width: "112px" }}></TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center">
-                        <CircularProgress />
-                      </TableCell>
-                    </TableRow>
-                  ) : (
+                <TableBody sx={{ opacity: loading ? 0 : 1, transform: loading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
+                  {isPaginating
+                    ? Array.from({ length: pageSize }).map((_, i) => (
+                        <TableRow key={i} sx={{ height: 50 }}>
+                          <TableCell><Skeleton /></TableCell>
+                          <TableCell><Skeleton /></TableCell>
+                          <TableCell><Skeleton /></TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: "0.5em" }}>
+                              <Skeleton variant="circular" width={32} height={32} />
+                              <Skeleton variant="circular" width={32} height={32} />
+                              <Skeleton variant="circular" width={32} height={32} />
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    : !departmentID ? (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                          Please select a department first
+                        </TableCell>
+                      </TableRow>
+                    ) : instructors.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                          No instructors found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
                     instructors.map((instructor) => (
                       <TableRow key={instructor.InstructorID}>
                         <TableCell>{instructor.LastName}</TableCell>
@@ -369,6 +388,7 @@ function InstructorPage() {
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
                             <IconButton
+                              title="View"
                               color="view"
                               disabled={loading}
                               onClick={() => {
@@ -379,6 +399,7 @@ function InstructorPage() {
                               <VisibilityIcon />
                             </IconButton>
                             <IconButton
+                              title="Edit"
                               color="edit"
                               disabled={loading}
                               onClick={() => {
@@ -389,6 +410,7 @@ function InstructorPage() {
                               <EditIcon />
                             </IconButton>
                             <IconButton
+                              title="Delete"
                               color="delete"
                               disabled={loading}
                               onClick={() => {
@@ -402,11 +424,37 @@ function InstructorPage() {
                         </TableCell>
                       </TableRow>
                     ))
-                  )}
+                    )
+                  }
                 </TableBody>
               </Table>
 
               <TablePagination
+                sx={{
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "#f8f9fa",
+                  "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
+                  "& .MuiTablePagination-select": { fontWeight: 500 },
+                  "& .MuiIconButton-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    mx: 0.25,
+                    "&:hover:not(.Mui-disabled)": {
+                      bgcolor: "primary.main",
+                      color: "white",
+                      borderColor: "primary.main",
+                    },
+                  },
+                  "& .MuiInputBase-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    px: 1,
+                    "&:hover": { borderColor: "text.secondary" },
+                  },
+                }}
                 component="div"
                 count={totalCount}
                 rowsPerPage={pageSize}
@@ -418,7 +466,6 @@ function InstructorPage() {
             </TableContainer>
           ) : null}
         </Box>
-
         <Dialog
           open={isDialogDeleteShow}
           onClose={() => {
@@ -427,73 +474,33 @@ function InstructorPage() {
           }}
           aria-labelledby="alert-dialog-title"
           aria-describedby="alert-dialog-description"
-          fullWidth
-          maxWidth="sm"
         >
-          <DialogTitle
-            id="alert-dialog-title"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              color: "white",
-            }}
-          >
-            <WarningAmberIcon fontSize="large" />
-            Confirm removal
-          </DialogTitle>
+          <DialogTitle id="alert-dialog-title">Remove Instructor</DialogTitle>
 
-          <DialogContent sx={{ pt: 0, pb: 1 }}>
-            <DialogContentText
-              id="alert-dialog-description"
-              sx={{ mb: 2, color: "text.secondary" }}
-            >
-              This action will permanently remove the selected instructor from the system.
-              Please confirm that you want to continue.
+          <DialogContent>
+            <DialogContentText id="alert-dialog-description">
+              {`Are you sure you want to remove "${instructorToDelete?.FirstName} ${instructorToDelete?.MiddleInitial} ${instructorToDelete?.LastName}"?`}
             </DialogContentText>
-
-            <Box
-              sx={{
-                px: 1,
-                py: 1.5,
-                borderRadius: 1,
-                backgroundColor: "rgba(244, 67, 54, 0.08)",
-                border: "1px solid",
-                borderColor: "error.light",
-              }}
-            >
-              <Typography
-                variant="subtitle1"
-                sx={{ fontWeight: 700, color: "error.dark" }}
-              >
-                {`${instructorToDelete?.FirstName ?? ""} ${instructorToDelete?.MiddleInitial ?? ""} ${instructorToDelete?.LastName ?? ""}`}
-              </Typography>
-              <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                Instructor record will be deleted.
-              </Typography>
-            </Box>
           </DialogContent>
 
-          <DialogActions sx={{ px: 2, pb: 2, pt: 0 }}>
+          <DialogActions>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                handleInstructorDelete(instructorToDelete?.InstructorID);
+              }}
+            >
+              Yes
+            </Button>
+
             <Button
               variant="outlined"
               onClick={() => {
                 setIsDialogDeleteShow(false);
                 setInstructorToDelete(null);
               }}
-              sx={{ minWidth: 130 }}
             >
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={() => {
-                handleInstructorDelete(instructorToDelete?.InstructorID);
-              }}
-              sx={{ minWidth: 160 }}
-            >
-              Remove Instructor
+              No
             </Button>
           </DialogActions>
         </Dialog>
@@ -535,9 +542,15 @@ function InstructorPage() {
           alignItems={"center"}
           padding={5}
         >
-          <a href="/view_instructors/">
-            link for publicly accessible instructors’ page view
-          </a>
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            endIcon={<OpenInNewIcon />}
+            onClick={() => window.open("/view_instructors/", "_blank")}
+          >
+            Public Instructors Page
+          </Button>
         </Box>
       </MainHeader>
     </>

@@ -1,32 +1,13 @@
+// ===================== IMPORTS =====================
 import "../assets/Loading.css";
 
-import HighlightOffIcon from '@mui/icons-material/HighlightOff';
-
-export function Loading({
-  IsLoading,
-}) {
-  return IsLoading ? (
-    <div className="loading-component">
-      <h1>Please wait...</h1>
-      <div className="loading-spinner" />
-    </div>
-  ) : null;
+// ===================== LOADING COMPONENT =====================
+export function Loading({ IsLoading }) {
+  return null;
 }
 
-/**example popup option state structure:
- * 
- * ```json
- * popupOptions = {
- *  "Heading": "Success",
- *  "HeadingStyle" : {color: "white", background : "green"}
- *  "Message": "action is done"
- * }
- * ```
- */
-export function Popup({
-  popupOptions,
-  closeButtonActionHandler
-}) {
+// ===================== POPUP COMPONENT =====================
+export function Popup({ popupOptions, closeButtonActionHandler }) {
   if (!popupOptions) return null;
 
   const { Heading, HeadingStyle, Message } = popupOptions;
@@ -36,20 +17,19 @@ export function Popup({
       <div
         className="popup-component"
         style={{
-            width: Array.isArray(Message) ? 'min(90vw, 900px)' : 'min(90vw, 520px)',
-            maxHeight: Array.isArray(Message) ? 'min(80vh, 600px)' : 'min(70vh, 400px)',
-
+          width: Array.isArray(Message) ? 'min(90vw, 900px)' : 'min(90vw, 520px)',
+          maxHeight: Array.isArray(Message) ? 'min(80vh, 600px)' : 'min(70vh, 400px)',
         }}
       >
+        {/* HEADING */}
         <div className="popup-heading" style={HeadingStyle}>
           <h1>{Heading}</h1>
         </div>
+
+        {/* MESSAGE */}
         <div
           className="popup-message"
-          style={{
-            overflowY: 'auto',
-            paddingRight: '0.7em',
-          }}
+          style={{ overflowY: 'auto', paddingRight: '0.7em' }}
         >
           {Array.isArray(Message) ? (
             <ol style={{ margin: 0, textAlign: 'left' }}>
@@ -61,12 +41,15 @@ export function Popup({
             <p>{Message}</p>
           )}
         </div>
+
+        {/* CLOSE */}
         <button onClick={closeButtonActionHandler}>X</button>
       </div>
     </div>
   );
 }
 
+// ===================== COLOR CONSTANTS =====================
 export const POPUP_ERROR_COLOR   = 'linear-gradient(145deg,rgb(210, 0, 0) 50%,rgba(208, 15, 15, 0.58) 100%)';
 export const POPUP_SUCCESS_COLOR = 'linear-gradient(135deg,rgb(21, 157, 21) 50%,rgba(0, 159, 19, 0.73) 100%)';
 export const POPUP_WARNING_COLOR = 'linear-gradient(135deg,rgb(255, 166, 0) 0%,rgba(254, 169, 0, 0.56) 100%)';

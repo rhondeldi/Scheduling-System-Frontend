@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { StrictMode, useState, useEffect } from "react";
 
 import { Loading, Popup } from "../components/Loading";
@@ -12,38 +13,32 @@ import { deserializeSchedule, fetchClassJsonSchedule, fetchSerializedClassSchedu
 import { generateTimeSlotRowLabels } from "../js/week-time-table-grid-functions";
 import { MainHeader } from "../components/Header";
 
+// ===================== CONSTANTS =====================
 const SECTION_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz";
 
+// ===================== MAIN COMPONENT =====================
 function TimeTable() {
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                     LOAD GUARD COMPONENT STATES
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- LOAD GUARD COMPONENT STATES ----
 
     const [IsLoading, setIsLoading] = useState(false);
     const [popupOptions, setPopupOptions] = useState(null);
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       TIME TABLE GRID STATES
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- TIME TABLE GRID STATES ----
 
     const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const [startHour, setStartHour] = useState(7);
     const [timeSlotMinuteInterval, setTimeSlotMinuteInterval] = useState(30);
     const [dailyTimeSlots, setDailyTimeSlots] = useState(24);
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       STATES FOR FETCHED DATA
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- STATES FOR FETCHED DATA ----
 
     const [allDepartments, setAllDepartment] = useState([]);                // fetch on page load
     const [departmentCurriculumsData, setDepartmentCurriculumsData] = useState([]);              // fetch on semester selection
     const [classAssignedSubjects, setClassAssignedSubjects] = useState([]) // fetch on section selection
     const [classAssignedSubjectsBackup, setClassAssignedSubjectsBackup] = useState([]) // fetch on section selection
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       DROPDOWN SELECTION STATES
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- DROPDOWN SELECTION STATES ----
 
     const [departmentID, setDepartmentID] = useState("");
     const [semesterIndex, setSemesterIndex] = useState("");
@@ -51,9 +46,7 @@ function TimeTable() {
     const [yearLevelIndex, setYearLevelIndex] = useState("");
     const [sectionIndex, setSectionIndex] = useState("");
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       PAGE LOAD PROCESS
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- PAGE LOAD PROCESS ----
 
     useEffect(() => {
 
@@ -93,9 +86,7 @@ function TimeTable() {
         }
     }
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       DROPDOWN HANDLERS
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- DROPDOWN HANDLERS ----
 
     const handleDepartmentChange = async (event) => {
         console.log(`selected departmentID: ${event.target.value}`);
@@ -275,9 +266,7 @@ function TimeTable() {
         setIsLoading(false)
     }
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                             DROPDOWN HANDLERS
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- SCHEDULE ACTIONS ----
 
     const generateDepartmentSchedules = async () => {
         setIsLoading(true)
@@ -306,7 +295,7 @@ function TimeTable() {
 
     const [subjectColors, setSubjectColors] = useState({});
 
-    ////////////////////////////////////////////////////////////
+    // ---- DRAG AND DROP HANDLERS ----
 
     const [isDroppedSuccess, setIsDroppedSuccess] = useState(true)
 
@@ -422,11 +411,8 @@ function TimeTable() {
         setIsLoading(false);
     };
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                              COMPONENT UI CODE
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- COMPONENT UI CODE ----
 
-    // Updated JSX Return
     return (
         <>
             <Popup
@@ -438,7 +424,7 @@ function TimeTable() {
                 className="table-container"
                 onDragEnd={(e) => handleDragEnd(e)}
             >
-                {/* Dropdown Container (unchanged) */}
+                {/* ===================== DROPDOWNS ===================== */}
                 <div className="dropdown-container" style={{ display: "flex", flexDirection: "column" }}>
                     <div
                         id="left-dropdown-container"
@@ -452,7 +438,6 @@ function TimeTable() {
                                 </option>
                             ))}
                         </select>
-                        {/* Other dropdowns remain unchanged */}
                         <select className="dropdown" style={{ width: "100%" }} value={semesterIndex} onChange={handleSemesterChange} disabled={!departmentID}>
                             <option value="">Semester</option>
                             <option value={0}>1st Semester</option>
@@ -487,7 +472,7 @@ function TimeTable() {
                     </div>
                 </div>
 
-                {/* Updated Timetable with Drag-and-Drop */}
+                {/* ===================== TIMETABLE ===================== */}
                 <table className="time-table" style={{ display: sectionIndex ? "revert" : "none" }}>
                     <thead>
                         <tr>
@@ -545,7 +530,7 @@ function TimeTable() {
                     </tbody>
                 </table>
 
-                {/* Updated Button Section with Save Configuration */}
+                {/* ===================== ACTION BUTTONS ===================== */}
                 <div style={{ width: "100%", display: "flex", justifyContent: "space-evenly", padding: "0.5em", gap: "0.5em" }}>
                     <button className="all-btns" style={{ width: "100%" }} onClick={generateDepartmentSchedules} disabled={!semesterIndex}>
                         Generate Department Semester Schedules

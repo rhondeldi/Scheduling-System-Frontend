@@ -1,10 +1,14 @@
+// ===================== IMPORTS =====================
 import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { fetchWho } from "../js/departments.js";
 
+// ===================== MAIN COMPONENT =====================
 export default function ProtectedRoute({ children }) {
+  // ---- STATE ----
   const [allowed, setAllowed] = useState(null);
 
+  // ---- EFFECTS ----
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -18,7 +22,7 @@ export default function ProtectedRoute({ children }) {
     checkAuth();
   }, []);
 
-  if (allowed === null) return <div>Loading...</div>;
+  if (allowed === null) return null;
 
   if (!allowed) return <Navigate to="/login" replace />;
 

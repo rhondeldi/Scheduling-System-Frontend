@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 
 import {
   Box, TextField, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TablePagination, Paper, CircularProgress,
+  TablePagination, Paper, CircularProgress, Skeleton,
   Dialog, DialogContent, DialogContentText, DialogTitle, DialogActions,
   FormControlLabel, Checkbox,
   IconButton,
@@ -54,6 +54,7 @@ export default function Subjects() {
 
   const [subjectList, setSubjectList] = useState([]);
   const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isPaginating, setIsPaginating] = useState(false);
   const [isOperationLoading, setIsOperationLoading] = useState(false);
 
   const [page, setPage] = useState(0);
@@ -62,9 +63,9 @@ export default function Subjects() {
 
   const [searchTerm, setSearchTerm] = useState("");
 
-  const load_subjects = useCallback(async (size, newPage, search) => {
-    setIsTableLoading(true);
+  const skipAnimRef = useRef(false);
 
+  const load_subjects = useCallback(async (size, newPage, search) => {
     try {
       const data = await fetchSubjects(size, newPage, search, "");
 
@@ -79,9 +80,12 @@ export default function Subjects() {
     }
 
     setIsTableLoading(false);
+    setIsPaginating(false);
   }, []);
 
   useEffect(() => {
+    if (!skipAnimRef.current) setIsTableLoading(true);
+    skipAnimRef.current = false;
     const timer = setTimeout(() => {
       load_subjects(pageSize, page, searchTerm);
     }, 300);
@@ -118,7 +122,6 @@ export default function Subjects() {
   const closeFormDialog = () => {
     setIsDialogFormOpen(false);
     setSubject(emptySubject);
-    setMode("");
   };
 
   const handleSave = async () => {
@@ -173,7 +176,7 @@ export default function Subjects() {
       <Box>
 
         {/* TOP BAR */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", p: 2 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", py: 1.5 }}>
           <TextField
             size="small"
             label="Search subject"
@@ -198,31 +201,46 @@ export default function Subjects() {
         </Box>
 
         {/* TABLE */}
-        <Box px={4}>
-          <TableContainer component={Paper}>
-            <Table size="small">
-              <TableHead>
+        <Box>
+          <TableContainer component={Paper} sx={{ minHeight: 120 }}>
+            <Table size="small" sx={{ tableLayout: "fixed" }}>
+              <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                 <TableRow>
-                  <TableCell>CODE</TableCell>
+                  <TableCell sx={{ width: "13%" }}>CODE</TableCell>
                   <TableCell>NAME</TableCell>
-                  <TableCell>LECTURE</TableCell>
-                  <TableCell>LAB</TableCell>
-                  <TableCell />
+                  <TableCell sx={{ width: "10%" }}>LECTURE</TableCell>
+                  <TableCell sx={{ width: "10%" }}>LAB</TableCell>
+                  <TableCell sx={{ width: "80px" }} />
                 </TableRow>
               </TableHead>
 
-              <TableBody>
-                {isTableLoading ? (
+              <TableBody sx={{ opacity: isTableLoading ? 0 : 1, transform: isTableLoading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
+                {isPaginating
+                  ? Array.from({ length: pageSize }).map((_, i) => (
+                      <TableRow key={i} sx={{ height: 50 }}>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell align="right">
+                          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+                            <Skeleton variant="circular" width={32} height={32} />
+                            <Skeleton variant="circular" width={32} height={32} />
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  : subjectList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center">
-                      <CircularProgress />
+                    <TableCell colSpan={5} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                      No subjects found
                     </TableCell>
                   </TableRow>
                 ) : (
                   subjectList.map((s) => (
                     <TableRow key={s.ID}>
                       <TableCell sx={{ fontWeight: "bold" }}>{s.Code}</TableCell>
-                      <TableCell>{truncateText(s.Name, 80)}</TableCell>
+                      <TableCell sx={{ fontStyle: "italic" }}>{truncateText(s.Name, 80)}</TableCell>
                       <TableCell>{s.LecHours}</TableCell>
                       <TableCell>{s.LabHours}</TableCell>
 
@@ -235,6 +253,7 @@ export default function Subjects() {
                           }}
                         >
                           <IconButton
+                            title="Edit"
                             color="edit"
                             onClick={() => {
                               setSubject(s);
@@ -246,6 +265,7 @@ export default function Subjects() {
                           </IconButton>
 
                           <IconButton
+                            title="Delete"
                             color="delete"
                             onClick={() => {
                               setSubjectToDelete(s);
@@ -259,20 +279,50 @@ export default function Subjects() {
 
                     </TableRow>
                   ))
-                )}
+                  )
+                }
               </TableBody>
             </Table>
 
             <TablePagination
+              sx={{
+                borderTop: "1px solid",
+                borderColor: "divider",
+                bgcolor: "#f8f9fa",
+                "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
+                "& .MuiTablePagination-select": { fontWeight: 500 },
+                "& .MuiIconButton-root": {
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: "4px",
+                  mx: 0.25,
+                  "&:hover:not(.Mui-disabled)": {
+                    bgcolor: "primary.main",
+                    color: "white",
+                    borderColor: "primary.main",
+                  },
+                },
+                "& .MuiInputBase-root": {
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: "4px",
+                  px: 1,
+                  "&:hover": { borderColor: "text.secondary" },
+                },
+              }}
               component="div"
               count={totalCount}
               rowsPerPage={pageSize}
               page={page}
               rowsPerPageOptions={[5, 10, 25]}
               onPageChange={(_, newPage) => {
+                skipAnimRef.current = true;
+                setIsPaginating(true);
                 setPage(newPage);
               }}
               onRowsPerPageChange={(event) => {
+                skipAnimRef.current = true;
+                setIsPaginating(true);
                 setPageSize(Number.parseInt(event.target.value, 10));
                 setPage(0);
               }}
@@ -289,7 +339,7 @@ export default function Subjects() {
           setSubjectToDelete(null);
         }}
       >
-        <DialogTitle>Delete Subject</DialogTitle>
+        <DialogTitle sx={{backgroundColor: '#C62828',}}>Delete Subject</DialogTitle>
         <DialogContent sx={{ textAlign: "center", pt: 3 }}>
           <img
             src={warning}
@@ -338,8 +388,8 @@ export default function Subjects() {
       </Dialog>
 
       {/* FORM DIALOG */}
-      <Dialog open={isDialogFormOpen} onClose={closeFormDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{mode === "new" ? "Add New Subject" : "Edit Subject"}</DialogTitle>
+      <Dialog open={isDialogFormOpen} onClose={closeFormDialog} fullWidth maxWidth="sm" onKeyDown={(e) => { if (e.key === "Enter" && !isOperationLoading) handleSave(); }}>
+        <DialogTitle sx={{backgroundColor: '#2e6417',}}>{mode === "new" ? "Add New Subject" : "Edit Subject"}</DialogTitle>
 
         <DialogContent>
           <DialogContentText sx={{ mb: 1 }}>

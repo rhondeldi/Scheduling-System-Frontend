@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { useState, useEffect } from "react";
 import { useRef } from "react";
 
@@ -67,10 +68,10 @@ import {
 } from "../components/Loading";
 
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
-import { CheckBox } from "@mui/icons-material";
 import SubjectSelection from "./SubjectSelection";
 import InstructorSelection from "./InstructorSelection";
 
+// ===================== HELPERS =====================
 const truncateText = (text, maxLength) => {
   if (text.length > maxLength) {
     return text.substring(0, maxLength) + "...";
@@ -79,6 +80,7 @@ const truncateText = (text, maxLength) => {
   return text;
 };
 
+// ===================== CONSTANTS =====================
 const YEAR_LEVEL_NAMES = [
   "1st Year",
   "2nd Year",
@@ -91,6 +93,7 @@ const YEAR_LEVEL_NAMES = [
 ];
 const SEMESTER_NAMES = ["1st Semester", "2nd Semester", "Mid-year"];
 
+// ===================== MAIN COMPONENT =====================
 function CurriculumView({
   mode,
   setMode,
@@ -102,13 +105,14 @@ function CurriculumView({
   reloadList,
   allDepartment,
 }) {
+  // ---- STATE ----
   const [isLoading, setIsLoading] = useState(false);
 
   const [curriculum, setCurriculum] = useState(null);
   const [editedCurriculum, setEditedCurriculum] = useState(null);
 
+  // ---- EFFECTS ----
   useEffect(() => {
-    console.log("load mode :", mode);
     const useEffectAsyncs = async () => {
       try {
         if (mode === "new") {
@@ -133,9 +137,6 @@ function CurriculumView({
 
         setCurriculum(loaded_curriculum);
         setEditedCurriculum(structuredClone(loaded_curriculum));
-
-        console.log("loaded_curriculum:");
-        console.log(loaded_curriculum);
 
         setIsLoading(false);
       } catch (err) {
@@ -169,6 +170,7 @@ function CurriculumView({
       <Loading IsLoading={isLoading} />
 
       <Box>
+        {/* ===================== HEADER ===================== */}
         <Box
           display={"flex"}
           justifyContent={"space-between"}
@@ -204,7 +206,6 @@ function CurriculumView({
                   color="primary"
                   variant="contained"
                   onClick={() => {
-                    console.log("mode :", mode);
                     setMode("edit");
                     setEditedCurriculum(structuredClone(curriculum));
                   }}
@@ -231,7 +232,6 @@ function CurriculumView({
                   color="primary"
                   variant="contained"
                   onClick={async () => {
-                    console.log("mode :", mode);
                     const updated_curriculum =
                       structuredClone(editedCurriculum);
 
@@ -280,9 +280,6 @@ function CurriculumView({
                   color="primary"
                   variant="contained"
                   onClick={async () => {
-                    console.log("mode :", mode);
-                    console.log(editedCurriculum);
-
                     const new_curriculum = structuredClone(editedCurriculum);
 
                     try {
@@ -322,6 +319,7 @@ function CurriculumView({
           </Box>
         </Box>
 
+        {/* ===================== CURRICULUM INFO ===================== */}
         <Box
           display={"flex"}
           alignItems={"baseline"}
@@ -398,6 +396,7 @@ function CurriculumView({
           )}
         </Box>
 
+        {/* ===================== YEAR LEVELS ===================== */}
         <Box>
           {editedCurriculum?.YearLevels?.length !== 0 ? (
             editedCurriculum?.YearLevels.map((year_level, index_year_level) => (
@@ -408,19 +407,28 @@ function CurriculumView({
                   id={`${editedCurriculum?.CurriculumCode}-yrlvl-panel${index_year_level + 1}-header`}
                   sx={{
                     minHeight: "0px",
+                    height: "2.5em",
+                    alignItems: "center",
+                    padding: "0px 8px",
                     "&.Mui-expanded": {
                       minHeight: "0px",
                       color: "whitesmoke",
                       backgroundColor: "black",
                     },
-                    padding: "0xp 0px",
-                    height: "2.5em",
+                    "& .MuiAccordionSummary-content": {
+                      margin: "0px",
+                      alignItems: "center",
+                    },
+                    "& .MuiAccordionSummary-content.Mui-expanded": {
+                      margin: "0px",
+                    },
                     ":hover": { backgroundColor: "orange" },
                   }}
                 >
                   <Box
                     margin={"0px"}
                     display={"flex"}
+                    alignItems={"center"}
                     justifyContent={"space-between"}
                     minWidth={"11em"}
                     gap={1}
@@ -454,7 +462,6 @@ function CurriculumView({
                               <Checkbox
                                 checked={year_level.IsActive}
                                 onChange={(e) => {
-                                  console.log(e.target.checked);
                                   const new_curriculum =
                                     structuredClone(editedCurriculum);
                                   new_curriculum.YearLevels[
@@ -553,13 +560,21 @@ function CurriculumView({
                             id={`sem-panel-${editedCurriculum?.CurriculumCode}-${index_year_level}-${index_semester + 1}-header`}
                             sx={{
                               minHeight: "0px",
+                              height: "2em",
+                              alignItems: "center",
+                              padding: "0px 8px",
                               "&.Mui-expanded": {
                                 minHeight: "0px",
                                 backgroundColor: "darkgray",
                                 color: "white",
                               },
-                              padding: "0xp",
-                              height: "2em",
+                              "& .MuiAccordionSummary-content": {
+                                margin: "0px",
+                                alignItems: "center",
+                              },
+                              "& .MuiAccordionSummary-content.Mui-expanded": {
+                                margin: "0px",
+                              },
                               ":hover": {
                                 backgroundColor: "ButtonHighlight",
                                 color: "black",
@@ -720,9 +735,6 @@ function CurriculumView({
                                                   });
 
                                                   try {
-                                                    console.log(
-                                                      "modify subject",
-                                                    );
                                                     const new_instructors = [];
 
                                                     if (
@@ -738,10 +750,6 @@ function CurriculumView({
                                                             instructor_basic_info.InstructorID,
                                                           Name: `${instructor_basic_info.FirstName} ${instructor_basic_info.MiddleInitial}. ${instructor_basic_info.LastName}`,
                                                         });
-
-                                                        console.log(
-                                                          instructor_basic_info,
-                                                        );
                                                       }
                                                     }
 
@@ -909,7 +917,7 @@ function CurriculumView({
           </Box>
         </Box>
 
-        {/* modify subject dialog */}
+        {/* ===================== MODIFY SUBJECT DIALOG ===================== */}
         <Dialog
           open={isDialogFormOpen}
           onClose={() => setIsDialogFormOpen(false)}
@@ -924,9 +932,6 @@ function CurriculumView({
 
                   const formData = new FormData(event.currentTarget);
                   const formJson = Object.fromEntries(formData.entries());
-
-                  console.log("subject edit form json submit data:");
-                  console.log(formJson);
 
                   // when a subject's "modify" button was clicked, somewhere the `subject` state will be set by that
                   // associated subject in the curriculum, and since the `subject` state has the same reference as the
@@ -952,8 +957,6 @@ function CurriculumView({
 
                   subject.DesignatedInstructorsID =
                     new_designated_instructor_ids;
-
-                  console.log("if here test debug msg 5");
 
                   let updated_curriculum = structuredClone(editedCurriculum);
                   setEditedCurriculum(updated_curriculum);
@@ -1064,18 +1067,20 @@ function CurriculumView({
           </DialogActions>
         </Dialog>
 
-        {/* add subjects */}
+        {/* ===================== ADD SUBJECTS DIALOG ===================== */}
 
-        <SubjectSelection
-          open={isAddingSubjects}
-          onClose={() => {
-            setIsAddingSubjects(false);
-            setYearSemSubjectTarget(null);
-          }}
-          curriculum={editedCurriculum}
-          setEditedCurriculum={setEditedCurriculum}
-          yearSemSubjectTarget={yearSemSubjectTarget}
-        />
+        {isAddingSubjects && (
+          <SubjectSelection
+            open={isAddingSubjects}
+            onClose={() => {
+              setIsAddingSubjects(false);
+              setYearSemSubjectTarget(null);
+            }}
+            curriculum={editedCurriculum}
+            setEditedCurriculum={setEditedCurriculum}
+            yearSemSubjectTarget={yearSemSubjectTarget}
+          />
+        )}
       </Box>
     </>
   );

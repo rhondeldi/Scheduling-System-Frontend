@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { useState, useEffect, useRef } from "react";
 
 import Button from "@mui/material/Button";
@@ -8,6 +9,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import Divider from "@mui/material/Divider";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 import { InstructorTimeSlotBitMap } from "../js/instructor-time-slot-bit-map";
 
@@ -57,8 +59,10 @@ import {
 import "../assets/SubjectColors.css";
 import { PrintHeader } from "../components/PrintHeader";
 
+// ===================== CONSTANTS =====================
 const SEMESTER_NAMES = ["1st Semester", "2nd Semester", "Mid-year"];
 
+// ===================== HELPERS =====================
 function get_total_contact_hours(subjects) {
   let total_contact_hours = 0;
   if (Array.isArray(subjects) && Number.isInteger(subjects?.SubjectTimeSlots)) {
@@ -74,6 +78,7 @@ function to_title_case(str = "") {
   return str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+// ===================== MAIN COMPONENT =====================
 export default function InstructorDataView({
   selectedDepartment,
   selectedInstructor,
@@ -88,15 +93,11 @@ export default function InstructorDataView({
 }) {
   const [subjectColors, setSubjectColors] = useState({});
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       SELECTED TIME SLOT CELL
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- SELECTED TIME SLOT CELL ----
 
   const [selectedTimeSlots, setSelectedTimeSlots] = useState(new Set());
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                     LOAD GUARD COMPONENT STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- LOAD GUARD COMPONENT STATES ----
 
   const [IsLoading, setIsLoading] = useState(false);
   const [firstName, setFirstName] = useState(selectedInstructor?.FirstName ?? "");
@@ -171,9 +172,7 @@ export default function InstructorDataView({
     setLastName(selectedInstructor?.LastName ?? "");
   }, [selectedInstructor]);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       TIME TABLE GRID STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- TIME TABLE GRID STATES ----
 
   const [semesterIndex, setSemesterIndex] = useState("");
 
@@ -342,9 +341,7 @@ export default function InstructorDataView({
     }
   }, [selectedInstructor]);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                     CONTEXT MENU HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- CONTEXT MENU HANDLERS ----
 
   const contextMenuState = useContextMenuState();
 
@@ -518,9 +515,7 @@ export default function InstructorDataView({
     setSelectedTimeSlots(new Set());
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                     TIME SLOT SELECTION BUTTON HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- TIME SLOT SELECTION BUTTON HANDLERS ----
 
   const handleEditOrNewAction = async () => {
     console.log("handleEditOrNewAction: called");
@@ -588,9 +583,7 @@ export default function InstructorDataView({
     }
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                      PRINTING STATES, REFS AND HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- PRINTING STATES, REFS AND HANDLERS ----
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [isBlackAndWhite, setIsBlackAndWhite] = useState(false);
@@ -664,9 +657,7 @@ export default function InstructorDataView({
 
   const [isPrintDialogShow, setIsPrintDialogShow] = useState(false);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                INSTRUCTOR SUBJECTS MANAGEMENT STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- INSTRUCTOR SUBJECTS MANAGEMENT STATES ----
 
   const [assignedSubjects, setAssignedSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
@@ -848,10 +839,9 @@ export default function InstructorDataView({
     localStorage.setItem("position-approved", positionApproved);
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
-
   return (
     <>
+      {/* ===================== CONTEXT MENU ===================== */}
       <ContextMenu closeAfterClick={true} conextMenuState={contextMenuState}>
         <ContextMenuItem onClick={handleContextMenuEnable}>
           Enable
@@ -863,6 +853,7 @@ export default function InstructorDataView({
 
       <Loading IsLoading={IsLoading} />
 
+      {/* ===================== HEADING ===================== */}
       <Box
         sx={{
           display: "flex",
@@ -935,6 +926,18 @@ export default function InstructorDataView({
                   <MenuItem value={2}>Mid-year</MenuItem>
                 </Select>
               </FormControl>
+            ) : null}
+
+            {mode === "view" ? (
+              <Button
+                endIcon={<OpenInNewIcon />}
+                size="small"
+                color="primary"
+                variant="contained"
+                onClick={() => window.open("/view_instructors/", "_blank")}
+              >
+                Public View
+              </Button>
             ) : null}
 
             {mode === "view" ? (
@@ -1048,6 +1051,7 @@ export default function InstructorDataView({
           </Box>
         </Box>
 
+        {/* ===================== NAME BAR ===================== */}
         {/* second page heading - instructor name display */}
 
         <Box
@@ -1273,6 +1277,7 @@ export default function InstructorDataView({
         </Box>
       </Box>
 
+      {/* ===================== SUBJECTS ===================== */}
       {mode !== "new" ? (
         <Box
           sx={{
@@ -1412,6 +1417,7 @@ export default function InstructorDataView({
         ) : null}
       </Box>
 
+      {/* ===================== TIMETABLE ===================== */}
       <div
         ref={contentRef}
         style={{
@@ -1771,6 +1777,7 @@ export default function InstructorDataView({
 
       {!semesterIndex ? <Box height={5}></Box> : null}
 
+      {/* ===================== PRINT BUTTON ===================== */}
       {mode === "view" ? (
         <Box
           gap={1}
@@ -1792,6 +1799,7 @@ export default function InstructorDataView({
         </Box>
       ) : null}
 
+      {/* ===================== ASSIGN SUBJECT DIALOG ===================== */}
       <Dialog
         open={isAssignSubjectDialogOpen}
         onClose={() => setIsAssignSubjectDialogOpen(false)}
@@ -1864,6 +1872,7 @@ export default function InstructorDataView({
         </DialogActions>
       </Dialog>
 
+      {/* ===================== PRINT DIALOG ===================== */}
       <Dialog
         open={isPrintDialogShow}
         onClose={() => {

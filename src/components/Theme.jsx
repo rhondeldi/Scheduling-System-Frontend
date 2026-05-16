@@ -1,6 +1,8 @@
+// ===================== IMPORTS =====================
 import { createTheme, darken } from '@mui/material/styles';
 import { alpha } from '@mui/material';
 
+// ===================== GRADIENTS =====================
 const gradients = {
   // Accordion collapsed (lavender → pastel-purple) – unchanged
   accordionCollapsed: 'linear-gradient(90deg, #B39DDB 0%, #9575CD 100%)',
@@ -17,6 +19,7 @@ const gradients = {
   success: 'linear-gradient(90deg, #2E7D32 0%, #43A047 100%)',
 };
 
+// ===================== THEME =====================
 const theme = createTheme({
   palette: {
     mode: 'light',
@@ -87,6 +90,9 @@ const theme = createTheme({
       },
     },
     MuiButton: {
+      defaultProps: {
+        tabIndex: -1,
+      },
       styleOverrides: {
         root: {
           borderRadius: 20,
@@ -95,7 +101,6 @@ const theme = createTheme({
           fontWeight: 600,
           transition: 'all 0.3s ease',
           // Subtle base shadow on all contained buttons:
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
         },
         containedPrimary: {
           backgroundImage: gradients.primary,
@@ -272,7 +277,6 @@ const theme = createTheme({
     MuiDialogTitle: {
       styleOverrides: {
         root: {
-          backgroundColor: '#2e6417',
           color: '#FFFFFF',
           padding: '16px 24px',
           fontWeight: 600,
@@ -303,6 +307,9 @@ const theme = createTheme({
       },
     },
     MuiIconButton: {
+      defaultProps: {
+        tabIndex: -1,
+      },
       styleOverrides: {
         root: {
           color: '#FFFFFF',
@@ -334,26 +341,43 @@ const theme = createTheme({
       },
     },
     MuiTablePagination: {
-      styleOverrides: {
-        actions: {
-          '& .MuiIconButton-root': {
-            color: '#FFFFFF',
-            backgroundColor: '#2e6417',
-            transition:
-              'color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease',
-            '&:hover': {
+        styleOverrides: {
+          toolbar: {
+            minHeight: 42,
+            paddingLeft: 8,
+            paddingRight: 8,
+          },
+      
+          actions: {
+            '& .MuiIconButton-root': {
+              width: 28,
+              height: 28,
+              padding: 0,
+              borderRadius: 20,
+      
               color: '#FFFFFF',
-              backgroundColor: '#1c3d0e',
-              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
-            },
-            '&.Mui-disabled': {
-              color: alpha('#FFFFFF', 0.7),
-              backgroundColor: alpha('#2e6417', 0.35),
+              backgroundColor: '#2e6417',
+              transition:
+                'color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease',
+      
+              '&:hover': {
+                color: '#FFFFFF',
+                backgroundColor: '#1c3d0e',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
+              },
+      
+              '&.Mui-disabled': {
+                color: alpha('#FFFFFF', 0.7),
+                backgroundColor: alpha('#2e6417', 0.35),
+              },
+
+              '& .MuiSvgIcon-root': {
+                fontSize: '1rem',
+              },
             },
           },
         },
       },
-    },
   },
 });
 

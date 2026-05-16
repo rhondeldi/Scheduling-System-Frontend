@@ -1,3 +1,5 @@
+// ===================== IMPORTS =====================
+
 import { useState, useEffect, useRef } from "react";
 
 import Button from '@mui/material/Button';
@@ -14,6 +16,8 @@ import { Loading, POPUP_ERROR_COLOR } from "../components/Loading";
 
 import "../assets/SubjectColors.css";
 
+// ===================== MAIN COMPONENT =====================
+
 export default function InstructorDataView({
     selectedDepartment,
     selectedInstructor, setSelectedInstructor,
@@ -25,21 +29,15 @@ export default function InstructorDataView({
 }) {
     const [subjectColors, setSubjectColors] = useState({});
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       SELECTED TIME SLOT CELL
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- SELECTED TIME SLOT CELL ----
 
     const [selectedTimeSlots, setSelectedTimeSlots] = useState(new Set())
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                     LOAD GUARD COMPONENT STATES
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- LOAD GUARD COMPONENT STATES ----
 
     const [IsLoading, setIsLoading] = useState(false);
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                       TIME TABLE GRID STATES
-    /////////////////////////////////////////////////////////////////////////////////
+    // ---- TIME TABLE GRID STATES ----
 
     const [semesterIndex, setSemesterIndex] = useState("");
 
@@ -91,6 +89,8 @@ export default function InstructorDataView({
     const [semsResourceTimeSlots, setSemsResourceTimeSlots] = useState(new InstructorTimeSlotBitMap())
     const [allocatedSubjectAssign, setAllocatedSubjectAssign] = useState([])
 
+    // ---- HANDLERS ----
+
     const load_resources = async () => {
         try {
             if (mode == "new") {
@@ -141,6 +141,8 @@ export default function InstructorDataView({
         }
     }
 
+    // ---- EFFECTS ----
+
     useEffect(() => {
 
         // TODO: fetch basic const values (data below is just temporary);
@@ -164,6 +166,8 @@ export default function InstructorDataView({
         <Loading
             IsLoading={IsLoading}
         />
+
+        {/* ===================== HEADING ===================== */}
 
         <Box
             sx={{
@@ -246,6 +250,8 @@ export default function InstructorDataView({
 
         <Divider orientation="vertical" flexItem />
         <Typography align="center" sx={{ background: 'gold', color: 'black', marginBottom: '0.05em' }}>Instructor Availability Time Slot</Typography>
+
+        {/* ===================== TIMETABLE ===================== */}
 
         <table className="time-table">
             <thead>

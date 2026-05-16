@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -19,14 +20,15 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { InputAdornment, IconButton } from "@mui/material";
 import { isAdminAuthenticated, loginAdmin } from "../utils/adminAuth";
 import { fetchAllDepartments, fetchWho, loginDepartment } from "../js/departments";
-import { departmentMap } from "../utils/departmentsMap";
 import { clearAuthData } from "../utils/authStorage";
 
 import LOGIN_LOGO from "../assets/cvsu-silang.jpg";
 
+// ===================== MAIN COMPONENT =====================
 export default function Login() {
   const navigate = useNavigate();
 
+  // ---- STATE ----
   const [form, setForm] = useState({
     account: "",
     password: "",
@@ -39,6 +41,7 @@ export default function Login() {
     message: "",
   });
 
+  // ---- EFFECTS ----
   useEffect(() => {
     (async () => {
       const ok = await isAdminAuthenticated();
@@ -56,6 +59,7 @@ export default function Login() {
     })();
   }, [navigate]);
 
+  // ---- HANDLERS ----
   const handleChange = (e) => {
     setForm((f) => ({
       ...f,
@@ -67,104 +71,104 @@ export default function Login() {
     setSnackbar((s) => ({ ...s, open: false }));
   };
 
-   const handleSubmit = async (e) => {
-     e.preventDefault();
-     setLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-     if (!form.account || !form.password) {
-       setSnackbar({
-         open: true,
-         severity: "warning",
-         message: "All fields are required.",
-       });
-       setLoading(false);
-       return;
-     }
+    if (!form.account || !form.password) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: "All fields are required.",
+      });
+      setLoading(false);
+      return;
+    }
 
-     try {
-       const isAdminSuccess = await loginAdmin(form.account, form.password);
+    try {
+      const isAdminSuccess = await loginAdmin(form.account, form.password);
 
-       if (isAdminSuccess) {
-         clearAuthData();
-         setSnackbar({
-           open: true,
-           severity: "success",
-           message: "Login successful!",
-         });
+      if (isAdminSuccess) {
+        clearAuthData();
+        setSnackbar({
+          open: true,
+          severity: "success",
+          message: "Login successful!",
+        });
 
-         setTimeout(() => {
-           navigate("/departments");
-         }, 600);
+        setTimeout(() => {
+          navigate("/departments");
+        }, 600);
 
-         return;
-       }
+        return;
+      }
 
-       const departments = await fetchAllDepartments();
-       const matchingDepartment = departments.find((department) => {
-         return department.Code?.toLowerCase() === form.account.trim().toLowerCase();
-       });
+      const departments = await fetchAllDepartments();
+      const matchingDepartment = departments.find((department) => {
+        return department.Code?.toLowerCase() === form.account.trim().toLowerCase();
+      });
 
-       if (!matchingDepartment) {
-         setSnackbar({
-           open: true,
-           severity: "error",
-           message: "Invalid username or password.",
-         });
-         return;
-       }
+      if (!matchingDepartment) {
+        setSnackbar({
+          open: true,
+          severity: "error",
+          message: "Invalid username or password.",
+        });
+        return;
+      }
 
-       const response = await loginDepartment({
-         id: Number(matchingDepartment.DepartmentID),
-         code: matchingDepartment.Code,
-         password: form.password,
-       });
+      const response = await loginDepartment({
+        id: Number(matchingDepartment.DepartmentID),
+        code: matchingDepartment.Code,
+        password: form.password,
+      });
 
-       if (response.status === 200 || response.status === 208) {
-         const deptCode = matchingDepartment.Code;
-         const deptName = departmentMap[deptCode]?.name;
-      
-         localStorage.setItem("departmentCode", deptCode);
-         localStorage.setItem("departmentName", deptName);
+      if (response.status === 200 || response.status === 208) {
+        const deptCode = matchingDepartment.Code;
+        const deptName = matchingDepartment.Name;
 
-         setSnackbar({
-           open: true,
-           severity: "success",
-           message: "Login successful!",
-         });
+        localStorage.setItem("departmentCode", deptCode);
+        localStorage.setItem("departmentName", deptName);
 
-         setTimeout(() => {
-           navigate("/schedule");
-         }, 600);
-       } else {
-         setSnackbar({
-           open: true,
-           severity: "error",
-           message: "Invalid username or password.",
-         });
-       }
-     } catch (err) {
-       setSnackbar({
-         open: true,
-         severity: "error",
-         message: `Network error: ${err}`,
-       });
-     } finally {
-       setLoading(false);
-     }
-   };
+        setSnackbar({
+          open: true,
+          severity: "success",
+          message: "Login successful!",
+        });
 
-   const handleBlock = (e) => {
+        setTimeout(() => {
+          navigate("/schedule");
+        }, 600);
+      } else {
+        setSnackbar({
+          open: true,
+          severity: "error",
+          message: "Invalid username or password.",
+        });
+      }
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: `Network error: ${err}`,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBlock = (e) => {
     e.preventDefault();
   };
-  
-    const handleKeyDown = (e) => {
-        if (
-        (e.ctrlKey || e.metaKey) &&
-        ["a", "c", "x"].includes(e.key.toLowerCase())
-        ) {
-        e.preventDefault();
-        }
-    };
+
+  const handleKeyDown = (e) => {
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      ["a", "c", "x"].includes(e.key.toLowerCase())
+    ) {
+      e.preventDefault();
+    }
+  };
 
   return (
     <Box
@@ -176,6 +180,8 @@ export default function Login() {
       p={2}
     >
       <Paper elevation={3} sx={{ p: 4, maxWidth: 400, width: "100%" }}>
+
+        {/* ===================== LOGO ===================== */}
         <Box
           mb={2}
           display="flex"
@@ -188,14 +194,16 @@ export default function Login() {
           </Typography>
         </Box>
 
+        {/* ===================== FORM ===================== */}
         <Box
           component="form"
           autoComplete="off"
           onSubmit={handleSubmit}
           sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
+          {/* ACCOUNT FIELD */}
           <TextField
-            label="Username"
+            label="Department Code"
             name="account"
             value={form.account}
             onChange={handleChange}
@@ -207,6 +215,7 @@ export default function Login() {
             fullWidth
           />
 
+          {/* PASSWORD FIELD */}
           <TextField
             label="Password"
             name="password"
@@ -220,45 +229,34 @@ export default function Login() {
             onKeyDown={handleKeyDown}
             fullWidth
             InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      color="password"
-                      onClick={() =>
-                        setShowPassword((prev) => !prev)
-                      }
-                      edge="end"
-                    >
-                      {showPassword ? (
-                        <Visibility />
-                      ) : (
-                        <VisibilityOff />
-                      )}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    color="password"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    edge="end"
+                  >
+                    {showPassword ? <Visibility /> : <VisibilityOff />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
 
+          {/* SUBMIT */}
           <Button
             type="submit"
             variant="contained"
             size="large"
             disabled={loading}
-            endIcon={
-              loading ? (
-                <CircularProgress size={20} />
-              ) : (
-                <LoginIcon />
-              )
-            }
-            disabled={loading}
+            endIcon={loading ? <CircularProgress size={20} /> : <LoginIcon />}
           >
             {loading ? "Logging in..." : "Login"}
           </Button>
         </Box>
       </Paper>
 
+      {/* ===================== SNACKBAR ===================== */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
