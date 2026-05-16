@@ -7,7 +7,6 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
-import Divider from "@mui/material/Divider";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
@@ -39,17 +38,10 @@ import {
 } from "../components/ContextMenu";
 
 import { patchUpdateInsturctor, postCreateInsturctor } from "../js/instructors";
-import {
-  assignInstructorSubject,
-  fetchInstructorResources,
-  fetchInstructorSubjects,
-  removeInstructorSubject,
-} from "../js/instructors_v2";
-import { fetchSubjects } from "../js/subjects";
+import { fetchInstructorResources } from "../js/instructors_v2";
 
 import {
   Loading,
-  Popup,
   POPUP_ERROR_COLOR,
   POPUP_SUCCESS_COLOR,
   POPUP_WARNING_COLOR,
@@ -260,13 +252,6 @@ export default function InstructorDataView({
     setInstructorBackup(structuredClone(selectedInstructor));
 
     load_resources();
-
-    if (mode === "new") {
-      setAssignedSubjects([]);
-    } else {
-      loadInstructorSubjects();
-      loadAllSubjects();
-    }
   }, [selectedInstructor]);
 
   // ---- CONTEXT MENU HANDLERS ----
@@ -584,128 +569,6 @@ export default function InstructorDataView({
   const [positionApproved, setPositionApproved] = useState("");
 
   const [isPrintDialogShow, setIsPrintDialogShow] = useState(false);
-
-  // ---- INSTRUCTOR SUBJECTS MANAGEMENT STATES ----
-
-  const [assignedSubjects, setAssignedSubjects] = useState([]);
-  const [allSubjects, setAllSubjects] = useState([]);
-  const [subjectSearch, setSubjectSearch] = useState("");
-  const [isAssignSubjectDialogOpen, setIsAssignSubjectDialogOpen] =
-    useState(false);
-  const [isSubjectOperationLoading, setIsSubjectOperationLoading] =
-    useState(false);
-
-  const getSubjectID = (subject) => {
-    const id = Number(subject?.SubjectID ?? subject?.ID ?? 0);
-    return Number.isInteger(id) ? id : 0;
-  };
-
-  const getSubjectCode = (subject) =>
-    subject?.Code || subject?.SubjectCode || "";
-  const getSubjectName = (subject) =>
-    subject?.Name || subject?.SubjectName || "";
-
-  const loadInstructorSubjects = async () => {
-    if (!Number.isInteger(selectedInstructor?.InstructorID) || mode === "new") {
-      setAssignedSubjects([]);
-      return;
-    }
-
-    try {
-      const subjects = await fetchInstructorSubjects(
-        selectedInstructor.InstructorID,
-      );
-      setAssignedSubjects(Array.isArray(subjects) ? subjects : []);
-    } catch (err) {
-      setPopupOptions({
-        Heading: "Failed to load assigned subjects",
-        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-        Message: `${err}`,
-      });
-    }
-  };
-
-  const loadAllSubjects = async () => {
-    try {
-      const subjects_result = await fetchSubjects(1000, 0);
-      setAllSubjects(
-        Array.isArray(subjects_result?.Subjects)
-          ? subjects_result.Subjects
-          : [],
-      );
-    } catch (err) {
-      setPopupOptions({
-        Heading: "Failed to load subject options",
-        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-        Message: `${err}`,
-      });
-    }
-  };
-
-  const handleAssignSubject = async (subject_id) => {
-    try {
-      setIsSubjectOperationLoading(true);
-      await assignInstructorSubject(
-        selectedInstructor.InstructorID,
-        subject_id,
-      );
-      await loadInstructorSubjects();
-
-      setPopupOptions({
-        Heading: "Subject assigned",
-        HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
-        Message: "instructor specialization has been updated",
-      });
-    } catch (err) {
-      setPopupOptions({
-        Heading: "Failed to assign subject",
-        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-        Message: `${err}`,
-      });
-    } finally {
-      setIsSubjectOperationLoading(false);
-    }
-  };
-
-  const handleRemoveSubject = async (subject_id) => {
-    try {
-      setIsSubjectOperationLoading(true);
-      await removeInstructorSubject(
-        selectedInstructor.InstructorID,
-        subject_id,
-      );
-      await loadInstructorSubjects();
-
-      setPopupOptions({
-        Heading: "Subject removed",
-        HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
-        Message: "instructor specialization has been updated",
-      });
-    } catch (err) {
-      setPopupOptions({
-        Heading: "Failed to remove subject",
-        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-        Message: `${err}`,
-      });
-    } finally {
-      setIsSubjectOperationLoading(false);
-    }
-  };
-
-  const assignedSubjectIDSet = new Set(
-    assignedSubjects.map((subject) => getSubjectID(subject)),
-  );
-
-  const filteredSubjectOptions = allSubjects.filter((subject) => {
-    const subject_id = getSubjectID(subject);
-    if (!subject_id || assignedSubjectIDSet.has(subject_id)) {
-      return false;
-    }
-
-    const label =
-      `${getSubjectCode(subject)} ${getSubjectName(subject)}`.toLowerCase();
-    return !subjectSearch || label.includes(subjectSearch.toLowerCase());
-  });
 
   const handleOpenSignatoriesDialog = () => {
     const academic_year = localStorage.getItem("academic-year");
@@ -1121,78 +984,7 @@ export default function InstructorDataView({
         </Box>
       </Box>
 
-      {/* ===================== SUBJECTS ===================== */}
-      {mode !== "new" ? (
-        <Box
-          sx={{
-            p: 1,
-            borderBlockEnd: "thin solid grey",
-            display: "flex",
-            flexDirection: "column",
-            gap: 1,
-          }}
-        >
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Typography variant="subtitle2">SPECIALIZATION SUBJECTS</Typography>
-            {mode === "view" || mode === "edit" ? (
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => setIsAssignSubjectDialogOpen(true)}
-                disabled={isSubjectOperationLoading}
-              >
-                Assign Subject
-              </Button>
-            ) : null}
-          </Box>
-
-          {assignedSubjects.length === 0 ? (
-            <Typography variant="body2" fontStyle="italic">
-              No specialization subjects assigned.
-            </Typography>
-          ) : (
-            <Box display="flex" flexDirection="column" gap={0.5}>
-              {assignedSubjects.map((subject) => {
-                const subject_id = getSubjectID(subject);
-                return (
-                  <Box
-                    key={`assigned-subject-${subject_id}`}
-                    display="flex"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    sx={{
-                      border: "1px solid #ddd",
-                      borderRadius: 1,
-                      px: 1,
-                      py: 0.6,
-                    }}
-                  >
-                    <Typography variant="body2">
-                      {getSubjectCode(subject)} - {getSubjectName(subject)}
-                    </Typography>
-                    {mode === "view" || mode === "edit" ? (
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => handleRemoveSubject(subject_id)}
-                        disabled={isSubjectOperationLoading}
-                      >
-                        Remove
-                      </Button>
-                    ) : null}
-                  </Box>
-                );
-              })}
-            </Box>
-          )}
-        </Box>
-      ) : null}
-
-      <Divider orientation="vertical" flexItem />
+      {/* ===================== INSTRUCTOR AVAILABILITY TIME SLOTS ===================== */}
       {mode === "edit" || mode === "new" ? (
         <Typography
           align="center"
@@ -1642,79 +1434,6 @@ export default function InstructorDataView({
           </Button>
         </Box>
       ) : null}
-
-      {/* ===================== ASSIGN SUBJECT DIALOG ===================== */}
-      <Dialog
-        open={isAssignSubjectDialogOpen}
-        onClose={() => setIsAssignSubjectDialogOpen(false)}
-        fullWidth
-        maxWidth="md"
-      >
-        <DialogTitle>Assign Specialization Subject</DialogTitle>
-        <DialogContent>
-          <TextField
-            margin="dense"
-            fullWidth
-            label="Search subject code or name"
-            value={subjectSearch}
-            onChange={(e) => setSubjectSearch(e.target.value)}
-          />
-
-          <Box
-            mt={1}
-            maxHeight={420}
-            overflow="auto"
-            display="flex"
-            flexDirection="column"
-            gap={0.5}
-          >
-            {filteredSubjectOptions.length === 0 ? (
-              <Typography variant="body2" fontStyle="italic">
-                No available subjects found.
-              </Typography>
-            ) : (
-              filteredSubjectOptions.map((subject) => {
-                const subject_id = getSubjectID(subject);
-                return (
-                  <Box
-                    key={`assignable-subject-${subject_id}`}
-                    display="flex"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    sx={{
-                      border: "1px solid #ddd",
-                      borderRadius: 1,
-                      px: 1,
-                      py: 0.6,
-                    }}
-                  >
-                    <Typography variant="body2">
-                      {getSubjectCode(subject)} - {getSubjectName(subject)}
-                    </Typography>
-                    <Button
-                      size="small"
-                      onClick={() => handleAssignSubject(subject_id)}
-                      disabled={isSubjectOperationLoading}
-                    >
-                      Add
-                    </Button>
-                  </Box>
-                );
-              })
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setIsAssignSubjectDialogOpen(false);
-              setSubjectSearch("");
-            }}
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* ===================== PRINT DIALOG ===================== */}
       <Dialog
