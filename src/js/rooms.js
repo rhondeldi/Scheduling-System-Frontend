@@ -96,6 +96,13 @@ export async function patchUpdateRoom(room) {
   }
 }
 
+export class RoomAllocationUnsupportedError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "RoomAllocationUnsupportedError";
+  }
+}
+
 export async function fetchRoomAllocation(room_id) {
   let api_request = `/${API_VERSION}/room_allocation?room_id=${room_id}`
 
@@ -111,6 +118,10 @@ export async function fetchRoomAllocation(room_id) {
     credentials: "include",
     method: 'GET'
   });
+
+  if (response.status === 409) {
+    throw new RoomAllocationUnsupportedError(await response.text());
+  }
 
   if (!response.ok) {
     throw Error(`${response.status} :${await response.text()}`);

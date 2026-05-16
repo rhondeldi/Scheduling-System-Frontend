@@ -1130,6 +1130,31 @@ export default function InstructorDataView({
                 </Select>
               </FormControl>
             </Box>
+          ) : mode === "new" && departments?.length > 1 ? (
+            <Box maxWidth={260}>
+              <FormControl size="small" fullWidth>
+                <InputLabel id="label-id-new-department">
+                  Add Instructor to Department
+                </InputLabel>
+                <Select
+                  id="id-new-department"
+                  labelId="label-id-new-department"
+                  label="Add Instructor to Department"
+                  value={selectedInstructor?.DepartmentID ?? ""}
+                  onChange={(e) => {
+                    updateInstructorField("DepartmentID", Number(e.target.value));
+                  }}
+                >
+                  {departments.map((department, index) => (
+                    <MenuItem key={index} value={department.DepartmentID}>
+                      {Number(department.DepartmentID) === 0
+                        ? `${department.Code} - ${department.Name} (Shared with all)`
+                        : `${department.Code} - ${department.Name}`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
           ) : (
             <Typography align="right" variant="body1" fontStyle={"italic"}>
               {departments.find(

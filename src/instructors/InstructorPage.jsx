@@ -51,6 +51,7 @@ import {
   DialogActions,
   TextField,
   Typography,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -66,6 +67,7 @@ function InstructorPage() {
 
   const [isOperationLoading, setIsOperationLoading] = useState(false);
   const [instructors, setInstructors] = useState([]); // load array of instructs when a department is selected
+  const [genInstructors, setGenInstructors] = useState([]);
   const [selectedInstructor, setSelectedInstructor] = useState(null);
 
   /////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +104,16 @@ function InstructorPage() {
           throw new Error("Logged-in department data was not found");
         }
 
-        setDepartments([loggedInDepartment]);
+        const genDepartment = all_departments.find(
+          (department) => Number(department.DepartmentID) === 0,
+        );
+
+        const dept_list =
+          Number(loggedInDepartment.DepartmentID) === 0 || !genDepartment
+            ? [loggedInDepartment]
+            : [loggedInDepartment, genDepartment];
+
+        setDepartments(dept_list);
         setSelectedDepartment(loggedInDepartment);
         setDepartmentID(loggedInDepartment.DepartmentID);
         setIsLoading(false);
@@ -170,6 +181,27 @@ function InstructorPage() {
 
       setInstructors(fetched_instructors.Instructors);
       setTotalCount(fetched_instructors.TotalInstructors);
+
+      if (Number(department_id) !== 0) {
+        try {
+          const gen_fetched = await fetchInstructors(0, 999, 0, "", "", "");
+          const trimmed_term = (search_term || "").trim().toLowerCase();
+          const gen_list = (gen_fetched.Instructors || []).filter((i) => {
+            if (!trimmed_term) return true;
+            return (
+              `${i.FirstName} ${i.MiddleInitial} ${i.LastName}`
+                .toLowerCase()
+                .includes(trimmed_term)
+            );
+          });
+          setGenInstructors(gen_list);
+        } catch (gen_err) {
+          console.warn("Failed to fetch GEN shared instructors:", gen_err);
+          setGenInstructors([]);
+        }
+      } else {
+        setGenInstructors([]);
+      }
     } catch (err) {
       setPopupOptions({
         Heading: "Failed to fetch instructors",
@@ -378,46 +410,90 @@ function InstructorPage() {
                           Please select a department first
                         </TableCell>
                       </TableRow>
-                    ) : instructors.length === 0 ? (
+                    ) : instructors.length === 0 && genInstructors.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
                           No instructors found
                         </TableCell>
                       </TableRow>
                     ) : (
-                    instructors.map((instructor) => (
-                      <TableRow key={instructor.InstructorID}>
-                        <TableCell>{instructor.LastName}</TableCell>
-                        <TableCell>{instructor.FirstName}</TableCell>
-                        <TableCell>{instructor.MiddleInitial}</TableCell>
-                        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
-                            <IconButton
-                              title="View"
-                              color="view"
-                              disabled={loading}
-                              onClick={() => {
-                                setSelectedInstructor(instructor);
-                                setMode("view");
-                              }}
-                            >
-                              <VisibilityIcon />
-                            </IconButton>
-                            <IconButton
-                              title="Delete"
-                              color="delete"
-                              disabled={loading}
-                              onClick={() => {
-                                setInstructorToDelete(instructor);
-                                setIsDialogDeleteShow(true);
-                              }}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    <>
+                      {genInstructors.map((instructor) => (
+                        <TableRow key={`gen-${instructor.InstructorID}`} sx={{ backgroundColor: "rgba(46, 100, 23, 0.04)" }}>
+                          <TableCell>
+                            {instructor.LastName}
+                            <Chip
+                              size="small"
+                              label="GEN"
+                              color="success"
+                              variant="outlined"
+                              sx={{ ml: 1, height: 18, fontSize: "0.65rem" }}
+                            />
+                          </TableCell>
+                          <TableCell>{instructor.FirstName}</TableCell>
+                          <TableCell>{instructor.MiddleInitial}</TableCell>
+                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
+                              <IconButton
+                                title="View (shared from GEN)"
+                                color="view"
+                                disabled={loading}
+                                onClick={() => {
+                                  setSelectedInstructor(instructor);
+                                  setMode("view");
+                                }}
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+                              <IconButton
+                                title="Delete (shared from GEN)"
+                                color="delete"
+                                disabled={loading}
+                                onClick={() => {
+                                  setInstructorToDelete(instructor);
+                                  setIsDialogDeleteShow(true);
+                                }}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {instructors.map((instructor) => (
+                        <TableRow key={instructor.InstructorID}>
+                          <TableCell>{instructor.LastName}</TableCell>
+                          <TableCell>{instructor.FirstName}</TableCell>
+                          <TableCell>{instructor.MiddleInitial}</TableCell>
+                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
+                              <IconButton
+                                title="View"
+                                color="view"
+                                disabled={loading}
+                                onClick={() => {
+                                  setSelectedInstructor(instructor);
+                                  setMode("view");
+                                }}
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+                              <IconButton
+                                title="Delete"
+                                color="delete"
+                                disabled={loading}
+                                onClick={() => {
+                                  setInstructorToDelete(instructor);
+                                  setIsDialogDeleteShow(true);
+                                }}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </>
                     )
                   }
                 </TableBody>
