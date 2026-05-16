@@ -224,8 +224,15 @@ export default function Departments() {
 
           {/* TABLE */}
           <Box>
-            <TableContainer component={Paper} sx={{ minHeight: 120 }}>
-              <Table sx={{ tableLayout: "fixed" }}>
+          <TableContainer component={Paper}>
+            <Box
+            sx={{
+                flex: 1,
+                overflowY: "auto",
+                minHeight: 0,
+            }}
+            >
+            <Table stickyHeader size="small" sx={{ tableLayout: "fixed" }}>
                 <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                   <TableRow>
                     <TableCell sx={{ width: "22%" }}>DEPARTMENT CODE</TableCell>
@@ -307,6 +314,7 @@ export default function Departments() {
                   }
                 </TableBody>
               </Table>
+              </Box>
 
               <TablePagination
                 sx={{

@@ -293,8 +293,15 @@ function Rooms() {
 
           {/* ===================== TABLE ===================== */}
           <Box>
-            <TableContainer sx={{ minHeight: 120 }}>
-              <Table size="small" sx={{ tableLayout: "fixed" }}>
+          <TableContainer component={Paper}>
+            <Box
+            sx={{
+                flex: 1,
+                overflowY: "auto",
+                minHeight: 0,
+            }}
+            >
+            <Table stickyHeader size="small" sx={{ tableLayout: "fixed" }}>
                 <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                   <TableRow sx={{ height: 1 }}>
                     <TableCell sx={{ width: "25%" }}>Room Name</TableCell>
@@ -406,6 +413,7 @@ function Rooms() {
                   }
                 </TableBody>
               </Table>
+              </Box>
 
               <TablePagination
                 sx={{

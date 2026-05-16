@@ -298,19 +298,17 @@ function InstructorPage() {
             justifyContent={"space-between"}
             alignItems={"center"}
           >
-            {Number.isInteger(Number.parseInt(departmentID, 10)) ? (
-              <TextField
-                disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
-                sx={{ minWidth: 300 }}
-                size="small"
-                label="Search instructors"
-                value={searchTerm}
-                onChange={(e) => {
-                  setPage(0);
-                  setSearchTerm(e.target.value);
-                }}
-              />
-            ) : null}
+            <TextField
+              disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
+              sx={{ minWidth: 300 }}
+              size="small"
+              label="Search instructors"
+              value={searchTerm}
+              onChange={(e) => {
+                setPage(0);
+                setSearchTerm(e.target.value);
+              }}
+            />
 
             <Button
               disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
@@ -341,8 +339,15 @@ function InstructorPage() {
 
         <Box>
           {mode === "" ? (
-            <TableContainer component={Paper} sx={{ minHeight: 120 }}>
-              <Table size="small" sx={{ tableLayout: "fixed" }}>
+            <TableContainer component={Paper}>
+            <Box
+              sx={{
+                flex: 1,
+                overflowY: "auto",
+                minHeight: 0,
+              }}
+            >
+              <Table stickyHeader size="small" sx={{ tableLayout: "fixed" }}>
                 <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                   <TableRow sx={{ height: 1 }}>
                     <TableCell sx={{ width: "32%" }}>LAST NAME</TableCell>
@@ -399,17 +404,6 @@ function InstructorPage() {
                               <VisibilityIcon />
                             </IconButton>
                             <IconButton
-                              title="Edit"
-                              color="edit"
-                              disabled={loading}
-                              onClick={() => {
-                                setSelectedInstructor(instructor);
-                                setMode("edit");
-                              }}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton
                               title="Delete"
                               color="delete"
                               disabled={loading}
@@ -428,41 +422,68 @@ function InstructorPage() {
                   }
                 </TableBody>
               </Table>
-
-              <TablePagination
+              </Box>
+              <Box
                 sx={{
-                  borderTop: "1px solid",
-                  borderColor: "divider",
-                  bgcolor: "#f8f9fa",
-                  "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
-                  "& .MuiTablePagination-select": { fontWeight: 500 },
-                  "& .MuiIconButton-root": {
-                    border: "1px solid",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    borderTop: "1px solid",
                     borderColor: "divider",
-                    borderRadius: "4px",
-                    mx: 0.25,
-                    "&:hover:not(.Mui-disabled)": {
-                      bgcolor: "primary.main",
-                      color: "white",
-                      borderColor: "primary.main",
-                    },
-                  },
-                  "& .MuiInputBase-root": {
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: "4px",
+                    bgcolor: "#f8f9fa",
                     px: 1,
-                    "&:hover": { borderColor: "text.secondary" },
-                  },
+                    py: 0.5,
                 }}
-                component="div"
-                count={totalCount}
-                rowsPerPage={pageSize}
-                page={page}
-                rowsPerPageOptions={[5, 10, 25]}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-              />
+                >
+                {/* LEFT SIDE */}
+                <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    endIcon={<OpenInNewIcon />}
+                    onClick={() => window.open("/view_instructors/", "_blank")}
+                >
+                    Cross-Department Schedule View
+                </Button>
+
+                {/* RIGHT SIDE */}
+                <TablePagination
+                    component="div"
+                    count={totalCount}
+                    rowsPerPage={pageSize}
+                    page={page}
+                    rowsPerPageOptions={[5, 10, 25]}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    sx={{
+                    "& .MuiTablePagination-toolbar": {
+                        minHeight: "40px",
+                    },
+                    "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
+                    "& .MuiTablePagination-select": { fontWeight: 500 },
+
+                    "& .MuiIconButton-root": {
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: "4px",
+                        mx: 0.25,
+                        "&:hover:not(.Mui-disabled)": {
+                        bgcolor: "primary.main",
+                        color: "white",
+                        borderColor: "primary.main",
+                        },
+                    },
+
+                    "& .MuiInputBase-root": {
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: "4px",
+                        px: 1,
+                        "&:hover": { borderColor: "text.secondary" },
+                    },
+                    }}
+                />
+                </Box>
             </TableContainer>
           ) : null}
         </Box>
@@ -535,23 +556,6 @@ function InstructorPage() {
             setPopupOptions={setPopupOptions}
           />
         )}
-
-        <Box
-          display={"flex"}
-          justifyContent={"center"}
-          alignItems={"center"}
-          padding={5}
-        >
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            endIcon={<OpenInNewIcon />}
-            onClick={() => window.open("/view_instructors/", "_blank")}
-          >
-            Public Instructors Page
-          </Button>
-        </Box>
       </MainHeader>
     </>
   );

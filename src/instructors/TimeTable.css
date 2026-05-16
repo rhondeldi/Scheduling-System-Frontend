@@ -35,7 +35,7 @@
 
 .time-slot-cover {
     position: absolute;
-
+    pointer-events: none;
     width: 100%;
     height: 100%;
 

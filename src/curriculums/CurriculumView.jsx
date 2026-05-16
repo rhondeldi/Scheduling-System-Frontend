@@ -36,7 +36,6 @@ import {
   Paper,
   FormGroup,
   DialogContentText,
-  ListItem,
   Chip,
   Tooltip,
   FormControl,
@@ -44,6 +43,7 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
+
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -54,29 +54,29 @@ import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import CancelIcon from "@mui/icons-material/Cancel";
 import ClearIcon from "@mui/icons-material/Clear";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+
 import {
   loadCurriculum,
   postCreateCurriculum,
   patchUpdateCurriculum,
 } from "../js/curriculums";
+
 import { fetchInstructorBasic } from "../js/instructors_v2";
+
 import {
   Loading,
-  Popup,
   POPUP_ERROR_COLOR,
   POPUP_WARNING_COLOR,
 } from "../components/Loading";
 
-import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import SubjectSelection from "./SubjectSelection";
 import InstructorSelection from "./InstructorSelection";
 
 // ===================== HELPERS =====================
 const truncateText = (text, maxLength) => {
-  if (text.length > maxLength) {
-    return text.substring(0, maxLength) + "...";
-  }
-
+  if (!text) return "";
+  if (text.length > maxLength) return text.substring(0, maxLength) + "...";
   return text;
 };
 
@@ -91,6 +91,7 @@ const YEAR_LEVEL_NAMES = [
   "7th Year",
   "8th Year",
 ];
+
 const SEMESTER_NAMES = ["1st Semester", "2nd Semester", "Mid-year"];
 
 // ===================== MAIN COMPONENT =====================
@@ -100,111 +101,111 @@ function CurriculumView({
   curriculum_id,
   department,
   onClose,
-  popupOptions,
   setPopupOptions,
   reloadList,
   allDepartment,
 }) {
-  // ---- STATE ----
+  // ===================== STATE =====================
   const [isLoading, setIsLoading] = useState(false);
 
   const [curriculum, setCurriculum] = useState(null);
   const [editedCurriculum, setEditedCurriculum] = useState(null);
 
-  // ---- EFFECTS ----
+  const [yearTabIndex, setYearTabIndex] = useState(0);
+
+  const [isDialogFormOpen, setIsDialogFormOpen] = useState(false);
+  const [subject, setSubject] = useState({ LecHours: 0, LabHours: 0 });
+
+  const [isAddingSubjects, setIsAddingSubjects] = useState(false);
+  const [yearSemSubjectTarget, setYearSemSubjectTarget] = useState(null);
+
+  const [chipInstructors, setChipInstructors] = useState([]);
+
+  // ===================== LOAD DATA =====================
   useEffect(() => {
-    const useEffectAsyncs = async () => {
+    const run = async () => {
       try {
         if (mode === "new") {
-          const new_curriculum = {
+          const newCurriculum = {
             CurriculumCode: "",
             CurriculumID: 0,
             CurriculumName: "",
             DepartmentID: department.DepartmentID,
             YearLevels: [],
           };
-          setCurriculum(new_curriculum);
-          setEditedCurriculum(structuredClone(new_curriculum));
+
+          setCurriculum(newCurriculum);
+          setEditedCurriculum(structuredClone(newCurriculum));
           return;
         }
 
         setIsLoading(true);
-        const loaded_curriculum = await loadCurriculum(curriculum_id);
 
-        if (!loaded_curriculum) {
-          throw "Curriculum not found";
-        }
+        const data = await loadCurriculum(curriculum_id);
+        if (!data) throw "Curriculum not found";
 
-        setCurriculum(loaded_curriculum);
-        setEditedCurriculum(structuredClone(loaded_curriculum));
-
-        setIsLoading(false);
+        setCurriculum(data);
+        setEditedCurriculum(structuredClone(data));
       } catch (err) {
         setPopupOptions({
-          Heading: "Failed to fetch specific curriculum data",
-          HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
+          Heading: "Error loading curriculum",
+          HeadingStyle: {
+            background: POPUP_ERROR_COLOR,
+            color: "white",
+          },
           Message: `${err}`,
         });
+      } finally {
         setIsLoading(false);
-        setSemesterIndex("");
       }
     };
 
-    useEffectAsyncs();
+    run();
   }, []);
 
-  const [isDialogFormOpen, setIsDialogFormOpen] = useState(false);
-  const [subject, setSubject] = useState({
-    LecHours: 0,
-    LabHours: 0,
-  });
-
-  const [isAddingSubjects, setIsAddingSubjects] = useState(false);
-
-  const [yearSemSubjectTarget, setYearSemSubjectTarget] = useState(null);
-
-  const [chipInstructors, setChipInstructors] = useState([]);
-
+  // ===================== UI =====================
   return (
     <>
       <Loading IsLoading={isLoading} />
 
-      <Box>
-        {/* ===================== HEADER ===================== */}
+      <Box display="flex" flexDirection="column" maxHeight="80vh" overflow="hidden">
+        {/* ================= HEADER ================= */}
         <Box
-          display={"flex"}
-          justifyContent={"space-between"}
-          borderBottom={"gray solid thin"}
-          padding={"0.5em"}
+        sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            py: 1.5,
+            px: 1,
+            gap: 2,
+            flexWrap: "wrap",
+            alignItems: "center",
+        }}
         >
           {mode === "view" ? (
-            <Typography variant="h6">{curriculum?.CurriculumCode}</Typography>
+            <Typography variant="h6">
+              {curriculum?.CurriculumCode}
+            </Typography>
           ) : (
             <TextField
-              autoFocus
-              required
-              id="id-curriculum-code"
-              name="id-curriculum-code"
-              label="Curriculum Code"
-              type="text"
-              variant="outlined"
-              size="small"
+            size="small"
+            label="Curriculum Code"
+            sx={{
+                minWidth: 220,
+            }}
               defaultValue={editedCurriculum?.CurriculumCode || ""}
               onChange={(e) => {
-                let edited_curriculum = editedCurriculum;
-                edited_curriculum.CurriculumCode = e.target.value;
-                setEditedCurriculum(edited_curriculum);
+                const c = structuredClone(editedCurriculum);
+                c.CurriculumCode = e.target.value;
+                setEditedCurriculum(c);
               }}
             />
           )}
-          <Box display={"flex"} gap={"0.5em"}>
-            {mode === "view" ? (
+
+          <Box display="flex" gap={1}>
+            {mode === "view" && (
               <>
                 <Button
-                  endIcon={<EditIcon />}
-                  size="small"
-                  color="primary"
-                  variant="contained"
+                  startIcon={<EditIcon />}
                   onClick={() => {
                     setMode("edit");
                     setEditedCurriculum(structuredClone(curriculum));
@@ -212,717 +213,468 @@ function CurriculumView({
                 >
                   Edit
                 </Button>
-                <Button
-                  endIcon={<ClearIcon />}
-                  size="small"
-                  color="error"
-                  variant="outlined"
-                  onClick={() => onClose()}
-                >
+                <Button color="error" onClick={onClose}>
                   Close
                 </Button>
               </>
-            ) : null}
+            )}
 
-            {mode === "edit" ? (
+            {mode === "edit" && (
               <>
                 <Button
-                  endIcon={<CheckIcon />}
-                  size="small"
-                  color="primary"
-                  variant="contained"
+                  startIcon={<CheckIcon />}
                   onClick={async () => {
-                    const updated_curriculum =
-                      structuredClone(editedCurriculum);
-
-                    try {
-                      await patchUpdateCurriculum(updated_curriculum);
-                    } catch (err) {
-                      setPopupOptions({
-                        Heading: "Failed to edit curriculum",
-                        HeadingStyle: {
-                          background: POPUP_ERROR_COLOR,
-                          color: "white",
-                        },
-                        Message: `${err}`,
-                      });
-                    }
-
-                    setEditedCurriculum(updated_curriculum);
-                    setCurriculum(updated_curriculum);
+                    const updated = structuredClone(editedCurriculum);
+                    await patchUpdateCurriculum(updated);
+                    setCurriculum(updated);
                     reloadList();
                     setMode("view");
                   }}
                 >
-                  Apply Changes
+                  Apply
                 </Button>
+
                 <Button
-                  endIcon={<CancelIcon />}
-                  size="small"
                   color="error"
-                  variant="outlined"
                   onClick={() => {
                     setMode("view");
-                    setCurriculum(curriculum);
                     setEditedCurriculum(structuredClone(curriculum));
                   }}
                 >
-                  Cancel Changes
+                  Cancel
                 </Button>
               </>
-            ) : null}
+            )}
 
-            {mode === "new" ? (
+            {mode === "new" && (
               <>
                 <Button
-                  endIcon={<SaveIcon />}
-                  size="small"
-                  color="primary"
-                  variant="contained"
+                  startIcon={<SaveIcon />}
                   onClick={async () => {
-                    const new_curriculum = structuredClone(editedCurriculum);
-
-                    try {
-                      await postCreateCurriculum(new_curriculum);
-
-                      setEditedCurriculum(new_curriculum);
-                      setCurriculum(new_curriculum);
-                      reloadList();
-                      setMode("view");
-                    } catch (err) {
-                      setPopupOptions({
-                        Heading: "Failed to add curriculum",
-                        HeadingStyle: {
-                          background: POPUP_ERROR_COLOR,
-                          color: "white",
-                        },
-                        Message: `${err}`,
-                      });
-
-                      onClose();
-                    }
+                    const newC = structuredClone(editedCurriculum);
+                    await postCreateCurriculum(newC);
+                    setCurriculum(newC);
+                    reloadList();
+                    setMode("view");
                   }}
                 >
                   Save
                 </Button>
-                <Button
-                  endIcon={<ClearAllIcon />}
-                  size="small"
-                  color="error"
-                  variant="outlined"
-                  onClick={() => onClose()}
-                >
+
+                <Button color="error" onClick={onClose}>
                   Discard
                 </Button>
               </>
-            ) : null}
+            )}
           </Box>
         </Box>
 
-        {/* ===================== CURRICULUM INFO ===================== */}
-        <Box
-          display={"flex"}
-          alignItems={"baseline"}
-          justifyContent={"space-between"}
-          borderBottom={"grey solid thick"}
-          marginBottom={"0.2em"}
-          padding={"0.5em 0.5em 0.2em 0.5em"}
-        >
+        {/* ================= NAME + DEPARTMENT ================= */}
+        <Box p={1} borderBottom="2px solid gray">
           {mode === "view" ? (
-            <Typography variant="h6" width={"100%"}>
+            <Typography variant="h6">
               {curriculum?.CurriculumName}
             </Typography>
           ) : (
             <TextField
-              autoFocus
-              required
-              id="id-curriculum-name"
-              name="id-curriculum-name"
+              fullWidth
               label="Curriculum Name"
-              type="text"
-              variant="outlined"
-              size="small"
-              sx={{ width: "100%" }}
               defaultValue={editedCurriculum?.CurriculumName || ""}
               onChange={(e) => {
-                let edited_curriculum = editedCurriculum;
-                edited_curriculum.CurriculumName = e.target.value;
-                setEditedCurriculum(edited_curriculum);
+                const c = structuredClone(editedCurriculum);
+                c.CurriculumName = e.target.value;
+                setEditedCurriculum(c);
               }}
             />
           )}
-
-          {mode === "edit" ? (
-            <FormControl sx={{ width: 130 }} size="small" fullWidth>
-              <InputLabel id="label-id-edit-department">Department</InputLabel>
-              <Select
-                id="id-edit-department"
-                labelId="label-id-edit-department"
-                label="Department"
-                defaultValue={department?.DepartmentID}
-                onChange={(e) => {
-                  let new_edit_curriculum = editedCurriculum;
-                  new_edit_curriculum.DepartmentID = Number(e.target.value);
-                  setEditedCurriculum(new_edit_curriculum);
-                }}
-              >
-                {allDepartment
-                  ? allDepartment.map((department, index) => {
-                      if (department?.DepartmentID > 0) {
-                        return (
-                          <MenuItem
-                            key={index}
-                            value={department.DepartmentID}
-                          >{`${department.Code} - ${department.Name}`}</MenuItem>
-                        );
-                      }
-
-                      return null;
-                    })
-                  : null}
-              </Select>
-            </FormControl>
-          ) : (
-            <Typography
-              align="right"
-              width={"100%"}
-              variant="body1"
-              fontStyle={"italic"}
-            >
-              {allDepartment.find(
-                (dept) => dept.DepartmentID == curriculum?.DepartmentID,
-              )?.Name || "Department not found"}
-            </Typography>
-          )}
         </Box>
 
-        {/* ===================== YEAR LEVELS ===================== */}
-        <Box>
-          {editedCurriculum?.YearLevels?.length !== 0 ? (
-            editedCurriculum?.YearLevels.map((year_level, index_year_level) => (
-              <Accordion key={`accordion-id-curriculum-${index_year_level}`}>
-                <AccordionSummary
-                  expandIcon={<ExpandMoreIcon />}
-                  aria-controls={`yrlvl-panel${index_year_level + 1}-content`}
-                  id={`${editedCurriculum?.CurriculumCode}-yrlvl-panel${index_year_level + 1}-header`}
-                  sx={{
-                    minHeight: "0px",
-                    height: "2.5em",
-                    alignItems: "center",
-                    padding: "0px 8px",
-                    "&.Mui-expanded": {
-                      minHeight: "0px",
-                      color: "whitesmoke",
-                      backgroundColor: "black",
-                    },
-                    "& .MuiAccordionSummary-content": {
-                      margin: "0px",
-                      alignItems: "center",
-                    },
-                    "& .MuiAccordionSummary-content.Mui-expanded": {
-                      margin: "0px",
-                    },
-                    ":hover": { backgroundColor: "orange" },
-                  }}
+        {/* ================= YEAR LEVELS (TABS) ================= */}
+        <Box display="flex" flexDirection="column" flex={1} height="100vh" overflow="hidden">
+          {editedCurriculum?.YearLevels?.length ? (
+            <>
+              {/* Tabs Header */}
+              <Box
+                display="flex"
+                alignItems="center"
+                borderBottom="1px solid #ddd" 
+              >
+                <Tabs
+                  value={yearTabIndex}
+                  onChange={(e, v) => setYearTabIndex(v)}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  sx={{ flex: 1 }}
                 >
-                  <Box
-                    margin={"0px"}
-                    display={"flex"}
-                    alignItems={"center"}
-                    justifyContent={"space-between"}
-                    minWidth={"11em"}
-                    gap={1}
-                  >
-                    <Typography fontWeight={700} variant="h5" component="span">
-                      Year Level - {year_level.Name}
-                    </Typography>
-                    {mode === "view" ? (
-                      <Typography variant="h6" component="span">
-                        {year_level?.IsActive ? " (Active)" : " (Inactive)"}
-                      </Typography>
-                    ) : null}
-                  </Box>
-                </AccordionSummary>
-                <AccordionDetails
-                  sx={{ minHeight: "0px", padding: "0.2em 1em 0.5em 1em" }}
-                >
-                  <Box
-                    marginTop={1}
-                    padding={1}
-                    borderRadius={1}
-                    sx={{
-                      boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.52)",
+                  {editedCurriculum.YearLevels.map((y, i) => (
+                    <Tab
+                      key={i}
+                      label={`${y.Name}${y.IsActive ? " (Active)" : ""}`}
+                    />
+                  ))}
+                </Tabs>
+
+                {(mode === "edit" || mode === "new") && (
+                  <Button
+                    onClick={() => {
+                      const c = structuredClone(editedCurriculum);
+
+                      if (c.YearLevels.length >= YEAR_LEVEL_NAMES.length) {
+                        setPopupOptions({
+                          Heading: "Limit reached",
+                          HeadingStyle: {
+                            background: POPUP_WARNING_COLOR,
+                            color: "black",
+                          },
+                          Message: "Max year levels reached",
+                        });
+                        return;
+                      }
+
+                      c.YearLevels.push({
+                        Name: YEAR_LEVEL_NAMES[c.YearLevels.length],
+                        IsActive: true,
+                        Semesters: [],
+                      });
+
+                      setEditedCurriculum(c);
+                      setYearTabIndex(c.YearLevels.length - 1);
                     }}
                   >
-                    {mode === "edit" || mode === "new" ? (
-                      <Box display={"flex"} gap={"2em"} alignItems={"center"}>
-                        <FormGroup>
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                checked={year_level.IsActive}
-                                onChange={(e) => {
-                                  const new_curriculum =
-                                    structuredClone(editedCurriculum);
-                                  new_curriculum.YearLevels[
-                                    index_year_level
-                                  ].IsActive = e.target.checked;
-                                  setEditedCurriculum(new_curriculum);
-                                }}
-                              />
-                            }
-                            label="Active Year"
-                          />
-                        </FormGroup>
+                    +
+                  </Button>
+                )}
+              </Box>
 
+              {/* Tab Content */}
+              <Box p={2} flex={1} overflow="auto">
+                {editedCurriculum.YearLevels[yearTabIndex] && (
+                  <>
+                    {/* Year controls */}
+                    {(mode === "edit" || mode === "new") && (
+                    <Box
+                        display="flex"
+                        gap={2}
+                        mb={2}
+                        flexWrap="wrap"
+                        alignItems="center"
+                    >
+                        <FormControlLabel
+                        control={
+                            <Checkbox
+                            checked={
+                                editedCurriculum.YearLevels[yearTabIndex].IsActive
+                            }
+                            onChange={(e) => {
+                                const c = structuredClone(editedCurriculum);
+
+                                c.YearLevels[yearTabIndex].IsActive =
+                                e.target.checked;
+
+                                setEditedCurriculum(c);
+                            }}
+                            />
+                        }
+                        label="Active Year"
+                        />
+
+                        {/* ADD SEMESTER */}
                         <Button
-                          size="large"
-                          sx={{ minHeight: "10px", height: "2.3em" }}
-                          variant="contained"
-                          color="success"
-                          startIcon={<AddIcon />}
-                          onClick={() => {
-                            if (
-                              year_level.Semesters.length ===
-                              SEMESTER_NAMES.length
-                            ) {
-                              setPopupOptions({
-                                Heading: "Semester Limit Reach",
-                                HeadingStyle: {
-                                  background: POPUP_WARNING_COLOR,
-                                  color: "black",
-                                },
-                                Message:
-                                  "you can not add more semester to this year level",
-                              });
-                              return;
-                            }
+                        variant="contained"
+                        color="success"
+                        startIcon={<AddIcon />}
+                        onClick={() => {
+                            const c = structuredClone(editedCurriculum);
 
-                            const new_curriculum =
-                              structuredClone(editedCurriculum);
-                            new_curriculum.YearLevels[
-                              index_year_level
-                            ].Semesters.push({
-                              Name: SEMESTER_NAMES[
-                                new_curriculum.YearLevels[index_year_level]
-                                  .Semesters.length
-                              ],
-                              Sections: 0,
-                              Subjects: [],
+                            const sems =
+                            c.YearLevels[yearTabIndex].Semesters;
+
+                            if (sems.length >= SEMESTER_NAMES.length) {
+                            setPopupOptions({
+                                Heading: "Semester Limit Reached",
+                                HeadingStyle: {
+                                background: POPUP_WARNING_COLOR,
+                                color: "black",
+                                },
+                                Message: "Cannot add more semesters",
                             });
 
-                            setEditedCurriculum(new_curriculum);
-                          }}
-                        >
-                          Add Semester
-                        </Button>
-
-                        <Button
-                          size="large"
-                          sx={{ minHeight: "10px", height: "2.3em" }}
-                          variant="contained"
-                          color="error"
-                          endIcon={<RemoveIcon />}
-                          onClick={() => {
-                            if (year_level.Semesters.length === 0) {
-                              setPopupOptions({
-                                Heading: "Semester Limit Reach",
-                                HeadingStyle: {
-                                  background: POPUP_WARNING_COLOR,
-                                  color: "black",
-                                },
-                                Message:
-                                  "you can not decrease more semester to this year level",
-                              });
-                              return;
+                            return;
                             }
 
-                            const new_curriculum =
-                              structuredClone(editedCurriculum);
-                            new_curriculum.YearLevels[
-                              index_year_level
-                            ].Semesters.pop();
-                            setEditedCurriculum(new_curriculum);
-                          }}
-                        >
-                          Reduce Semester
-                        </Button>
-                      </Box>
-                    ) : null}
-                    {year_level?.Semesters?.length !== 0 ? (
-                      year_level?.Semesters.map((semester, index_semester) => (
-                        <Accordion
-                          key={`accordion-id-year-level-${editedCurriculum?.CurriculumCode}-${index_year_level}-${index_semester}`}
-                        >
-                          <AccordionSummary
-                            expandIcon={<ExpandMoreIcon />}
-                            aria-controls={`sem-panel-${editedCurriculum?.CurriculumCode}-${index_year_level}-${index_semester + 1}-content`}
-                            id={`sem-panel-${editedCurriculum?.CurriculumCode}-${index_year_level}-${index_semester + 1}-header`}
-                            sx={{
-                              minHeight: "0px",
-                              height: "2em",
-                              alignItems: "center",
-                              padding: "0px 8px",
-                              "&.Mui-expanded": {
-                                minHeight: "0px",
-                                backgroundColor: "darkgray",
-                                color: "white",
-                              },
-                              "& .MuiAccordionSummary-content": {
-                                margin: "0px",
-                                alignItems: "center",
-                              },
-                              "& .MuiAccordionSummary-content.Mui-expanded": {
-                                margin: "0px",
-                              },
-                              ":hover": {
-                                backgroundColor: "ButtonHighlight",
-                                color: "black",
-                                outline: "thin solid black",
-                              },
-                            }}
-                          >
-                            <Typography
-                              variant="h6"
-                              component="span"
-                            >{`${semester?.Name} - ${semester.Sections} Sections`}</Typography>
-                          </AccordionSummary>
-                          <AccordionDetails
-                            sx={{
-                              minHeight: "0px",
-                              padding: "0.3em",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "0.5em",
-                            }}
-                          >
-                            <Box
-                              width={"100%"}
-                              display={"flex"}
-                              justifyContent={"space-between"}
-                              gap={"1em"}
-                              alignItems={"center"}
-                              paddingBlockEnd={"0px"}
-                            >
-                              {mode === "edit" || mode === "new" ? (
-                                <>
-                                  <Button
-                                    variant="contained"
-                                    color="secondary"
-                                    sx={{ minHeight: "2px", height: "2.3em" }}
-                                    size="large"
-                                    endIcon={<AddIcon />}
-                                    onClick={() => {
-                                      setIsAddingSubjects(true);
-                                      setYearSemSubjectTarget({
-                                        index_year_level: index_year_level,
-                                        index_semester: index_semester,
-                                      });
-                                    }}
-                                  >
-                                    Add Subject
-                                  </Button>
+                            sems.push({
+                            Name: SEMESTER_NAMES[sems.length],
+                            Sections: 0,
+                            Subjects: [],
+                            });
 
-                                  <Box
-                                    display={"flex"}
-                                    alignItems={"baseline"}
-                                    gap={2}
-                                  >
-                                    <Typography
-                                      fontWeight={"bold"}
-                                      variant="body1"
-                                    >
-                                      Number of Sections for {year_level?.Name},{" "}
-                                      {semester?.Name}{" "}
-                                    </Typography>
-                                    <TextField
-                                      size="small"
-                                      required
-                                      id={`${editedCurriculum?.CurriculumCode}-${index_year_level}-${index_semester}-Sections`}
-                                      sx={{ minWidth: "5em" }}
-                                      name="Sections"
-                                      label="Sections"
-                                      type="number"
-                                      variant="filled"
-                                      defaultValue={semester?.Sections || 0}
-                                      slotProps={{
-                                        htmlInput: { min: 0, max: 15 },
-                                      }}
-                                      onChange={(e) => {
-                                        semester.Sections = parseInt(
-                                          e.target.value,
-                                        );
-                                        let edited_curriculum =
-                                          editedCurriculum;
-                                        setEditedCurriculum(edited_curriculum);
-                                      }}
-                                    />
-                                  </Box>
-                                </>
-                              ) : null}
+                            setEditedCurriculum(c);
+                        }}
+                        >
+                        Add Semester
+                        </Button>
+
+                        {/* DELETE SEMESTER */}
+                        <Button
+                        variant="contained"
+                        color="error"
+                        startIcon={<RemoveIcon />}
+                        onClick={() => {
+                            const c = structuredClone(editedCurriculum);
+
+                            const sems =
+                            c.YearLevels[yearTabIndex].Semesters;
+
+                            if (sems.length === 0) {
+                            setPopupOptions({
+                                Heading: "No Semester",
+                                HeadingStyle: {
+                                background: POPUP_WARNING_COLOR,
+                                color: "black",
+                                },
+                                Message: "No semester left to remove",
+                            });
+
+                            return;
+                            }
+
+                            sems.pop();
+
+                            setEditedCurriculum(c);
+                        }}
+                        >
+                        Remove Semester
+                        </Button>
+
+                        {/* DELETE YEAR */}
+                        <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<DeleteIcon />}
+                        onClick={() => {
+                            const c = structuredClone(editedCurriculum);
+
+                            if (c.YearLevels.length === 0) return;
+
+                            c.YearLevels.splice(yearTabIndex, 1);
+
+                            setEditedCurriculum(c);
+
+                            if (yearTabIndex > 0) {
+                            setYearTabIndex(yearTabIndex - 1);
+                            }
+                        }}
+                        >
+                        Delete Year
+                        </Button>
+                    </Box>
+                    )}
+
+                    {/* Semesters */}
+                    {editedCurriculum.YearLevels[yearTabIndex].Semesters.map(
+                      (sem, si) => (
+                        <Accordion key={si}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography>
+                              {sem.Name} - {sem.Sections} Sections
+                            </Typography>
+                          </AccordionSummary>
+
+                          <AccordionDetails>
+                          {(mode === "edit" || mode === "new") && (
+                            <Box
+                                display="flex"
+                                justifyContent="space-between"
+                                alignItems="center"
+                                mb={2}
+                            >
+                                <Button
+                                variant="contained"
+                                color="secondary"
+                                startIcon={<AddIcon />}
+                                onClick={() => {
+                                    setIsAddingSubjects(true);
+
+                                    setYearSemSubjectTarget({
+                                    index_year_level: yearTabIndex,
+                                    index_semester: si,
+                                    });
+                                }}
+                                >
+                                Add Subject
+                                </Button>
+
+                                <TextField
+                                size="small"
+                                type="number"
+                                label="Sections"
+                                value={sem.Sections}
+                                onChange={(e) => {
+                                    const c = structuredClone(editedCurriculum);
+
+                                    c.YearLevels[yearTabIndex]
+                                    .Semesters[si]
+                                    .Sections = parseInt(e.target.value || 0);
+
+                                    setEditedCurriculum(c);
+                                }}
+                                sx={{ width: 120 }}
+                                />
                             </Box>
+                            )}
                             <TableContainer component={Paper}>
                               <Table size="small">
-                                <TableHead>
-                                  <TableRow>
-                                    <TableCell>ID</TableCell>
+                              <TableHead>
+                                <TableRow>
                                     <TableCell>Code</TableCell>
                                     <TableCell>Name</TableCell>
-                                    <TableCell>Lec Hr(s)</TableCell>
-                                    <TableCell>Lab Hr(s)</TableCell>
-                                    <TableCell>
-                                      Designated Instructors
-                                    </TableCell>
-                                    {mode === "edit" || mode === "new" ? (
-                                      <TableCell align="right">
-                                        Actions
-                                      </TableCell>
-                                    ) : null}
-                                  </TableRow>
+                                    <TableCell>Lec</TableCell>
+                                    <TableCell>Lab</TableCell>
+                                    <TableCell>Instructors</TableCell>
+
+                                    {(mode === "edit" || mode === "new") && (
+                                    <TableCell align="right">Actions</TableCell>
+                                    )}
+                                </TableRow>
                                 </TableHead>
-                                <TableBody>
-                                  {isLoading ? (
-                                    <TableRow>
-                                      <TableCell
-                                        colSpan={
-                                          mode === "edit" || mode === "new"
-                                            ? 7
-                                            : 6
-                                        }
-                                        align="center"
-                                      >
-                                        <CircularProgress />
-                                      </TableCell>
-                                    </TableRow>
-                                  ) : (
-                                    semester?.Subjects.map(
-                                      (subject, index_subject) => (
-                                        <TableRow key={subject.ID}>
-                                          <TableCell>{subject.ID}</TableCell>
-                                          <TableCell>{subject.Code}</TableCell>
-                                          <TableCell>
-                                            <Tooltip title={`${subject.Name}`}>
-                                              <span>
-                                                {truncateText(subject.Name, 30)}
-                                              </span>
-                                            </Tooltip>
-                                          </TableCell>
-                                          <TableCell>
-                                            {subject.LecHours}
-                                          </TableCell>
-                                          <TableCell>
-                                            {subject.LabHours}
-                                          </TableCell>
-                                          <TableCell>{`${subject?.DesignatedInstructorsID?.length ? subject?.DesignatedInstructorsID?.length + "x" : "auto assign"}`}</TableCell>
-                                          {mode === "edit" || mode === "new" ? (
-                                            <TableCell align="right">
-                                              <Button
-                                                variant="contained"
-                                                color="primary"
-                                                size="large"
-                                                style={{ marginRight: 8 }}
-                                                startIcon={<EditIcon />}
-                                                onClick={async () => {
-                                                  setSubject(subject);
+                                <TableBody
+                                sx={{
+                                    opacity: isLoading ? 0 : 1,
 
-                                                  setYearSemSubjectTarget({
-                                                    index_year_level:
-                                                      index_year_level,
-                                                    index_semester:
-                                                      index_semester,
-                                                    subject_index:
-                                                      index_subject,
-                                                  });
+                                    transform: isLoading
+                                    ? "translateY(12px)"
+                                    : "translateY(0)",
 
-                                                  try {
-                                                    const new_instructors = [];
+                                    transition:
+                                    "opacity 0.25s ease, transform 0.25s ease",
+                                }}
+                                >
+                                {sem.Subjects.map((sub, subIndex) => (
+                                <TableRow key={sub.ID}>
 
-                                                    if (
-                                                      subject?.DesignatedInstructorsID
-                                                    ) {
-                                                      for (let num of subject?.DesignatedInstructorsID) {
-                                                        const instructor_basic_info =
-                                                          await fetchInstructorBasic(
-                                                            num,
-                                                          );
-                                                        new_instructors.push({
-                                                          InstructorID:
-                                                            instructor_basic_info.InstructorID,
-                                                          Name: `${instructor_basic_info.FirstName} ${instructor_basic_info.MiddleInitial}. ${instructor_basic_info.LastName}`,
-                                                        });
-                                                      }
-                                                    }
+                                    <TableCell>{sub.Code}</TableCell>
 
-                                                    setChipInstructors(
-                                                      new_instructors,
-                                                    );
-                                                  } catch (err) {
-                                                    setPopupOptions({
-                                                      Heading:
-                                                        "Read Subject Error",
-                                                      HeadingStyle: {
-                                                        background:
-                                                          POPUP_WARNING_COLOR,
-                                                        color: "black",
-                                                      },
-                                                      Message: `${err}`,
-                                                    });
-                                                  }
+                                    <TableCell>
+                                    <Tooltip title={sub.Name}>
+                                        <span>{truncateText(sub.Name, 55)}</span>
+                                    </Tooltip>
+                                    </TableCell>
 
-                                                  setIsDialogFormOpen(true);
-                                                }}
-                                                sx={{
-                                                  minHeight: "0px",
-                                                  fontSize: "1em",
-                                                  height: "2.2em",
-                                                  padding: "0px 0.8em",
-                                                  margin: "0px",
-                                                }}
-                                              >
-                                                Modify
-                                              </Button>
-                                              <Button
-                                                sx={{
-                                                  minHeight: "0px",
-                                                  fontSize: "1em",
-                                                  height: "2.2em",
-                                                  padding: "0px 0.8em",
-                                                  margin: "0px",
-                                                }}
-                                                variant="contained"
-                                                color="error"
-                                                size="large"
-                                                endIcon={
-                                                  <RemoveCircleOutlineIcon />
+                                    <TableCell>{sub.LecHours}</TableCell>
+
+                                    <TableCell>{sub.LabHours}</TableCell>
+
+                                    <TableCell>
+                                    {sub.DesignatedInstructorsID?.length
+                                        ? `${sub.DesignatedInstructorsID.length}x`
+                                        : "auto"}
+                                    </TableCell>
+
+                                    {(mode === "edit" || mode === "new") && (
+                                    <TableCell align="right">
+                                        {/* EDIT SUBJECT */}
+                                        <Button
+                                        variant="contained"
+                                        color="primary"
+                                        size="small"
+                                        startIcon={<EditIcon />}
+                                        sx={{ mr: 1 }}
+                                        onClick={async () => {
+                                            setSubject(subject);
+
+                                            setYearSemSubjectTarget({
+                                            index_year_level: yearTabIndex,
+                                            index_semester: si,
+                                            subject_index: subIndex,
+                                            });
+
+                                            try {
+                                            const new_instructors = [];
+
+                                            if (sub?.DesignatedInstructorsID) {
+                                                for (let num of sub.DesignatedInstructorsID) {
+                                                const instructor_basic_info =
+                                                    await fetchInstructorBasic(num);
+
+                                                new_instructors.push({
+                                                    InstructorID:
+                                                    instructor_basic_info.InstructorID,
+
+                                                    Name: `${instructor_basic_info.FirstName} ${instructor_basic_info.MiddleInitial}. ${instructor_basic_info.LastName}`,
+                                                });
                                                 }
-                                                onClick={() => {
-                                                  setIsLoading(true);
-                                                  semester?.Subjects.splice(
-                                                    index_subject,
-                                                    1,
-                                                  );
-                                                  setEditedCurriculum(
-                                                    structuredClone(
-                                                      editedCurriculum,
-                                                    ),
-                                                  );
-                                                  setIsLoading(false);
-                                                }}
-                                              >
-                                                Remove
-                                              </Button>
-                                            </TableCell>
-                                          ) : null}
-                                        </TableRow>
-                                      ),
-                                    )
-                                  )}
+                                            }
+
+                                            setChipInstructors(new_instructors);
+                                            } catch (err) {
+                                            setPopupOptions({
+                                                Heading: "Read Subject Error",
+                                                HeadingStyle: {
+                                                background: POPUP_WARNING_COLOR,
+                                                color: "black",
+                                                },
+                                                Message: `${err}`,
+                                            });
+                                            }
+
+                                            setIsDialogFormOpen(true);
+                                        }}
+                                        >
+                                        Edit
+                                        </Button>
+
+                                        {/* REMOVE SUBJECT */}
+                                        <Button
+                                        variant="contained"
+                                        color="error"
+                                        size="small"
+                                        startIcon={<RemoveCircleOutlineIcon />}
+                                        onClick={() => {
+                                            const c = structuredClone(editedCurriculum);
+
+                                            c.YearLevels[yearTabIndex]
+                                            .Semesters[si]
+                                            .Subjects.splice(subIndex, 1);
+
+                                            setEditedCurriculum(c);
+                                        }}
+                                        >
+                                        Remove
+                                        </Button>
+                                    </TableCell>
+                                    )}
+                                </TableRow>
+                                ))}
                                 </TableBody>
                               </Table>
                             </TableContainer>
                           </AccordionDetails>
                         </Accordion>
-                      ))
-                    ) : (
-                      <Box padding={"1em"}>
-                        <Typography fontStyle={"italic"}>
-                          empty semester
-                        </Typography>
-                      </Box>
+                      )
                     )}
-                  </Box>
-                </AccordionDetails>
-              </Accordion>
-            ))
+                  </>
+                )}
+              </Box>
+            </>
           ) : (
-            <Box padding={"1em"}>
-              <Typography fontStyle={"italic"}>empty year levels</Typography>
+            <Box p={2}>
+              <Typography fontStyle="italic">
+                empty year levels
+              </Typography>
             </Box>
           )}
-          <Box
-            display={"flex"}
-            justifyContent={"space-evenly"}
-            paddingTop={0}
-            paddingInline={3}
-            marginBottom={2}
-            gap={"3em"}
-          >
-            {mode === "new" || mode === "edit" ? (
-              <>
-                <Button
-                  variant="contained"
-                  color="success"
-                  fullWidth
-                  size="large"
-                  startIcon={<AddIcon />}
-                  onClick={() => {
-                    if (
-                      editedCurriculum.YearLevels.length ===
-                      YEAR_LEVEL_NAMES.length
-                    ) {
-                      setPopupOptions({
-                        Heading: "Year Limit Reach",
-                        HeadingStyle: {
-                          background: POPUP_WARNING_COLOR,
-                          color: "black",
-                        },
-                        Message:
-                          "you can not add more year level to this curriculum",
-                      });
-                      return;
-                    }
-
-                    const new_curriculum = structuredClone(editedCurriculum);
-                    new_curriculum.YearLevels.push({
-                      IsActive: true,
-                      Name: YEAR_LEVEL_NAMES[new_curriculum.YearLevels.length],
-                      Semesters: [],
-                    });
-
-                    setEditedCurriculum(new_curriculum);
-                  }}
-                >
-                  Add Year
-                </Button>
-
-                <Button
-                  variant="contained"
-                  color="error"
-                  endIcon={<RemoveIcon />}
-                  fullWidth
-                  size="large"
-                  onClick={() => {
-                    if (editedCurriculum.YearLevels.length === 0) {
-                      setPopupOptions({
-                        Heading: "Year Limit Reach",
-                        HeadingStyle: {
-                          background: POPUP_WARNING_COLOR,
-                          color: "black",
-                        },
-                        Message:
-                          "you can not remove more year level to this curriculum",
-                      });
-                      return;
-                    }
-
-                    const new_curriculum = structuredClone(editedCurriculum);
-                    new_curriculum.YearLevels.pop();
-                    setEditedCurriculum(new_curriculum);
-                  }}
-                >
-                  Reduce Year
-                </Button>
-              </>
-            ) : null}
-          </Box>
         </Box>
+      </Box>
 
-        {/* ===================== MODIFY SUBJECT DIALOG ===================== */}
-        <Dialog
+      {/* ================= SUBJECT DIALOG ================= */}
+      <Dialog
           open={isDialogFormOpen}
           onClose={() => setIsDialogFormOpen(false)}
           fullWidth
           maxWidth="xl"
+          TransitionProps={{
+            timeout: 250,
+          }}
           slotProps={{
             paper: {
               component: "form",
@@ -977,7 +729,18 @@ function CurriculumView({
             },
           }}
         >
-          <DialogTitle>{`Modifying ${subject?.Code}`}</DialogTitle>
+          <DialogTitle
+            sx={{
+                backgroundColor: "#2e6417",
+                color: "white",
+                fontWeight: 600,
+                letterSpacing: "0.03em",
+            }}
+            >
+            {subject?.Code
+                ? `Edit Subject • ${subject.Code}`
+                : "Edit Subject"}
+            </DialogTitle>
           <DialogContent>
             <DialogContentText minWidth={"25em"}>
               {subject?.Name}
@@ -1052,8 +815,11 @@ function CurriculumView({
             />
           </DialogContent>
           <DialogActions>
-            <Button variant="outlined" type="submit">
-              Save Subject
+          <Button
+            type="submit"
+            variant="contained"
+            >
+            Save Subject
             </Button>
             <Button
               variant="outlined"
@@ -1067,21 +833,16 @@ function CurriculumView({
           </DialogActions>
         </Dialog>
 
-        {/* ===================== ADD SUBJECTS DIALOG ===================== */}
-
-        {isAddingSubjects && (
-          <SubjectSelection
-            open={isAddingSubjects}
-            onClose={() => {
-              setIsAddingSubjects(false);
-              setYearSemSubjectTarget(null);
-            }}
-            curriculum={editedCurriculum}
-            setEditedCurriculum={setEditedCurriculum}
-            yearSemSubjectTarget={yearSemSubjectTarget}
-          />
-        )}
-      </Box>
+      {/* ================= ADD SUBJECT ================= */}
+      {isAddingSubjects && (
+        <SubjectSelection
+          open={isAddingSubjects}
+          onClose={() => setIsAddingSubjects(false)}
+          curriculum={editedCurriculum}
+          setEditedCurriculum={setEditedCurriculum}
+          yearSemSubjectTarget={yearSemSubjectTarget}
+        />
+      )}
     </>
   );
 }

@@ -6,7 +6,7 @@ import '@fontsource/roboto/400.css';
 import '@fontsource/roboto/500.css';
 import '@fontsource/roboto/700.css';
 
-import SearchIcon from '@mui/icons-material/Search';
+import SearchIcon from "@mui/icons-material/Search"
 
 import { Popup, POPUP_ERROR_COLOR } from "../components/Loading";
 
@@ -115,7 +115,28 @@ export default function InstructorSelection({
             Search and select an instructor to add
         </Typography>
 
-        <Box display={'flex'} justifyContent={'space-between'} alignItems={'center'} padding={'0.5em'}>
+        <Box
+        sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 1.5,
+            alignItems: "center",
+            mt: 1.5,
+            mb: 2,
+            p: 1.5,
+            borderRadius: 2,
+            backgroundColor: "#f8f9fa",
+            border: "1px solid #e0e0e0",
+
+            opacity: isLoading ? 0.7 : 1,
+
+            transform: isLoading
+            ? "translateY(4px)"
+            : "translateY(0)",
+
+            transition: "all 0.25s ease",
+        }}
+        >
             <Box display={'flex'} flexWrap={'wrap'} gap={'0.5em'}>
 
                 <FormControl sx={{ minWidth: 130 }} size="small">

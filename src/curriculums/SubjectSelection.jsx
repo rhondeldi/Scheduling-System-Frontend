@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
@@ -85,7 +85,7 @@ export default function SubjectSelection({
   const [isTableLoading, setIsTableLoading] = useState(false);
 
   const [page, setPage] = useState(0);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [totalCount, setTotalCount] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -94,6 +94,9 @@ export default function SubjectSelection({
   const [selectedSubjectsData, setSelectedSubjectsData] = useState(new Map());
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  const skipAnimRef = useRef(false);
+  const [isPaginating, setIsPaginating] = useState(false);
 
   // ===================== FETCH =====================
 
@@ -223,7 +226,7 @@ export default function SubjectSelection({
 
         <DialogContent sx={{ display: "flex", flexDirection: "column", flex: 1 }}>
           {/* SEARCH */}
-          <Box display="flex" justifyContent="flex-end" p={1}>
+          <Box display="flex" justifyContent="space-between" p={1}>
             <TextField
               size="small"
               label="Search"
@@ -231,6 +234,47 @@ export default function SubjectSelection({
               onChange={(e) => {
                 setPage(0);
                 setSearchTerm(e.target.value);
+              }}
+            />
+            {/* NAVIGATION BUTTONS */}
+            <TablePagination
+              sx={{
+                "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
+                "& .MuiTablePagination-select": { fontWeight: 500 },
+                "& .MuiIconButton-root": {
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: "4px",
+                  mx: 0.25,
+                  "&:hover:not(.Mui-disabled)": {
+                    bgcolor: "primary.main",
+                    color: "white",
+                    borderColor: "primary.main",
+                  },
+                },
+                "& .MuiInputBase-root": {
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: "4px",
+                  px: 1,
+                  "&:hover": { borderColor: "text.secondary" },
+                },
+              }}
+              component="div"
+              count={totalCount}
+              rowsPerPage={pageSize}
+              page={page}
+              rowsPerPageOptions={[5, 10, 25]}
+              onPageChange={(_, newPage) => {
+                skipAnimRef.current = true;
+                setIsPaginating(true);
+                setPage(newPage);
+              }}
+              onRowsPerPageChange={(event) => {
+                skipAnimRef.current = true;
+                setIsPaginating(true);
+                setPageSize(Number.parseInt(event.target.value, 10));
+                setPage(0);
               }}
             />
           </Box>

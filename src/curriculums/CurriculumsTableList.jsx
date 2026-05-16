@@ -261,8 +261,15 @@ function CurriculumsTableList() {
           </Box>
 
           <Box>
-            <TableContainer component={Paper} sx={{ minHeight: 120 }}>
-              <Table size="small" sx={{ tableLayout: "fixed" }}>
+          <TableContainer component={Paper}>
+            <Box
+            sx={{
+                flex: 1,
+                overflowY: "auto",
+                minHeight: 0,
+            }}
+            >
+            <Table stickyHeader size="small" sx={{ tableLayout: "fixed" }}>
                 <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                   <TableRow>
                     <TableCell sx={{ width: "20%" }}>COURSE CODE</TableCell>
@@ -342,6 +349,7 @@ function CurriculumsTableList() {
                   }
                 </TableBody>
               </Table>
+              </Box>
               <Box
                 sx={{
                   display: "flex",
