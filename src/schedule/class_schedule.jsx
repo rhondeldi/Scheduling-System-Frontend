@@ -135,6 +135,10 @@ function TimeTable() {
   const [IsLoading, setIsLoading] = useState(false);
   const [popupOptions, setPopupOptions] = useState(null);
 
+  const isGenerating =
+    schedGenStatus?.Status === "in progress" ||
+    schedGenStatus?.Status === "on queue";
+
   // ---- TIME TABLE GRID STATES ----
 
   const DAYS = [
@@ -1399,7 +1403,7 @@ function TimeTable() {
             size="medium"
             fullWidth
             onClick={generateDepartmentSchedules}
-            disabled={!semesterIndex || pickedUpSubject}
+            disabled={!semesterIndex || pickedUpSubject || isGenerating}
             variant="contained"
             color="success"
             startIcon={<PlayArrowIcon />}
@@ -1411,14 +1415,14 @@ function TimeTable() {
                 boxShadow: "none",
             }}
             >
-            Generate Semester Schedule
+            {isGenerating ? "Generating..." : "Generate Semester Schedule"}
             </Button>
 
             <Button
             size="medium"
             fullWidth
             onClick={handleValidateSchedules}
-            disabled={!semesterIndex || pickedUpSubject}
+            disabled={!semesterIndex || pickedUpSubject || isGenerating}
             variant="outlined"
             color="warning"
             startIcon={<CheckCircleIcon />}
@@ -1436,7 +1440,7 @@ function TimeTable() {
             size="medium"
             fullWidth
             onClick={handleClearDepartmentSchedule}
-            disabled={!semesterIndex || pickedUpSubject}
+            disabled={!semesterIndex || pickedUpSubject || isGenerating}
             variant="outlined"
             color="error"
             startIcon={<DeleteSweepIcon />}
@@ -1454,7 +1458,7 @@ function TimeTable() {
             size="medium"
             fullWidth
             onClick={handleClearClassSchedule}
-            disabled={!sectionIndex || pickedUpSubject}
+            disabled={!sectionIndex || pickedUpSubject || isGenerating}
             variant="outlined"
             color="error"
             startIcon={<ClearIcon />}
@@ -1473,6 +1477,7 @@ function TimeTable() {
                 size="medium"
                 fullWidth
                 onClick={handleCancelPickupSubject}
+                disabled={isGenerating}
                 variant="contained"
                 color="primary"
                 startIcon={<ClearIcon />}
@@ -1702,6 +1707,7 @@ function TimeTable() {
                 variant="outlined"
                 size="small"
                 onClick={handleOpenSignatoriesDialog}
+                disabled={isGenerating}
                 endIcon={<PrintIcon />}
                 sx={{
                     borderRadius: 3,
@@ -1719,6 +1725,7 @@ function TimeTable() {
                 size="small"
                 endIcon={<OpenInNewIcon />}
                 onClick={() => window.open("/view_schedule/", "_blank")}
+                disabled={isGenerating}
                 sx={{
                     borderRadius: 3,
                     textTransform: "none",

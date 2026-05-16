@@ -483,19 +483,19 @@ function Rooms() {
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
       >
-        <DialogTitle id="alert-dialog-title">Remove Room</DialogTitle>
+        <DialogTitle id="alert-dialog-title" sx={{ backgroundColor: "error.dark" }}>Delete Room</DialogTitle>
 
         <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            {`Are you sure you want to remove "${roomToDelete?.Name}"?`}
+          <DialogContentText id="alert-dialog-description" sx={{ color: "text.primary", mb: 2 }}>
+            This action cannot be undone.
           </DialogContentText>
 
           <Box
             sx={{
               px: 1,
               py: 1.5,
-              borderRadius: 1,
-              backgroundColor: "rgba(244, 67, 54, 0.08)",
+              borderRadius: 1.5,
+              backgroundColor: "rgba(180, 35, 24, 0.06)",
               border: "1px solid",
               borderColor: "error.light",
             }}
@@ -507,28 +507,30 @@ function Rooms() {
               {`${roomToDelete?.Name ?? ""}`}
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              Room record will be deleted.
+              This room record will be permanently removed.
             </Typography>
           </Box>
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions sx={{ justifyContent: "flex-end" }}>
           <Button
+            color="secondary"
+            variant="contained"
+            onClick={() => {
+              setIsDialogDeleteShow(false);
+              setRoomToDelete(null);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="error"
             variant="outlined"
             onClick={() => {
               handleRoomDelete(roomToDelete?.RoomID);
             }}
           >
-            Yes
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              setIsDialogDeleteShow(false);
-            }}
-            sx={{ minWidth: 160 }}
-          >
-            No
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
@@ -612,7 +614,7 @@ function Rooms() {
           },
         }}
       >
-        <DialogTitle sx={{ backgroundColor: '#2e6417' }}>
+        <DialogTitle sx={{ backgroundColor: 'primary.main' }}>
           {mode === "new"
             ? `Add New Room to ${department.Code}`
             : mode === "edit"

@@ -22,6 +22,7 @@ import {
   FormControlLabel,
   Checkbox,
   IconButton,
+  Typography,
 } from "@mui/material";
 
 import EditIcon from "@mui/icons-material/Edit";
@@ -44,8 +45,6 @@ import {
 } from "../components/Loading";
 
 import { MainHeader } from "../components/Header";
-
-import warning from "../assets/warning.png";
 
 const truncateText = (text, maxLength) =>
   text?.length > maxLength
@@ -542,7 +541,7 @@ export default function Subjects() {
         >
           <DialogTitle
             sx={{
-              backgroundColor: "#C62828",
+              backgroundColor: "error.dark",
             }}
           >
             Delete Subject
@@ -550,63 +549,60 @@ export default function Subjects() {
 
           <DialogContent
             sx={{
-              textAlign: "center",
               pt: 3,
             }}
           >
-            <img
-              src={warning}
-              alt="Warning"
-              style={{
-                width: 80,
-                height: 80,
-                marginBottom: 8,
-              }}
-            />
-
-            <DialogContentText>
-              {`This action cannot be undone. All data associated with ${
-                subjectToDelete?.Code ||
-                "this subject"
-              } will be lost.`}
+            <DialogContentText sx={{ color: "text.primary", mb: 2 }}>
+              This action cannot be undone.
             </DialogContentText>
+            <Box
+              sx={{
+                px: 2,
+                py: 1.5,
+                borderRadius: 1.5,
+                backgroundColor: "rgba(180, 35, 24, 0.06)",
+                border: "1px solid",
+                borderColor: "error.light",
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "error.dark" }}>
+                {subjectToDelete?.Code || "Selected subject"}
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                All data associated with this subject will be permanently removed.
+              </Typography>
+            </Box>
           </DialogContent>
 
           <DialogActions
             sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 1.5,
-              pb: 3,
+              justifyContent: "flex-end",
             }}
           >
             <Button
-              color="error"
+              color="secondary"
               variant="contained"
               disabled={isOperationLoading}
-              onClick={() =>
-                handleDelete(subjectToDelete?.ID)
-              }
-              sx={{ width: "50%" }}
-            >
-              {isOperationLoading ? (
-                <CircularProgress size={20} />
-              ) : (
-                "Confirm"
-              )}
-            </Button>
-
-            <Button
-              variant="outlined"
-              disabled={isOperationLoading}
-              sx={{ width: "50%" }}
               onClick={() => {
                 setIsDialogDeleteShow(false);
                 setSubjectToDelete(null);
               }}
             >
               Cancel
+            </Button>
+            <Button
+              color="error"
+              variant="outlined"
+              disabled={isOperationLoading}
+              onClick={() =>
+                handleDelete(subjectToDelete?.ID)
+              }
+            >
+              {isOperationLoading ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                "Delete"
+              )}
             </Button>
           </DialogActions>
         </Dialog>
@@ -628,7 +624,7 @@ export default function Subjects() {
         >
           <DialogTitle
             sx={{
-              backgroundColor: "#2e6417",
+              backgroundColor: "primary.main",
             }}
           >
             {mode === "new"

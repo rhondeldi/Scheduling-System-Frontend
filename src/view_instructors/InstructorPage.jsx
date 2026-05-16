@@ -181,9 +181,9 @@ function InstructorPage() {
         justifyContent={"center"}
         alignItems={"center"}
         padding={1}
-        bgcolor={"#800080"}
+        bgcolor={"#0B5E20"}
       >
-        <Typography variant="h6" color="#00ff00">
+        <Typography variant="h6" color="white">
           Cavite Statue University - Silang Campus : Instructor Schedules
         </Typography>
       </Box>

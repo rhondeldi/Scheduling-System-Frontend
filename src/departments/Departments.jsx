@@ -21,13 +21,12 @@ import {
   DialogTitle,
   DialogActions,
   IconButton,
+  Typography,
 } from "@mui/material";
 
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
-
-import warning from "../assets/warning.png";
 
 import "../assets/main.css";
 
@@ -371,52 +370,55 @@ export default function Departments() {
             setDepartmentToDelete(null);
           }}
         >
-          <DialogTitle sx={{ backgroundColor: "#C62828" }}>
+          <DialogTitle sx={{ backgroundColor: "error.dark" }}>
             Delete Department
           </DialogTitle>
-          <DialogContent sx={{ textAlign: "center", pt: 3 }}>
-            <img
-              src={warning}
-              alt="Warning"
-              style={{
-                width: 80,
-                height: 80,
-                marginBottom: 8,
-              }}
-            />
-            <DialogContentText>
-              {`This action cannot be undone. All data associated with ${departmentToDelete?.Code || "this department"} will be lost.`}
+          <DialogContent sx={{ pt: 3 }}>
+            <DialogContentText sx={{ color: "text.primary", mb: 2 }}>
+              This action cannot be undone.
             </DialogContentText>
+            <Box
+              sx={{
+                px: 2,
+                py: 1.5,
+                borderRadius: 1.5,
+                backgroundColor: "rgba(180, 35, 24, 0.06)",
+                border: "1px solid",
+                borderColor: "error.light",
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "error.dark" }}>
+                {departmentToDelete?.Code || "Selected department"}
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                All data associated with this department will be permanently removed.
+              </Typography>
+            </Box>
           </DialogContent>
 
           <DialogActions
             sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 1.5,
-              pb: 3,
+              justifyContent: "flex-end",
             }}
           >
             <Button
-              color="error"
+              color="secondary"
               variant="contained"
               disabled={isOperationLoading}
-              onClick={() => handleDelete(departmentToDelete?.DepartmentID)}
-              sx={{ width: "50%" }}
-            >
-              {isOperationLoading ? <CircularProgress size={20} /> : "Confirm"}
-            </Button>
-            <Button
-              variant="outlined"
-              disabled={isOperationLoading}
-              sx={{ width: "50%" }}
               onClick={() => {
                 setIsDialogDeleteShow(false);
                 setDepartmentToDelete(null);
               }}
             >
               Cancel
+            </Button>
+            <Button
+              color="error"
+              variant="outlined"
+              disabled={isOperationLoading}
+              onClick={() => handleDelete(departmentToDelete?.DepartmentID)}
+            >
+              {isOperationLoading ? <CircularProgress size={20} color="inherit" /> : "Delete"}
             </Button>
           </DialogActions>
         </Dialog>
@@ -431,7 +433,7 @@ export default function Departments() {
           }}
           onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
         >
-          <DialogTitle sx={{ backgroundColor: "#2e6417" }}>
+          <DialogTitle sx={{ backgroundColor: "primary.main" }}>
             {mode === "new" ? "Add Department" : "Edit Department"}
           </DialogTitle>
 
