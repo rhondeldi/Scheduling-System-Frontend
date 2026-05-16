@@ -46,7 +46,7 @@ const getPageDisplayInfo = (page) => {
 };
 
 // ===================== MAIN COMPONENT =====================
-export function MainHeader({ pageName, children }) {
+export function MainHeader({ pageName, children, navigationDisabled = false }) {
   const navigate = useNavigate();
 
   // ---- STATE ----
@@ -66,6 +66,8 @@ export function MainHeader({ pageName, children }) {
 
   // ---- HANDLERS ----
   const toggleSidebar = () => {
+    if (navigationDisabled) return;
+
     const newState = !collapsed;
     setCollapsed(newState);
     localStorage.setItem("sidebarCollapsed", newState);
@@ -106,19 +108,42 @@ export function MainHeader({ pageName, children }) {
 
       {/* ===================== LOGOUT DIALOG ===================== */}
       <Dialog open={logoutConfirmOpen} onClose={() => setLogoutConfirmOpen(false)}>
-        <DialogTitle sx={{ backgroundColor: "#C62828" }}>
+        <DialogTitle sx={{ backgroundColor: "primary.dark" }}>
           Confirm Logout
         </DialogTitle>
         <DialogContent>
-          <DialogContentText>
+          <DialogContentText sx={{ color: "text.primary", mb: 2 }}>
             Are you sure you want to logout? You will need to sign in again.
           </DialogContentText>
+          <Box
+            sx={{
+              px: 2,
+              py: 1.5,
+              borderRadius: 1.5,
+              backgroundColor: "rgba(0, 87, 63, 0.06)",
+              border: "1px solid",
+              borderColor: "primary.light",
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "primary.dark" }}>
+              End current session
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Unsaved work on the current page may be lost after signing out.
+            </Typography>
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setLogoutConfirmOpen(false)}>Cancel</Button>
+        <DialogActions sx={{ justifyContent: "flex-end" }}>
+          <Button
+            color="secondary"
+            variant="contained"
+            onClick={() => setLogoutConfirmOpen(false)}
+          >
+            Cancel
+          </Button>
           <Button
             color="error"
-            variant="contained"
+            variant="outlined"
             onClick={() => {
               setLogoutConfirmOpen(false);
               handleLogout();
@@ -138,7 +163,7 @@ export function MainHeader({ pageName, children }) {
             width: collapsed ? 110 : 340,
             transition: "width 0.3s ease-in-out",
             overflow: "hidden",
-            backgroundColor: "#14400e",
+            backgroundColor: "primary.dark",
             color: "white",
             display: "flex",
             flexDirection: "column",
@@ -170,7 +195,14 @@ export function MainHeader({ pageName, children }) {
               >
                 <IconButton
                   onClick={toggleSidebar}
-                  sx={{ color: "white", padding: 0 }}
+                  disabled={navigationDisabled}
+                  sx={{
+                    color: "white",
+                    padding: 0,
+                    "&.Mui-disabled": {
+                      color: "rgba(255,255,255,0.48)",
+                    },
+                  }}
                 >
                   {collapsed ? <MenuIcon /> : <MenuOpenIcon />}
                 </IconButton>
@@ -194,7 +226,7 @@ export function MainHeader({ pageName, children }) {
               </Box>
             </Box>
 
-            <Divider sx={{ my: 2, bgcolor: "#d5d5d5" }} />
+            <Divider sx={{ my: 2, bgcolor: "rgba(220, 239, 229, 0.35)" }} />
 
             {/* ===================== NAV ITEMS ===================== */}
             <Box mt={collapsed ? 2 : 4} display="flex" flexDirection="column" gap={1} margin={1}>
@@ -205,6 +237,7 @@ export function MainHeader({ pageName, children }) {
                 return (
                   <Button
                     key={page}
+                    disabled={navigationDisabled}
                     onClick={() => navigate(`/${page}`)}
                     sx={{
                       width: "100%",
@@ -216,13 +249,17 @@ export function MainHeader({ pageName, children }) {
                       borderRadius: 2,
                       textTransform: "none",
 
-                      color: isActive ? "#0f660d" : "white",
-                      backgroundColor: isActive ? "#f9fff9" : "transparent",
+                      color: isActive ? "primary.dark" : "white",
+                      backgroundColor: isActive ? "secondary.light" : "transparent",
 
                       "&:hover": {
                         backgroundColor: isActive
-                          ? "#f9fff9"
+                          ? "secondary.light"
                           : "#ffffff11",
+                      },
+                      "&.Mui-disabled": {
+                        color: "rgba(255,255,255,0.48)",
+                        backgroundColor: isActive ? "rgba(237,247,241,0.16)" : "transparent",
                       },
                     }}
                   >
@@ -268,7 +305,7 @@ export function MainHeader({ pageName, children }) {
           {/* ===================== LOGOUT ===================== */}
           <Button
             onClick={() => setLogoutConfirmOpen(true)}
-            disabled={loggingOut}
+            disabled={loggingOut || navigationDisabled}
             sx={{
                 width: "calc(100% - 16px)",
                 minHeight: 48,
@@ -284,6 +321,9 @@ export function MainHeader({ pageName, children }) {
 
                 "&:hover": {
                 backgroundColor: "#ffffff11",
+                },
+                "&.Mui-disabled": {
+                color: "rgba(255,255,255,0.48)",
                 },
             }}
             >
@@ -324,7 +364,7 @@ export function MainHeader({ pageName, children }) {
         </Box>
 
         {/* ===================== MAIN CONTENT ===================== */}
-        <Box flex={1} sx={{ backgroundColor: "#f5f5f5", overflow: "auto" }}>
+        <Box flex={1} sx={{ backgroundColor: "background.default", overflow: "auto" }}>
 
           {/* CONTENT */}
           <Box sx={{ px: 3, py: 2, flex: 1, overflow: "auto" }}>
@@ -337,7 +377,7 @@ export function MainHeader({ pageName, children }) {
                 width: 5,
                 minWidth: 5,
                 height: collapsed ? 55 : 34,
-                bgcolor: "#000",
+                bgcolor: "primary.main",
                 borderRadius: "50px",
                 flexShrink: 0,
                 transition: "height 0.3s ease",

@@ -74,7 +74,7 @@ function InstructorPage() {
   //                     LOAD GUARD COMPONENT STATES
   /////////////////////////////////////////////////////////////////////////////////
 
-  const [IsLoading, setIsLoading] = useState(false);
+  const [IsLoading, setIsLoading] = useState(true);
 
   /////////////////////////////////////////////////////////////////////////////////
   //                       STATES FOR FETCHED DATA
@@ -388,8 +388,8 @@ function InstructorPage() {
                     <TableCell sx={{ width: "112px" }}></TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody sx={{ opacity: loading ? 0 : 1, transform: loading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
-                  {isPaginating
+                <TableBody sx={{ opacity: 1, transform: "none", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
+                  {IsLoading || loading || isPaginating
                     ? Array.from({ length: pageSize }).map((_, i) => (
                         <TableRow key={i} sx={{ height: 50 }}>
                           <TableCell><Skeleton /></TableCell>
@@ -404,7 +404,7 @@ function InstructorPage() {
                           </TableCell>
                         </TableRow>
                       ))
-                    : !departmentID ? (
+                    : !selectedDepartment ? (
                       <TableRow>
                         <TableCell colSpan={4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
                           Please select a department first
@@ -572,32 +572,52 @@ function InstructorPage() {
           aria-labelledby="alert-dialog-title"
           aria-describedby="alert-dialog-description"
         >
-          <DialogTitle id="alert-dialog-title">Remove Instructor</DialogTitle>
+          
+          <DialogTitle id="alert-dialog-title" sx={{ backgroundColor: "error.dark" }}>Delete Instructor</DialogTitle>
 
           <DialogContent>
-            <DialogContentText id="alert-dialog-description">
-              {`Are you sure you want to remove "${instructorToDelete?.FirstName} ${instructorToDelete?.MiddleInitial} ${instructorToDelete?.LastName}"?`}
+            <DialogContentText id="alert-dialog-description" sx={{ color: "text.primary", mb: 2 }}>
+              This action cannot be undone.
             </DialogContentText>
-          </DialogContent>
-
-          <DialogActions>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                handleInstructorDelete(instructorToDelete?.InstructorID);
+            <Box
+              sx={{
+                px: 2,
+                py: 1.5,
+                borderRadius: 1.5,
+                backgroundColor: "rgba(180, 35, 24, 0.06)",
+                border: "1px solid",
+                borderColor: "error.light",
               }}
             >
-              Yes
-            </Button>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "error.dark" }}>
+                {`${instructorToDelete?.FirstName ?? ""} ${instructorToDelete?.MiddleInitial ?? ""} ${instructorToDelete?.LastName ?? ""}`.trim() || "Selected instructor"}
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                This instructor record will be permanently removed.
+              </Typography>
+            </Box>
+          </DialogContent>
 
+          <DialogActions sx={{ justifyContent: "flex-end" }}>
             <Button
-              variant="outlined"
+              color="secondary"
+              variant="contained"
               onClick={() => {
                 setIsDialogDeleteShow(false);
                 setInstructorToDelete(null);
               }}
             >
-              No
+              Cancel
+            </Button>
+
+            <Button
+              color="error"
+              variant="outlined"
+              onClick={() => {
+                handleInstructorDelete(instructorToDelete?.InstructorID);
+              }}
+            >
+              Delete
             </Button>
           </DialogActions>
         </Dialog>

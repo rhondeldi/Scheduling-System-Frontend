@@ -7,34 +7,88 @@ export function Loading({ IsLoading }) {
 }
 
 // ===================== POPUP COMPONENT =====================
+const getPopupType = (heading, headingStyle, explicitType) => {
+  if (explicitType) return explicitType;
+
+  const title = String(heading || "").toLowerCase();
+  const style = String(headingStyle || "").toLowerCase();
+
+  if (
+    style.includes("success") ||
+    title.includes("success") ||
+    title.includes("successful") ||
+    title.includes("saved") ||
+    title.includes("deleted")
+  ) {
+    return "success";
+  }
+
+  if (
+    style.includes("error") ||
+    title.includes("failed") ||
+    title.includes("error") ||
+    title.includes("invalid")
+  ) {
+    return "error";
+  }
+
+  if (
+    style.includes("warning") ||
+    title.includes("warning") ||
+    title.includes("incomplete") ||
+    title.includes("required")
+  ) {
+    return "warning";
+  }
+
+  if (style.includes("notice") || title.includes("notice")) return "notice";
+  return "info";
+};
+
+const getPopupIcon = (type) => {
+  switch (type) {
+    case "success":
+      return "OK";
+    case "error":
+    case "warning":
+      return "!";
+    case "notice":
+    default:
+      return "i";
+  }
+};
+
 export function Popup({ popupOptions, closeButtonActionHandler }) {
   if (!popupOptions) return null;
 
-  const { Heading, HeadingStyle, Message } = popupOptions;
+  const { Heading, HeadingStyle, Message, type: popupType } = popupOptions;
+  const type = getPopupType(Heading, HeadingStyle?.background, popupType);
+  const icon = getPopupIcon(type);
 
   return (
     <div className="popup-blanket">
       <div
-        className="popup-component"
+        className={`popup-component popup-${type}`}
         style={{
-          width: Array.isArray(Message) ? 'min(90vw, 900px)' : 'min(90vw, 520px)',
-          maxHeight: Array.isArray(Message) ? 'min(80vh, 600px)' : 'min(70vh, 400px)',
+          width: Array.isArray(Message) ? "min(92vw, 860px)" : "min(92vw, 520px)",
+          maxHeight: Array.isArray(Message) ? "min(82vh, 620px)" : "min(74vh, 430px)",
         }}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="popup-heading"
       >
-        {/* HEADING */}
-        <div className="popup-heading" style={HeadingStyle}>
-          <h1>{Heading}</h1>
+        <div className="popup-heading">
+          <div className="popup-heading-copy">
+            <span className="popup-heading-icon">{icon}</span>
+            <h1 id="popup-heading">{Heading}</h1>
+          </div>
         </div>
 
-        {/* MESSAGE */}
-        <div
-          className="popup-message"
-          style={{ overflowY: 'auto', paddingRight: '0.7em' }}
-        >
+        <div className="popup-message">
           {Array.isArray(Message) ? (
-            <ol style={{ margin: 0, textAlign: 'left' }}>
+            <ol>
               {Message.map((msg, idx) => (
-                <li key={idx}>{msg.trim()}</li>
+                <li key={idx}>{String(msg).trim()}</li>
               ))}
             </ol>
           ) : (
@@ -42,15 +96,16 @@ export function Popup({ popupOptions, closeButtonActionHandler }) {
           )}
         </div>
 
-        {/* CLOSE */}
-        <button onClick={closeButtonActionHandler}>X</button>
+        <button className="popup-close-button" onClick={closeButtonActionHandler}>
+          Close
+        </button>
       </div>
     </div>
   );
 }
 
 // ===================== COLOR CONSTANTS =====================
-export const POPUP_ERROR_COLOR   = 'linear-gradient(145deg,rgb(210, 0, 0) 50%,rgba(208, 15, 15, 0.58) 100%)';
-export const POPUP_SUCCESS_COLOR = 'linear-gradient(135deg,rgb(21, 157, 21) 50%,rgba(0, 159, 19, 0.73) 100%)';
-export const POPUP_WARNING_COLOR = 'linear-gradient(135deg,rgb(255, 166, 0) 0%,rgba(254, 169, 0, 0.56) 100%)';
-export const POPUP_NOTICE_COLOR  = 'linear-gradient(135deg,rgb(255, 213, 0) 0%,rgba(255, 225, 0, 0.69) 100%)';
+export const POPUP_ERROR_COLOR = "#b42318";
+export const POPUP_SUCCESS_COLOR = "#075f3a";
+export const POPUP_WARNING_COLOR = "#6f6734";
+export const POPUP_NOTICE_COLOR = "#003f2d";

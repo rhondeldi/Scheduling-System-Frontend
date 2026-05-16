@@ -668,9 +668,13 @@ function CurriculumView({
       <Dialog
         open={isDialogFormOpen}
         onClose={() => setIsDialogFormOpen(false)}
-        fullWidth
-        maxWidth="xl"
+        maxWidth="l"
         slotProps={{
+          sx: {
+            height: "85vh",
+            display: "flex",
+            flexDirection: "column",
+          },
           paper: {
             component: "form",
             onSubmit: async (event) => {
