@@ -11,6 +11,7 @@ import "../assets/main.css";
 import "./TimeTable.css";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import IconButton from "@mui/material/IconButton";
 
 import warning from "../assets/warning.png";
@@ -49,6 +50,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -198,6 +200,11 @@ function InstructorPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Sanitize function to allow only letters, spaces, hyphens, and apostrophes
+  const sanitizeSearchTerm = (value) => {
+    return value.replace(/[^a-zA-Z\s\-']/g, '');
+  };
+
   useEffect(() => {
     if (!Number.isInteger(Number.parseInt(departmentID, 10))) {
       return;
@@ -302,6 +309,7 @@ function InstructorPage() {
                 setSearchTerm(e.target.value);
               }}
             />
+
             <Button
               disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
               endIcon={<AddIcon />}
@@ -480,59 +488,43 @@ function InstructorPage() {
           ) : null}
         </Box>
         <Dialog
-        open={isDialogDeleteShow}
-        onClose={() => {
-          setIsDialogDeleteShow(false);
-          setInstructorToDelete(null);
-        }}
-      >
-        <DialogTitle sx={{backgroundColor: '#C62828',}}>Delete Instructor</DialogTitle>
-        <DialogContent sx={{ textAlign: "center", pt: 3 }}>
-          <img
-            src={warning}
-            alt="Warning"
-            style={{
-              width: 80,
-              height: 80,
-              marginBottom: 8,
-            }}
-          />
-          <DialogContentText>
-            {`This action cannot be undone. All data associated with ${instructorToDelete?.FirstName} ${instructorToDelete?.MiddleInitial} ${instructorToDelete?.LastName} will be lost.`}
-          </DialogContentText>
-        </DialogContent>
-
-        <DialogActions
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 1.5,
-            pb: 3,
+          open={isDialogDeleteShow}
+          onClose={() => {
+            setIsDialogDeleteShow(false);
+            setInstructorToDelete(null);
           }}
+          aria-labelledby="alert-dialog-title"
+          aria-describedby="alert-dialog-description"
         >
-          <Button
-            color="error"
-            variant="contained"
-            disabled={isOperationLoading}
-            onClick={() => handleInstructorDelete(instructorToDelete?.InstructorID)}
-            sx={{ width: "50%" }}
-          >
-            {isOperationLoading ? <CircularProgress size={20} /> : "Confirm"}
-          </Button>
-          <Button
-            variant="outlined"
-            disabled={isOperationLoading}
-            sx={{ width: "50%" }}
-            onClick={() => {
-              setIsDialogDeleteShow(false);
-              setInstructorToDelete(null);
-            }}
-          >
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
+          <DialogTitle id="alert-dialog-title">Remove Instructor</DialogTitle>
+
+          <DialogContent>
+            <DialogContentText id="alert-dialog-description">
+              {`Are you sure you want to remove "${instructorToDelete?.FirstName} ${instructorToDelete?.MiddleInitial} ${instructorToDelete?.LastName}"?`}
+            </DialogContentText>
+          </DialogContent>
+
+          <DialogActions>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                handleInstructorDelete(instructorToDelete?.InstructorID);
+              }}
+            >
+              Yes
+            </Button>
+
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setIsDialogDeleteShow(false);
+                setInstructorToDelete(null);
+              }}
+            >
+              No
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {mode === "" ? null : (
           <InstructorDataView

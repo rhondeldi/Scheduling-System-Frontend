@@ -43,8 +43,6 @@ import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-import warning from "../assets/warning.png";
-
 import "../assets/main.css";
 
 import { fetchAllDepartments, fetchWho } from "../js/departments";
@@ -91,7 +89,9 @@ function Rooms() {
     setIsOperationLoading(true);
   
     try {
+      console.log(`Attempting to delete room with ID: ${room_id}`);
       await deleteRemoveRoom(room_id);
+      console.log(`Successfully deleted room with ID: ${room_id}`);
       await load_rooms(departmentID, pageSize, page, searchTerm);
   
       setPopupOptions({
@@ -99,17 +99,24 @@ function Rooms() {
         HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
         Message: "The room was successfully deleted.",
       });
+
+      setIsDialogDeleteShow(false);
+      setRoomToDelete(null);
     } catch (err) {
+      console.error(`Delete failed for room ID ${room_id}:`, err);
       setPopupOptions({
         Heading: "Delete Failed",
         HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-        Message: `${err}`,
+        Message: `${err.message || err}`,
       });
+    } finally {
+      setLoading(false);
     }
-  
+
     setRoomToDelete(null);
-    setIsOperationLoading(false);
+    setLoading(false);
     setIsDialogDeleteShow(false);
+
   };
 
   const [room, setRoom] = useState({
@@ -473,51 +480,55 @@ function Rooms() {
           setIsDialogDeleteShow(false);
           setRoomToDelete(null);
         }}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
       >
-        <DialogTitle sx={{backgroundColor: '#C62828',}}>Delete Room</DialogTitle>
-        <DialogContent sx={{ textAlign: "center", pt: 3 }}>
-          <img
-            src={warning}
-            alt="Warning"
-            style={{
-              width: 80,
-              height: 80,
-              marginBottom: 8,
-            }}
-          />
-          <DialogContentText>
-            {`This action cannot be undone. All data associated with ${roomToDelete?.Name || "this room"} will be lost.`}
+        <DialogTitle id="alert-dialog-title">Remove Room</DialogTitle>
+
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            {`Are you sure you want to remove "${roomToDelete?.Name}"?`}
           </DialogContentText>
+
+          <Box
+            sx={{
+              px: 1,
+              py: 1.5,
+              borderRadius: 1,
+              backgroundColor: "rgba(244, 67, 54, 0.08)",
+              border: "1px solid",
+              borderColor: "error.light",
+            }}
+          >
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: 700, color: "error.dark" }}
+            >
+              {`${roomToDelete?.Name ?? ""}`}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Room record will be deleted.
+            </Typography>
+          </Box>
         </DialogContent>
 
-        <DialogActions
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 1.5,
-            pb: 3,
-          }}
-        >
+        <DialogActions>
           <Button
-            color="error"
-            variant="contained"
-            disabled={isOperationLoading}
-            onClick={() => handleRoomDelete(roomToDelete?.RoomID)}
-            sx={{ width: "50%" }}
+            variant="outlined"
+            onClick={() => {
+              handleRoomDelete(roomToDelete?.RoomID);
+            }}
           >
-            {isOperationLoading ? <CircularProgress size={20} /> : "Confirm"}
+            Yes
           </Button>
           <Button
             variant="outlined"
-            disabled={isOperationLoading}
-            sx={{ width: "50%" }}
             onClick={() => {
               setIsDialogDeleteShow(false);
-              setRoomToDelete(null);
             }}
+            sx={{ minWidth: 160 }}
           >
-            Cancel
+            No
           </Button>
         </DialogActions>
       </Dialog>
