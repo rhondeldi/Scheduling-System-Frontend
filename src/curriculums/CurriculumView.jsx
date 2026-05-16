@@ -171,9 +171,15 @@ function CurriculumView({
       <Box display="flex" flexDirection="column" maxHeight="80vh" overflow="hidden">
         {/* ================= HEADER ================= */}
         <Box
-          display="flex"
-          justifyContent="space-between"
-          p={1}
+        sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            py: 1.5,
+            px: 1,
+            gap: 2,
+            flexWrap: "wrap",
+            alignItems: "center",
+        }}
         >
           {mode === "view" ? (
             <Typography variant="h6">
@@ -181,8 +187,11 @@ function CurriculumView({
             </Typography>
           ) : (
             <TextField
-              size="small"
-              label="Curriculum Code"
+            size="small"
+            label="Curriculum Code"
+            sx={{
+                minWidth: 220,
+            }}
               defaultValue={editedCurriculum?.CurriculumCode || ""}
               onChange={(e) => {
                 const c = structuredClone(editedCurriculum);
@@ -528,7 +537,18 @@ function CurriculumView({
                                     )}
                                 </TableRow>
                                 </TableHead>
-                                <TableBody>
+                                <TableBody
+                                sx={{
+                                    opacity: isLoading ? 0 : 1,
+
+                                    transform: isLoading
+                                    ? "translateY(12px)"
+                                    : "translateY(0)",
+
+                                    transition:
+                                    "opacity 0.25s ease, transform 0.25s ease",
+                                }}
+                                >
                                 {sem.Subjects.map((sub, subIndex) => (
                                 <TableRow key={sub.ID}>
 
@@ -560,7 +580,7 @@ function CurriculumView({
                                         startIcon={<EditIcon />}
                                         sx={{ mr: 1 }}
                                         onClick={async () => {
-                                            setSubject(sub);
+                                            setSubject(subject);
 
                                             setYearSemSubjectTarget({
                                             index_year_level: yearTabIndex,
@@ -648,23 +668,170 @@ function CurriculumView({
 
       {/* ================= SUBJECT DIALOG ================= */}
       <Dialog
-        open={isDialogFormOpen}
-        onClose={() => setIsDialogFormOpen(false)}
-        fullWidth
-        maxWidth="xl"
-      >
-        <DialogTitle>Modify Subject</DialogTitle>
+          open={isDialogFormOpen}
+          onClose={() => setIsDialogFormOpen(false)}
+          fullWidth
+          maxWidth="xl"
+          TransitionProps={{
+            timeout: 250,
+          }}
+          slotProps={{
+            paper: {
+              component: "form",
+              onSubmit: async (event) => {
+                try {
+                  event.preventDefault();
 
-        <DialogContent>
-          <DialogContentText>{subject?.Name}</DialogContentText>
-        </DialogContent>
+                  const formData = new FormData(event.currentTarget);
+                  const formJson = Object.fromEntries(formData.entries());
 
-        <DialogActions>
-          <Button onClick={() => setIsDialogFormOpen(false)}>
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+                  // when a subject's "modify" button was clicked, somewhere the `subject` state will be set by that
+                  // associated subject in the curriculum, and since the `subject` state has the same reference as the
+                  // one in the selected subject in the `editedCurriculum` state we can just edit the subject.LabHours
+                  // and subject.LecHours directly and just update the `editedCurriculum` state to force rerender.
+
+                  subject.LecHours = parseInt(
+                    formJson.ModifySubjectDialogForm_LecHours,
+                    10,
+                  );
+                  subject.LabHours = parseInt(
+                    formJson.ModifySubjectDialogForm_LabHours,
+                    10,
+                  );
+
+                  const new_designated_instructor_ids = [];
+
+                  for (let i = 0; i < chipInstructors?.length; i++) {
+                    new_designated_instructor_ids.push(
+                      parseInt(chipInstructors[i].InstructorID, 10),
+                    );
+                  }
+
+                  subject.DesignatedInstructorsID =
+                    new_designated_instructor_ids;
+
+                  let updated_curriculum = structuredClone(editedCurriculum);
+                  setEditedCurriculum(updated_curriculum);
+                } catch (err) {
+                  setPopupOptions({
+                    Heading: "Operation Failed",
+                    HeadingStyle: {
+                      background: POPUP_ERROR_COLOR,
+                      color: "white",
+                    },
+                    Message: `${err.message}`,
+                  });
+                } finally {
+                  setIsLoading(false);
+                  setIsDialogFormOpen(false);
+                }
+              },
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+                backgroundColor: "#2e6417",
+                color: "white",
+                fontWeight: 600,
+                letterSpacing: "0.03em",
+            }}
+            >
+            {subject?.Code
+                ? `Edit Subject • ${subject.Code}`
+                : "Edit Subject"}
+            </DialogTitle>
+          <DialogContent>
+            <DialogContentText minWidth={"25em"}>
+              {subject?.Name}
+            </DialogContentText>
+            <TextField
+              required
+              margin="dense"
+              id="ModifySubjectDialogForm_LecHours"
+              name="ModifySubjectDialogForm_LecHours"
+              label="Lecture Hours"
+              type="number"
+              fullWidth
+              variant="standard"
+              defaultValue={subject?.LecHours || 0}
+              slotProps={{ htmlInput: { min: 0, max: 15 } }}
+            />
+            <TextField
+              required
+              margin="dense"
+              id="ModifySubjectDialogForm_LabHours"
+              name="ModifySubjectDialogForm_LabHours"
+              label="Lab Hours"
+              type=""
+              fullWidth
+              variant="standard"
+              defaultValue={subject?.LabHours || 0}
+              slotProps={{ htmlInput: { min: 0, max: 15 } }}
+            />
+
+            <Box
+              marginTop={"1em"}
+              display={"flex"}
+              flexDirection={"column"}
+              gap={1}
+            >
+              <Box
+                display={"flex"}
+                justifyContent={"space-between"}
+                alignItems={"center"}
+              >
+                <Typography variant="caption">
+                  Add one or more instructor(s) you want to assign to this
+                  subject
+                </Typography>
+              </Box>
+              <Box display={"flex"} flexWrap={"wrap"} gap={1} padding={"0.3em"}>
+                {chipInstructors.map((instructor) => (
+                  <Chip
+                    key={`chip-key-${instructor.InstructorID}`}
+                    label={`${instructor.InstructorID} | ${instructor.Name}`}
+                    onDelete={() => {
+                      setChipInstructors(
+                        chipInstructors.filter(
+                          (iter_instructor) =>
+                            iter_instructor?.InstructorID !=
+                            instructor?.InstructorID,
+                        ),
+                      );
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            <InstructorSelection
+              open={true}
+              curriculum={editedCurriculum}
+              setEditedCurriculum={setEditedCurriculum}
+              yearSemSubjectTarget={yearSemSubjectTarget}
+              chipInstructors={chipInstructors}
+              setChipInstructors={setChipInstructors}
+            />
+          </DialogContent>
+          <DialogActions>
+          <Button
+            type="submit"
+            variant="contained"
+            >
+            Save Subject
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setIsDialogFormOpen(false);
+                setChipInstructors([]);
+              }}
+            >
+              Cancel
+            </Button>
+          </DialogActions>
+        </Dialog>
 
       {/* ================= ADD SUBJECT ================= */}
       {isAddingSubjects && (
