@@ -3,26 +3,26 @@ import { createTheme } from '@mui/material/styles';
 import { alpha } from '@mui/material';
 
 const brand = {
-  primary: '#003f2d',
-  primaryLight: '#0a5a3f',
-  primaryDark: '#00281f',
-  secondary: '#d9eadf',
-  secondaryLight: '#eff7f2',
-  secondaryDark: '#174d37',
-  accent: '#0b6b4a',
-  accentLight: '#dcefe6',
-  accentDark: '#004631',
-  sealGold: '#b99a2e',
-  warning: '#6f6734',
-  warningLight: '#f1efe2',
-  warningDark: '#474322',
-  surface: '#f4f8f5',
-  paper: '#ffffff',
-  text: '#0f2a20',
-  danger: '#b42318',
-  dangerDark: '#7f1d1d',
-  success: '#075f3a',
-  muted: '#d5e2da',
+    primary: '#184d24',
+    primaryLight: '#43a047',
+    primaryDark: '#12381b',
+    secondary: '#dff3e3',
+    secondaryLight: '#f1fbf3',
+    secondaryDark: '#276738',
+    accent: '#2e8b57',
+    accentLight: '#bfe7cb',
+    accentDark: '#1d5f3a',
+    sealGold: '#b99a2e',
+    warning: '#6f6734',
+    warningLight: '#f1efe2',
+    warningDark: '#474322',
+    surface: '#f4f8f5',
+    paper: '#ffffff',
+    text: '#0f2a20',
+    danger: '#b42318',
+    dangerDark: '#7f1d1d',
+    success: '#075f3a',
+    muted: '#d5e2da',
 };
 
 // ===================== GRADIENTS =====================
@@ -250,6 +250,7 @@ const theme = createTheme({
     MuiAccordionSummary: {
       styleOverrides: {
         root: {
+          color: '#FFFFFF',
           borderRadius: 6,
           padding: '0 16px',
           transition: 'background 0.3s ease',
@@ -259,7 +260,6 @@ const theme = createTheme({
           },
           '&.Mui-expanded': {
             backgroundImage: gradients.accordionExpanded,
-            color: '#FFFFFF',
           },
         },
         title: {
@@ -308,6 +308,7 @@ const theme = createTheme({
     MuiDialogTitle: {
       styleOverrides: {
         root: {
+          backgroundColor: brand.primary,
           color: '#FFFFFF',
           padding: '16px 24px',
           fontWeight: 600,

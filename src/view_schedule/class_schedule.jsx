@@ -295,7 +295,7 @@ function TimeTable() {
     return (
         <>
             <Box display={'flex'} justifyContent={'center'} alignItems={'center'} padding={1} bgcolor={'#0B5E20'}>
-                <Typography variant="h6" color="#F5F7F5">Cavite Statue University - Silang Campus Schedules</Typography>
+                <Typography variant="h6" color="#F5F7F5">Cavite State University - Silang Campus Schedules</Typography>
             </Box>
 
             <Popup popupOptions={popupOptions} closeButtonActionHandler={() => {

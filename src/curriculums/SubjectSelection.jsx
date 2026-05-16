@@ -220,7 +220,7 @@ export default function SubjectSelection({
           },
         }}
       >
-        <DialogTitle sx={{ backgroundColor: "#2e6417", color: "white" }}>
+        <DialogTitle sx={{ backgroundColor: "primary", color: "white" }}>
           ADD SUBJECT
         </DialogTitle>
 

@@ -176,7 +176,7 @@ export default function Login() {
       justifyContent="center"
       alignItems="center"
       minHeight="100vh"
-      bgcolor="#1c3d0e"
+      sx={{ background: "linear-gradient(90deg, #12381b 0%, #184d24 100%)" }}
       p={2}
     >
       <Paper elevation={3} sx={{ p: 4, maxWidth: 400, width: "100%" }}>

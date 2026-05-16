@@ -308,7 +308,7 @@ function Rooms() {
                     <TableCell sx={{ width: "20%" }}>Room Type</TableCell>
                     <TableCell sx={{ width: "12%" }}>Capacity</TableCell>
                     {departmentID == 0 ? (
-                      <TableCell sx={{ width: "18%" }}>Department Sharing</TableCell>
+                      <TableCell sx={{ width: "18%" }}></TableCell>
                     ) : null}
                     <TableCell sx={{ width: "112px" }} align="right"></TableCell>
                   </TableRow>
