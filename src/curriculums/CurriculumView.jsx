@@ -310,6 +310,10 @@ function CurriculumView({
 
                 {(mode === "edit" || mode === "new") && (
                   <Button
+                    variant="contained"
+                    color="success"
+                    startIcon={<AddIcon />}
+                    sx={{ ml: 1, mr: 1, minWidth: "auto" }}
                     onClick={() => {
                       const c = structuredClone(editedCurriculum);
 
@@ -335,7 +339,7 @@ function CurriculumView({
                       setYearTabIndex(c.YearLevels.length - 1);
                     }}
                   >
-                    +
+                    Add Year
                   </Button>
                 )}
               </Box>
@@ -657,8 +661,36 @@ function CurriculumView({
               </Box>
             </>
           ) : (
-            <Box p={2}>
+            <Box
+              p={2}
+              display="flex"
+              flexDirection="column"
+              alignItems="flex-start"
+              gap={1.5}
+            >
               <Typography fontStyle="italic">empty year levels</Typography>
+
+              {(mode === "edit" || mode === "new") && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<AddIcon />}
+                  onClick={() => {
+                    const c = structuredClone(editedCurriculum);
+
+                    c.YearLevels.push({
+                      Name: YEAR_LEVEL_NAMES[c.YearLevels.length],
+                      IsActive: true,
+                      Semesters: [],
+                    });
+
+                    setEditedCurriculum(c);
+                    setYearTabIndex(c.YearLevels.length - 1);
+                  }}
+                >
+                  Add Year Level
+                </Button>
+              )}
             </Box>
           )}
         </Box>
