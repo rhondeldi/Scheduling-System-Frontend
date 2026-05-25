@@ -43,6 +43,8 @@ import {
   DialogContentText,
   DialogTitle,
   LinearProgress,
+  Menu,
+  MenuItem,
   TextField,
   Typography,
 } from "@mui/material";
@@ -744,6 +746,9 @@ function TimeTable() {
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [isBlackAndWhite, setIsBlackAndWhite] = useState(false);
+  const [printScope, setPrintScope] = useState("section");
+  const [batchPrintSchedules, setBatchPrintSchedules] = useState([]);
+  const [printMenuAnchor, setPrintMenuAnchor] = useState(null);
   const contentRef = useRef(null);
 
   const promiseResolveRef = useRef(null);
@@ -756,7 +761,10 @@ function TimeTable() {
 
   const reactToPrintFn = useReactToPrint({
     contentRef,
-    documentTitle: `${departmentCurriculumsData[curriculumIndex]?.CurriculumName} - ${SEMESTER_NAMES[semesterIndex]} ${new Date().getFullYear()} - Section ${SECTION_CHARACTERS[sectionIndex]}`,
+    documentTitle:
+    `${departmentCurriculumsData[curriculumIndex]?.CurriculumCode || "Schedule"}-${
+    SEMESTER_NAMES[semesterIndex]
+    }`,
     onBeforePrint: () => {
       saveAddedOptionalPrintingValues();
       return new Promise((resolve) => {
@@ -767,12 +775,16 @@ function TimeTable() {
     onAfterPrint: () => {
       promiseResolveRef.current = null;
       setIsPrinting(false);
+      setBatchPrintSchedules([]);
     },
   });
 
   const reactToPrintBlackAndWhiteFn = useReactToPrint({
     contentRef,
-    documentTitle: `${departmentCurriculumsData[curriculumIndex]?.CurriculumName} - ${SEMESTER_NAMES[semesterIndex]} ${new Date().getFullYear()} - Section ${SECTION_CHARACTERS[sectionIndex]}`,
+    documentTitle:
+    `${departmentCurriculumsData[curriculumIndex]?.CurriculumCode || "Schedule"}-${
+    SEMESTER_NAMES[semesterIndex]
+    }`,
     onBeforePrint: () => {
       saveAddedOptionalPrintingValues();
       return new Promise((resolve) => {
@@ -785,6 +797,7 @@ function TimeTable() {
       promiseResolveRef.current = null;
       setIsPrinting(false);
       setIsBlackAndWhite(false);
+      setBatchPrintSchedules([]);
     },
   });
 
@@ -801,7 +814,7 @@ function TimeTable() {
 
   const [isPrintDialogShow, setIsPrintDialogShow] = useState(false);
 
-  const handleOpenSignatoriesDialog = () => {
+  const handleOpenSignatoriesDialog = (scope = "section") => {
     const academic_year = localStorage.getItem("academic-year");
     const adviser_fullname = localStorage.getItem("adviser-full-name");
 
@@ -824,6 +837,9 @@ function TimeTable() {
     setSignatoryCheckedAndReviewedBy(signatory_checked_and_reviewed_by);
     setPositionCheckedAndReviewedBy(position_checked_and_reviewed_by);
 
+    setPrintScope(scope);
+    setBatchPrintSchedules([]);
+    setPrintMenuAnchor(null);
     setIsPrintDialogShow(true);
   };
 
@@ -849,6 +865,199 @@ function TimeTable() {
   curriculumIndex !== "" &&
   yearLevelIndex !== "" &&
   sectionIndex !== "";
+
+  const getSubjectColors = (subjects = []) => {
+    const colors = {};
+    let subjectCount = 0;
+
+    subjects.forEach((subject) => {
+      if (!colors[subject.SubjectCode]) {
+        subjectCount++;
+        colors[subject.SubjectCode] = `color-${subjectCount}`;
+      }
+    });
+
+    return colors;
+  };
+
+  const makePrintItems = async (scope) => {
+    if (scope === "section") {
+      return [];
+    }
+
+    const curriculum = departmentCurriculumsData[curriculumIndex];
+    if (!curriculum) return [];
+
+    const selectedYearIndexes =
+      scope === "year"
+        ? [Number(yearLevelIndex)]
+        : curriculum.YearLevels.map((_, index) => index);
+
+    const items = [];
+
+    for (const yearIdx of selectedYearIndexes) {
+      const yearLevel = curriculum.YearLevels[yearIdx];
+      if (!yearLevel) continue;
+
+      for (let secIdx = 0; secIdx < Number(yearLevel.Sections || 0); secIdx++) {
+        const subjects = await fetchClassJsonSchedule(
+          departmentID,
+          semesterIndex,
+          curriculum.CurriculumID,
+          yearIdx,
+          secIdx,
+        );
+
+        items.push({
+          subjects,
+          subjectColors: getSubjectColors(subjects),
+          curriculumIndex: Number(curriculumIndex),
+          yearLevelIndex: yearIdx,
+          sectionIndex: secIdx,
+        });
+      }
+    }
+
+    return items;
+  };
+
+  const runPrint = async (blackAndWhite = false) => {
+    try {
+      setIsLoading(true);
+      const items = await makePrintItems(printScope);
+      setBatchPrintSchedules(items);
+      setIsLoading(false);
+
+      setTimeout(() => {
+        if (blackAndWhite) {
+          reactToPrintBlackAndWhiteFn();
+        } else {
+          reactToPrintFn();
+        }
+      }, 0);
+    } catch (err) {
+      setIsLoading(false);
+      setPopupOptions({
+        Heading: "Print Preparation Failed",
+        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
+        Message: `${err}`,
+      });
+    }
+  };
+
+  const renderSchedulePrintPage = ({
+    subjects,
+    colors,
+    curriculumIdx,
+    yearIdx,
+    secIdx,
+    pageBreak = false,
+  }) => (
+    <div
+      key={`${curriculumIdx}-${yearIdx}-${secIdx}`}
+      style={{
+        breakAfter: pageBreak ? "page" : "auto",
+        pageBreakAfter: pageBreak ? "always" : "auto",
+      }}
+    >
+      {isPrinting ? (
+        <>
+          <PrintHeader isBlackAndWhite={isBlackAndWhite} />
+
+          <Box display={"flex"} flexDirection={"column"} justifyContent={"center"} padding={1} gap={0} marginTop={1}>
+            <Typography lineHeight={1} variant="body1" flexWrap={true} textAlign={"center"}>
+              {allDepartments.find((d) => d.DepartmentID == departmentID)?.Name?.toUpperCase()}
+            </Typography>
+            <Typography lineHeight={1} variant="body1" flexWrap={true} fontWeight={"bold"} textAlign={"center"}>
+              Student's Schedule
+            </Typography>
+            <Typography lineHeight={1} variant="body1" textAlign={"center"}>
+              {`${SEMESTER_NAMES[semesterIndex]}${academicYear ? ", " + academicYear : ""}`}
+            </Typography>
+          </Box>
+
+          <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
+            <Typography variant="body1">{`Program: ${departmentCurriculumsData[curriculumIdx]?.CurriculumName}`}</Typography>
+            <Typography variant="body1">{`Year: ${departmentCurriculumsData[curriculumIdx]?.YearLevels[yearIdx]?.Name}`}</Typography>
+          </Box>
+
+          <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"} marginBottom={1}>
+            {adviserFullName ? <Typography variant="body1">{`Adviser: ${adviserFullName}`}</Typography> : null}
+            <Typography variant="body1">{`Section: ${SECTION_CHARACTERS[secIdx]}`}</Typography>
+          </Box>
+        </>
+      ) : null}
+
+      <table className="time-table" style={{ display: "revert" }}>
+        <thead>
+          <tr>
+            <th className="time-slot-header" style={isBlackAndWhite ? { background: "white", color: "black", border: "thin solid black" } : {}}>
+              Time Slot
+            </th>
+            {DAYS.map((day) => (
+              <th key={day} className="day-header" style={isBlackAndWhite ? { background: "white", color: "black", border: "thin solid black" } : {}}>
+                {day}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {generateTimeSlotRowLabels(startHour, timeSlotMinuteInterval, dailyTimeSlots).map((timeSlotLabel, rowIdx) => (
+            <tr key={rowIdx}>
+              <td style={isBlackAndWhite ? { background: "white", color: "black" } : {}} className="time-slot">
+                {timeSlotLabel}
+              </td>
+              {DAYS.map((_, dayIdx) => {
+                const assignedSubject = subjects.find((subj) => subj.DayIdx === dayIdx && subj.TimeSlotIdx === rowIdx);
+
+                if (assignedSubject) {
+                  return (
+                    <td
+                      key={dayIdx}
+                      className={`subject-cell ${!isBlackAndWhite ? colors[assignedSubject.SubjectCode] : "color-bw"}`}
+                      rowSpan={assignedSubject.SubjectTimeSlots}
+                    >
+                      <div className="subject-content">
+                        <div className="subject-name">{assignedSubject.SubjectCode}</div>
+                        <div className="instructor">{assignedSubject.InstructorLastName}</div>
+                        <div className="room">{assignedSubject.RoomName}</div>
+                      </div>
+                    </td>
+                  );
+                }
+
+                const isOccupied = subjects.some((subject) => {
+                  const rowHit = rowIdx >= subject.TimeSlotIdx && rowIdx < subject.TimeSlotIdx + subject.SubjectTimeSlots;
+                  const colHit = dayIdx == subject.DayIdx;
+                  return rowHit && colHit;
+                });
+
+                return isOccupied ? null : <td key={dayIdx} className="empty-slot"></td>;
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <Box display={"flex"} flexDirection={"row"} width={"100%"} justifyContent={"space-between"} paddingInline={5} paddingTop={3}>
+        {signatoryPreparedBy ? (
+          <Box display={"flex"} flexDirection={"column"}>
+            <Typography variant="caption" marginBottom={3}>Prepared by:</Typography>
+            <Typography variant="body1">{signatoryPreparedBy}</Typography>
+            <Typography variant="caption">{positionPreparedBy}</Typography>
+          </Box>
+        ) : null}
+
+        {signatoryCheckedAndReviewedBy ? (
+          <Box display={"flex"} flexDirection={"column"}>
+            <Typography variant="caption" marginBottom={3}>Checked and Reviewed by:</Typography>
+            <Typography variant="body1"> {signatoryCheckedAndReviewedBy}</Typography>
+            <Typography variant="caption">{positionCheckedAndReviewedBy}</Typography>
+          </Box>
+        ) : null}
+      </Box>
+    </div>
+  );
 
   // ---- RENDER ----
 
@@ -1006,13 +1215,26 @@ function TimeTable() {
           ref={contentRef}
           style={{
             padding:
-              isPrinting && Number.isInteger(Number.parseInt(sectionIndex, 10))
+              isPrinting && (Number.isInteger(Number.parseInt(sectionIndex, 10)) || batchPrintSchedules.length > 0)
                 ? "1in"
                 : "0px",
           }}
         >
+          {isPrinting && batchPrintSchedules.length > 0
+            ? batchPrintSchedules.map((item, index) =>
+                renderSchedulePrintPage({
+                  subjects: item.subjects,
+                  colors: item.subjectColors,
+                  curriculumIdx: item.curriculumIndex,
+                  yearIdx: item.yearLevelIndex,
+                  secIdx: item.sectionIndex,
+                  pageBreak: index < batchPrintSchedules.length - 1,
+                }),
+              )
+            : null}
+
           {/* ===================== PRINT HEADER ===================== */}
-          {isPrinting && Number.isInteger(Number.parseInt(sectionIndex, 10)) ? (
+          {isPrinting && batchPrintSchedules.length === 0 && Number.isInteger(Number.parseInt(sectionIndex, 10)) ? (
             <>
               <PrintHeader isBlackAndWhite={isBlackAndWhite} />
 
@@ -1077,7 +1299,14 @@ function TimeTable() {
 
           <table
             className="time-table"
-            style={{ display: sectionIndex ? "revert" : "none" }}
+            style={{
+              display:
+                batchPrintSchedules.length > 0
+                  ? "none"
+                  : sectionIndex
+                    ? "revert"
+                    : "none",
+            }}
           >
             <thead>
               <tr>
@@ -1212,6 +1441,7 @@ function TimeTable() {
             justifyContent={"space-between"}
             paddingInline={5}
             paddingTop={3}
+            sx={{ display: batchPrintSchedules.length > 0 ? "none" : "flex" }}
           >
             {signatoryPreparedBy ? (
               <Box display={"flex"} flexDirection={"column"}>
@@ -1255,7 +1485,7 @@ function TimeTable() {
 
           <DialogContent>
             <DialogContentText id="alert-dialog-description">
-              Add signatories and other info if needed to include in printing
+                Add signatories and other info if needed to include in printing.
             </DialogContentText>
 
             <Box
@@ -1340,7 +1570,11 @@ function TimeTable() {
             <Button
               variant="outlined"
               size="medium"
-              onClick={reactToPrintFn}
+              onClick={() =>
+                {
+                  setIsPrintDialogShow(false);
+                  runPrint(false);
+                }}
               endIcon={<PrintIcon />}
             >
               Print Colored
@@ -1348,7 +1582,11 @@ function TimeTable() {
             <Button
               variant="outlined"
               size="medium"
-              onClick={reactToPrintBlackAndWhiteFn}
+              onClick={() =>
+              {
+                setIsPrintDialogShow(false);
+                runPrint(true);
+              }}
               endIcon={<PrintIcon />}
             >
               Print Black & White
@@ -1704,21 +1942,48 @@ function TimeTable() {
                 }}
             >
                 <Button
-                variant="outlined"
-                size="small"
-                onClick={handleOpenSignatoriesDialog}
-                disabled={isGenerating}
-                endIcon={<PrintIcon />}
-                sx={{
+                  variant="outlined"
+                  size="small"
+                  onClick={(event) => setPrintMenuAnchor(event.currentTarget)}
+                  disabled={isGenerating}
+                  endIcon={<PrintIcon />}
+                  sx={{
                     borderRadius: 3,
                     textTransform: "none",
                     fontWeight: 600,
                     flex: 1,
-                    minWidth: 140,
-                }}
+                    minWidth: 160,
+                  }}
                 >
-                Print
+                  Print Schedule
                 </Button>
+                <Menu
+                  anchorEl={printMenuAnchor}
+                  open={Boolean(printMenuAnchor)}
+                  onClose={() => setPrintMenuAnchor(null)}
+                >
+                  <MenuItem
+                    disabled={sectionIndex === ""}
+                    onClick={() => handleOpenSignatoriesDialog("section")}
+                  >
+                    <PrintIcon fontSize="small" sx={{ mr: 1 }} />
+                    Print Current Section
+                  </MenuItem>  
+                  <MenuItem
+                    disabled={yearLevelIndex === ""}
+                    onClick={() => handleOpenSignatoriesDialog("year")}
+                  >
+                    <PrintIcon fontSize="small" sx={{ mr: 1 }} />
+                    Print Selected Year
+                  </MenuItem>
+                  <MenuItem
+                    disabled={curriculumIndex === ""}
+                    onClick={() => handleOpenSignatoriesDialog("semester")}
+                  >
+                    <PrintIcon fontSize="small" sx={{ mr: 1 }} />
+                    Print Whole Semester
+                  </MenuItem>
+                </Menu>
 
                 <Button
                 variant="contained"

@@ -184,84 +184,77 @@ function CurriculumsTableList() {
         />
 
         <Box display={!isView ? "block" : "none"}>
+          <Box sx={{ mb: 2 }}>
+            <FormControl size="small" sx={{ minWidth: 300 }}>
+              <InputLabel id="label-id-department">Select Department</InputLabel>
+              <Select
+                id="id-department"
+                labelId="label-id-department"
+                label="Select Department"
+                value={departmentID}
+                onChange={(e) => {
+                  handleDepartmentChange(e);
+
+                  for (let i = 0; i < allDepartment?.length; i++) {
+                    if (allDepartment[i].DepartmentID === e.target.value) {
+                      setSelectedDepartment(allDepartment[i]);
+                      break;
+                    }
+                  }
+                }}
+              >
+                {allDepartment
+                  ? allDepartment.map((department, index) => {
+                      if (department.DepartmentID > 0) {
+                        return (
+                          <MenuItem
+                            key={index}
+                            value={department.DepartmentID}
+                          >{`${department.Code} - ${department.Name}`}</MenuItem>
+                        );
+                      }
+
+                      return null;
+                    })
+                  : null}
+              </Select>
+            </FormControl>
+          </Box>
+
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
-              paddingBlock: "0.75em",
+              paddingBlock: "0.6em",
             }}
           >
-            <Box display={"flex"} gap={"0.5em"}>
-              <FormControl sx={{ minWidth: 150, maxWidth: 151 }} size="small">
-                <InputLabel id="label-id-department">Department</InputLabel>
-                <Select
-                  id="id-department"
-                  labelId="label-id-department"
-                  label="Department"
-                  value={departmentID}
-                  onChange={(e) => {
-                    handleDepartmentChange(e);
+            <TextField
+              disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
+              sx={{ minWidth: 300 }}
+              size="small"
+              label="Search curriculum"
+              value={searchTerm}
+              onChange={(e) => {
+                setPage(0);
+                setIsLoading(true);
+                setSearchTerm(e.target.value);
+              }}
+            />
 
-                    for (let i = 0; i < allDepartment?.length; i++) {
-                      if (allDepartment[i].DepartmentID === e.target.value) {
-                        setSelectedDepartment(allDepartment[i]);
-                        break;
-                      }
-                    }
-                  }}
-                >
-                  {allDepartment
-                    ? allDepartment.map((department, index) => {
-                        if (department.DepartmentID > 0) {
-                          return (
-                            <MenuItem
-                              key={index}
-                              value={department.DepartmentID}
-                            >{`${department.Code} - ${department.Name}`}</MenuItem>
-                          );
-                        }
-
-                        return null;
-                      })
-                    : null}
-                </Select>
-              </FormControl>
-
-              {Number.isInteger(Number.parseInt(departmentID, 10)) ? (
-                <>
-                  <TextField
-                    sx={{ minWidth: 260, maxWidth: 360 }}
-                    size="small"
-                    label="Search curriculum"
-                    value={searchTerm}
-                    onChange={(e) => {
-                      setPage(0);
-                      setIsLoading(true);
-                      setSearchTerm(e.target.value);
-                    }}
-                  />
-                </>
-              ) : null}
-            </Box>
-
-            {Number.isInteger(Number.parseInt(departmentID, 10)) ? (
-              <>
-                <Button
-                  endIcon={<AddIcon />}
-                  size="small"
-                  color="secondary"
-                  variant="contained"
-                  onClick={() => {
-                    setCurriculumBasicInfo(null);
-                    setMode("new");
-                    setIsView(true);
-                  }}
-                  disabled={!selectedDepartment}
-                >
-                  Add New Curriculum
-                </Button>
-              </>
-            ) : null}
+            <Button
+              endIcon={<AddIcon />}
+              size="small"
+              color="secondary"
+              variant="contained"
+              onClick={() => {
+                setCurriculumBasicInfo(null);
+                setMode("new");
+                setIsView(true);
+              }}
+              disabled={!selectedDepartment}
+            >
+              Add New Curriculum to {selectedDepartment?.Code}
+            </Button>
           </Box>
 
           <Box>
@@ -354,40 +347,44 @@ function CurriculumsTableList() {
                 </TableBody>
               </Table>
               </Box>
-              <Box
+              <TablePagination
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
                   borderTop: "1px solid",
                   borderColor: "divider",
                   bgcolor: "#f8f9fa",
-                }}
-              >
-                <TablePagination
-                  sx={{
-                    "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
-                    "& .MuiIconButton-root": {
-                      border: "1px solid",
-                      borderColor: "divider",
-                      borderRadius: "4px",
-                      mx: 0.25,
-                      "&:hover:not(.Mui-disabled)": {
-                        bgcolor: "primary.main",
-                        color: "white",
-                        borderColor: "primary.main",
-                      },
+                  "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
+                  "& .MuiTablePagination-select": { fontWeight: 500 },
+                  "& .MuiIconButton-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    mx: 0.25,
+                    "&:hover:not(.Mui-disabled)": {
+                      bgcolor: "primary.main",
+                      color: "white",
+                      borderColor: "primary.main",
                     },
-                  }}
-                  component="div"
-                  count={totalCount}
-                  rowsPerPage={pageSize}
-                  page={page}
-                  rowsPerPageOptions={[]}
-                  labelRowsPerPage={() => ""}
-                  onPageChange={(_, new_page) => { setIsPaginating(true); setPage(new_page); }}
-                />
-              </Box>
+                  },
+                  "& .MuiInputBase-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    px: 1,
+                    "&:hover": { borderColor: "text.secondary" },
+                  },
+                }}
+                component="div"
+                count={totalCount}
+                rowsPerPage={pageSize}
+                page={page}
+                rowsPerPageOptions={[5, 10, 25]}
+                onPageChange={(_, new_page) => { setIsPaginating(true); setPage(new_page); }}
+                onRowsPerPageChange={(e) => {
+                  setIsPaginating(true);
+                  setPageSize(Number.parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+              />
             </TableContainer>
           </Box>
         </Box>

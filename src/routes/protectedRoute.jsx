@@ -6,7 +6,9 @@ import { fetchWho } from "../js/departments.js";
 // ===================== MAIN COMPONENT =====================
 export default function ProtectedRoute({ children }) {
   // ---- STATE ----
-  const [allowed, setAllowed] = useState(null);
+  const [allowed, setAllowed] = useState(() =>
+    localStorage.getItem("departmentCode") ? true : null,
+  );
 
   // ---- EFFECTS ----
   useEffect(() => {

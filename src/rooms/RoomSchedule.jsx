@@ -1,9 +1,9 @@
 // ===================== IMPORTS =====================
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControl, InputLabel, List, MenuItem, Select, TextField, Typography } from "@mui/material";
 import { useState, useEffect, useRef } from "react";
-import { Loading, POPUP_ERROR_COLOR, POPUP_WARNING_COLOR } from "../components/Loading";
+import { Loading, POPUP_ERROR_COLOR } from "../components/Loading";
 
-import { fetchRoomAllocation, RoomAllocationUnsupportedError } from "../js/rooms";
+import { fetchRoomAllocation } from "../js/rooms";
 import { generateTimeSlotRowLabels } from "../js/week-time-table-grid-functions";
 
 import { useReactToPrint } from "react-to-print";
@@ -28,6 +28,8 @@ export default function RoomSchedule({
     roomToView, setRoomToView, setIsViewRoomSchedule,
     selectedDepartment,
     popupOptions, setPopupOptions,
+    autoOpenPrintDialog = false,
+    onAutoOpenPrintDialogHandled = () => {},
 }) {
     const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -63,19 +65,6 @@ export default function RoomSchedule({
                 setSubjects(room_subject_allocation)
             } catch (err) {
                 setSubjects([])
-
-                if (err instanceof RoomAllocationUnsupportedError) {
-                    setPopupOptions({
-                        Heading: "Schedule View Not Available",
-                        HeadingStyle: { background: POPUP_WARNING_COLOR, color: "white" },
-                        Message: "This room supports multiple concurrent sections, so a single weekly timetable cannot be rendered for it. Use the per-section schedules instead."
-                    });
-                    setIsLoading(false)
-                    setIsViewRoomSchedule(false)
-                    setRoomToView(null)
-                    return
-                }
-
                 setPopupOptions({
                     Heading: "Unable To Load Room Schedule",
                     HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
@@ -203,6 +192,13 @@ export default function RoomSchedule({
 
         setIsPrintDialogShow(true)
     }
+
+    useEffect(() => {
+        if (!autoOpenPrintDialog || !Number.isInteger(Number.parseInt(semesterIndex, 10))) return;
+
+        handleOpenSignatoriesDialog();
+        onAutoOpenPrintDialogHandled();
+    }, [autoOpenPrintDialog, semesterIndex]);
 
     const saveAddedOptionalPrintingValues = () => {
         localStorage.setItem('academic-year', academicYear)
@@ -372,7 +368,7 @@ export default function RoomSchedule({
 
             <DialogContent>
                 <DialogContentText id="alert-dialog-description">
-                    Add signatories if needed to include in printing
+                    Add signatories if needed.
                 </DialogContentText>
 
                 <Box display={'flex'} flexDirection={'column'} gap={2} marginTop={2}>

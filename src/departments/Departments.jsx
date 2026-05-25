@@ -190,7 +190,7 @@ export default function Departments() {
         {/* ===================== PAGE ===================== */}
         <Box>
           {/* TOP BAR */}
-          <Box sx={{ display: "flex", justifyContent: "space-between", py: 1.5 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", paddingBlock: "0.6em" }}>
             <TextField
               size="small"
               label="Search department"
@@ -202,8 +202,10 @@ export default function Departments() {
             />
 
             <Button
+              color="secondary"
               variant="contained"
-              startIcon={<AddIcon />}
+              size="small"
+              endIcon={<AddIcon />}
               onClick={() => {
                 setMode("new");
                 setDepartment({
@@ -217,7 +219,7 @@ export default function Departments() {
                 setIsDialogFormOpen(true);
               }}
             >
-              Add Department
+              Add New Department
             </Button>
           </Box>
 
@@ -403,7 +405,7 @@ export default function Departments() {
           >
             <Button
               color="secondary"
-              variant="contained"
+              variant="outlined"
               disabled={isOperationLoading}
               onClick={() => {
                 setIsDialogDeleteShow(false);
@@ -414,7 +416,7 @@ export default function Departments() {
             </Button>
             <Button
               color="error"
-              variant="outlined"
+              variant="contained"
               disabled={isOperationLoading}
               onClick={() => handleDelete(departmentToDelete?.DepartmentID)}
             >
@@ -464,56 +466,56 @@ export default function Departments() {
               helperText={hasAttemptedSave && !department.Name.trim() ? "Department name is required" : ""}
             />
 
-            <TextField
-              margin="dense"
-              label="Department Password"
-              type="password"
-              fullWidth
-              required={mode === "new"}
-              value={department.SaltedHashedPassword || ""}
-              onChange={(e) =>
-                setDepartment((p) => ({
-                  ...p,
-                  SaltedHashedPassword: e.target.value,
-                }))
-              }
-              error={
-                mode === "new" &&
-                hasAttemptedSave &&
-                !(department.SaltedHashedPassword || "").trim()
-              }
-              helperText={
-                mode === "new" &&
-                hasAttemptedSave &&
-                !(department.SaltedHashedPassword || "").trim()
-                  ? "Password is required"
-                  : "Password must be at least 8 characters long"
-              }
-            />
-
             {mode === "new" && (
-              <TextField
-                margin="dense"
-                label="Confirm Password"
-                type="password"
-                fullWidth
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                error={
-                  hasAttemptedSave &&
-                  (!confirmPassword.trim() ||
-                    confirmPassword !== department.SaltedHashedPassword)
-                }
-                helperText={
-                  hasAttemptedSave && !confirmPassword.trim()
-                    ? "Please confirm your password"
-                    : hasAttemptedSave &&
-                        confirmPassword !== department.SaltedHashedPassword
-                      ? "Passwords do not match"
-                      : ""
-                }
-              />
+                <>
+                <TextField
+                    margin="dense"
+                    label="Department Password"
+                    type="password"
+                    fullWidth
+                    required
+                    value={department.SaltedHashedPassword || ""}
+                    onChange={(e) =>
+                    setDepartment((p) => ({
+                        ...p,
+                        SaltedHashedPassword: e.target.value,
+                    }))
+                    }
+                    error={
+                    hasAttemptedSave &&
+                    !(department.SaltedHashedPassword || "").trim()
+                    }
+                    helperText={
+                    hasAttemptedSave &&
+                    !(department.SaltedHashedPassword || "").trim()
+                        ? "Password is required"
+                        : "Password must be at least 8 characters long"
+                    }
+                />
+            
+                <TextField
+                    margin="dense"
+                    label="Confirm Password"
+                    type="password"
+                    fullWidth
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    error={
+                    hasAttemptedSave &&
+                    (!confirmPassword.trim() ||
+                        confirmPassword !== department.SaltedHashedPassword)
+                    }
+                    helperText={
+                    hasAttemptedSave && !confirmPassword.trim()
+                        ? "Please confirm your password"
+                        : hasAttemptedSave &&
+                            confirmPassword !== department.SaltedHashedPassword
+                        ? "Passwords do not match"
+                        : ""
+                    }
+                />
+                </>
             )}
           </DialogContent>
 
@@ -521,7 +523,12 @@ export default function Departments() {
             <Button onClick={handleSave} variant="contained">
               Save
             </Button>
-            <Button onClick={() => setIsDialogFormOpen(false)}>Cancel</Button>
+            <Button
+              variant="outlined"
+              onClick={() => setIsDialogFormOpen(false)}
+            >
+              Cancel
+            </Button>
           </DialogActions>
         </Dialog>
       </MainHeader>

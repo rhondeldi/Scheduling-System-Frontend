@@ -10,11 +10,8 @@ import {
 import "../assets/main.css";
 import "./TimeTable.css";
 import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import IconButton from "@mui/material/IconButton";
-
-import warning from "../assets/warning.png";
 
 import "./TimeTableDropdowns.css";
 import "./instructors.css";
@@ -25,7 +22,8 @@ import {
   fetchInstructorResources,
 } from "../js/instructors_v2";
 
-import VisibilityIcon from "@mui/icons-material/Visibility";
+import PreviewIcon from "@mui/icons-material/Preview";
+import PrintIcon from "@mui/icons-material/Print";
 
 import {
   Box,
@@ -51,24 +49,25 @@ import {
   DialogActions,
   TextField,
   Typography,
-  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import Tooltip from "@mui/material/Tooltip";
 
 import InstructorDataView from "./InstructorDataView";
 import { deleteRemoveInsturctor } from "../js/instructors";
 
 import { MainHeader } from "../components/Header";
 
-function InstructorPage() {
+function InstructorPage({ adminMode = false, pageName = "instructors" }) {
   const [mode, setMode] = useState(""); // 3 mode - new, view, edit
   const [popupOptions, setPopupOptions] = useState(null);
 
   const [isOperationLoading, setIsOperationLoading] = useState(false);
   const [instructors, setInstructors] = useState([]); // load array of instructs when a department is selected
-  const [genInstructors, setGenInstructors] = useState([]);
   const [selectedInstructor, setSelectedInstructor] = useState(null);
+  const [autoOpenInstructorPrintDialog, setAutoOpenInstructorPrintDialog] =
+    useState(false);
 
   /////////////////////////////////////////////////////////////////////////////////
   //                     LOAD GUARD COMPONENT STATES
@@ -87,36 +86,34 @@ function InstructorPage() {
       try {
         setIsLoading(true);
 
-        const who = await fetchWho();
-        const loggedInDepartmentID = Number(who);
-
-        if (!Number.isInteger(loggedInDepartmentID)) {
-          throw new Error("Unable to resolve logged-in department");
-        }
-
         const all_departments = await fetchAllDepartments();
-        const loggedInDepartment = all_departments.find(
-          (department) =>
-            Number(department.DepartmentID) === loggedInDepartmentID,
-        );
 
-        if (!loggedInDepartment) {
-          throw new Error("Logged-in department data was not found");
+        if (adminMode) {
+          setDepartments(all_departments);
+          setIsLoading(false);
+        } else {
+          const who = await fetchWho();
+          const loggedInDepartmentID = Number(who);
+
+          if (!Number.isInteger(loggedInDepartmentID)) {
+            throw new Error("Unable to resolve logged-in department");
+          }
+
+          const loggedInDepartment = all_departments.find(
+            (department) =>
+              Number(department.DepartmentID) === loggedInDepartmentID,
+          );
+
+          if (!loggedInDepartment) {
+            throw new Error("Logged-in department data was not found");
+          }
+
+          setDepartments([loggedInDepartment]);
+          setSelectedDepartment(loggedInDepartment);
+          setDepartmentID(loggedInDepartment.DepartmentID);
+          setLoading(true); // batch with setIsLoading so no gap renders between them
+          setIsLoading(false);
         }
-
-        const genDepartment = all_departments.find(
-          (department) => Number(department.DepartmentID) === 0,
-        );
-
-        const dept_list =
-          Number(loggedInDepartment.DepartmentID) === 0 || !genDepartment
-            ? [loggedInDepartment]
-            : [loggedInDepartment, genDepartment];
-
-        setDepartments(dept_list);
-        setSelectedDepartment(loggedInDepartment);
-        setDepartmentID(loggedInDepartment.DepartmentID);
-        setIsLoading(false);
       } catch (err) {
         setPopupOptions({
           Heading: "Failed to Fetch All Department Data",
@@ -128,7 +125,7 @@ function InstructorPage() {
     };
 
     useEffectAsyncs();
-  }, []);
+  }, [adminMode]);
 
   const skipAnimRef = useRef(false);
 
@@ -179,29 +176,30 @@ function InstructorPage() {
         );
       }
 
-      setInstructors(fetched_instructors.Instructors);
-      setTotalCount(fetched_instructors.TotalInstructors);
-
-      if (Number(department_id) !== 0) {
-        try {
-          const gen_fetched = await fetchInstructors(0, 999, 0, "", "", "");
-          const trimmed_term = (search_term || "").trim().toLowerCase();
-          const gen_list = (gen_fetched.Instructors || []).filter((i) => {
-            if (!trimmed_term) return true;
-            return (
-              `${i.FirstName} ${i.MiddleInitial} ${i.LastName}`
-                .toLowerCase()
-                .includes(trimmed_term)
-            );
-          });
-          setGenInstructors(gen_list);
-        } catch (gen_err) {
-          console.warn("Failed to fetch GEN shared instructors:", gen_err);
-          setGenInstructors([]);
+      const sortedInstructors = [
+        ...(fetched_instructors.Instructors || [])
+      ].sort((a, b) => {
+        const lastNameCompare =
+          (a.LastName || "").localeCompare(
+            b.LastName || "",
+            undefined,
+            { sensitivity: "base" }
+          );
+      
+        if (lastNameCompare !== 0) {
+          return lastNameCompare;
         }
-      } else {
-        setGenInstructors([]);
-      }
+      
+        return (a.FirstName || "").localeCompare(
+          b.FirstName || "",
+          undefined,
+          { sensitivity: "base" }
+        );
+      });
+      
+      setInstructors(sortedInstructors);
+      setTotalCount(fetched_instructors.TotalInstructors);
+      
     } catch (err) {
       setPopupOptions({
         Heading: "Failed to fetch instructors",
@@ -297,6 +295,42 @@ function InstructorPage() {
 
   };
 
+  // duplicate detection (admin mode)
+
+  const [duplicateInstructorNames, setDuplicateInstructorNames] = useState(new Set());
+
+  useEffect(() => {
+    if (!adminMode || !Number.isInteger(Number.parseInt(departmentID, 10)) || departments.length === 0) {
+      setDuplicateInstructorNames(new Set());
+      return;
+    }
+
+    const checkDuplicates = async () => {
+      const otherDepts = departments.filter(
+        (d) => Number(d.DepartmentID) !== Number(departmentID),
+      );
+
+      const results = await Promise.all(
+        otherDepts.map((d) =>
+          fetchInstructors(d.DepartmentID, 999, 0, "", "", "").catch(() => ({ Instructors: [] })),
+        ),
+      );
+
+      const otherNames = new Set();
+      for (const result of results) {
+        for (const instructor of result.Instructors || []) {
+          otherNames.add(
+            `${instructor.FirstName} ${instructor.LastName}`.toLowerCase().trim(),
+          );
+        }
+      }
+
+      setDuplicateInstructorNames(otherNames);
+    };
+
+    checkDuplicates();
+  }, [adminMode, departmentID, departments]);
+
   const handleDepartmentChange = (e) => {
     const nextDepartmentID = e.target.value;
     setDepartmentID(nextDepartmentID);
@@ -313,7 +347,7 @@ function InstructorPage() {
 
   return (
     <>
-      <MainHeader pageName={"instructors"}>
+      <MainHeader pageName={pageName}>
         <Popup
           popupOptions={popupOptions}
           closeButtonActionHandler={() => {
@@ -324,11 +358,32 @@ function InstructorPage() {
         <Loading IsLoading={IsLoading} />
 
         <Box display={!mode ? "block" : "none"}>
+          {adminMode && (
+            <Box sx={{ mb: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 300 }}>
+                <InputLabel id="admin-instructor-dept-label">Select Department</InputLabel>
+                <Select
+                  labelId="admin-instructor-dept-label"
+                  value={departmentID}
+                  label="Select Department"
+                  onChange={handleDepartmentChange}
+                >
+                  {departments.map((d) => (
+                    <MenuItem key={d.DepartmentID} value={d.DepartmentID}>
+                      {d.Code} — {d.Name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
           <Box
-            py={1}
-            display={"flex"}
-            justifyContent={"space-between"}
-            alignItems={"center"}
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingBlock: "0.6em",
+            }}
           >
             <TextField
               disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
@@ -338,34 +393,36 @@ function InstructorPage() {
               value={searchTerm}
               onChange={(e) => {
                 setPage(0);
-                setSearchTerm(e.target.value);
+                setSearchTerm(sanitizeSearchTerm(e.target.value));
               }}
             />
 
-            <Button
-              disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
-              endIcon={<AddIcon />}
-              size="small"
-              color="secondary"
-              variant="contained"
-              onClick={() => {
-                setIsLoading(true);
+            {adminMode && (
+              <Button
+                disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
+                endIcon={<AddIcon />}
+                size="small"
+                color="secondary"
+                variant="contained"
+                onClick={() => {
+                  setIsLoading(true);
 
-                const new_instructor = {
-                  DepartmentID: departmentID,
-                  FirstName: "",
-                  LastName: "",
-                  MiddleInitial: "",
-                };
+                  const new_instructor = {
+                    DepartmentID: departmentID,
+                    FirstName: "",
+                    LastName: "",
+                    MiddleInitial: "",
+                  };
 
-                setSelectedInstructor(new_instructor);
-                setIsLoading(false);
+                  setSelectedInstructor(new_instructor);
+                  setIsLoading(false);
 
-                setMode("new");
-              }}
-            >
-              Add New Instructor
-            </Button>
+                  setMode("new");
+                }}
+              >
+                Add New Instructor to {selectedDepartment?.Code}
+              </Button>
+            )}
           </Box>
         </Box>
 
@@ -385,10 +442,10 @@ function InstructorPage() {
                     <TableCell sx={{ width: "32%" }}>LAST NAME</TableCell>
                     <TableCell sx={{ width: "32%" }}>FIRST NAME</TableCell>
                     <TableCell sx={{ width: "20%" }}>MIDDLE INITIAL</TableCell>
-                    <TableCell sx={{ width: "112px" }}></TableCell>
+                    <TableCell sx={{ width: "152px" }}></TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody sx={{ opacity: 1, transform: "none", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
+                <TableBody sx={{ opacity: IsLoading || loading ? 0 : 1, transform: IsLoading || loading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
                   {IsLoading || loading || isPaginating
                     ? Array.from({ length: pageSize }).map((_, i) => (
                         <TableRow key={i} sx={{ height: 50 }}>
@@ -410,90 +467,58 @@ function InstructorPage() {
                           Please select a department first
                         </TableCell>
                       </TableRow>
-                    ) : instructors.length === 0 && genInstructors.length === 0 ? (
+                    ) : instructors.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
                           No instructors found
                         </TableCell>
                       </TableRow>
                     ) : (
-                    <>
-                      {genInstructors.map((instructor) => (
-                        <TableRow key={`gen-${instructor.InstructorID}`} sx={{ backgroundColor: "rgba(46, 100, 23, 0.04)" }}>
-                          <TableCell>
+                    instructors.map((instructor) => (
+                      <TableRow key={instructor.InstructorID}>
+                        <TableCell>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                             {instructor.LastName}
-                            <Chip
-                              size="small"
-                              label="GEN"
-                              color="success"
-                              variant="outlined"
-                              sx={{ ml: 1, height: 18, fontSize: "0.65rem" }}
-                            />
-                          </TableCell>
-                          <TableCell>{instructor.FirstName}</TableCell>
-                          <TableCell>{instructor.MiddleInitial}</TableCell>
-                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
-                              <IconButton
-                                title="View (shared from GEN)"
-                                color="view"
-                                disabled={loading}
-                                onClick={() => {
-                                  setSelectedInstructor(instructor);
-                                  setMode("view");
-                                }}
-                              >
-                                <VisibilityIcon />
-                              </IconButton>
-                              <IconButton
-                                title="Delete (shared from GEN)"
-                                color="delete"
-                                disabled={loading}
-                                onClick={() => {
-                                  setInstructorToDelete(instructor);
-                                  setIsDialogDeleteShow(true);
-                                }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {instructors.map((instructor) => (
-                        <TableRow key={instructor.InstructorID}>
-                          <TableCell>{instructor.LastName}</TableCell>
-                          <TableCell>{instructor.FirstName}</TableCell>
-                          <TableCell>{instructor.MiddleInitial}</TableCell>
-                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
-                              <IconButton
-                                title="View"
-                                color="view"
-                                disabled={loading}
-                                onClick={() => {
-                                  setSelectedInstructor(instructor);
-                                  setMode("view");
-                                }}
-                              >
-                                <VisibilityIcon />
-                              </IconButton>
-                              <IconButton
-                                title="Delete"
-                                color="delete"
-                                disabled={loading}
-                                onClick={() => {
-                                  setInstructorToDelete(instructor);
-                                  setIsDialogDeleteShow(true);
-                                }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </>
+                            {adminMode && duplicateInstructorNames.has(`${instructor.FirstName} ${instructor.LastName}`.toLowerCase().trim()) && (
+                              <Tooltip title="An instructor with this name already exists in another department">
+                                <WarningAmberIcon color="warning" fontSize="small" />
+                              </Tooltip>
+                            )}
+                          </Box>
+                        </TableCell>
+                        <TableCell>{instructor.FirstName}</TableCell>
+                        <TableCell>{instructor.MiddleInitial}</TableCell>
+                        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
+                            <IconButton
+                              title="View Schedule"
+                              color="view"
+                              disabled={loading}
+                              onClick={() => {
+                                setAutoOpenInstructorPrintDialog(false);
+                                setSelectedInstructor(instructor);
+                                setMode("view");
+                              }}
+                            >
+                              <PreviewIcon />
+                            </IconButton>
+                            {adminMode && (
+                            <IconButton
+                              title="Delete"
+                              color="delete"
+                              disabled={loading}
+                              onClick={() => {
+                                setInstructorToDelete(instructor);
+                                setIsDialogDeleteShow(true);
+                              }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                            )}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))
                     )
                   }
                 </TableBody>
@@ -501,65 +526,58 @@ function InstructorPage() {
               </Box>
               <Box
                 sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    borderTop: "1px solid",
-                    borderColor: "divider",
-                    bgcolor: "#f8f9fa",
-                    px: 1,
-                    py: 0.5,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: !adminMode ? "space-between" : "flex-end",
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "#f8f9fa",
+                  px: 1,
                 }}
-                >
-                {/* LEFT SIDE */}
-                <Button
+              >
+                {!adminMode && (
+                  <Button
                     variant="contained"
                     color="primary"
                     size="small"
                     endIcon={<OpenInNewIcon />}
                     onClick={() => window.open("/view_instructors/", "_blank")}
-                >
+                  >
                     Cross-Department Schedule View
-                </Button>
-
-                {/* RIGHT SIDE */}
+                  </Button>
+                )}
                 <TablePagination
-                    component="div"
-                    count={totalCount}
-                    rowsPerPage={pageSize}
-                    page={page}
-                    rowsPerPageOptions={[5, 10, 25]}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    sx={{
-                    "& .MuiTablePagination-toolbar": {
-                        minHeight: "40px",
-                    },
+                  sx={{
                     "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
                     "& .MuiTablePagination-select": { fontWeight: 500 },
-
                     "& .MuiIconButton-root": {
-                        border: "1px solid",
-                        borderColor: "divider",
-                        borderRadius: "4px",
-                        mx: 0.25,
-                        "&:hover:not(.Mui-disabled)": {
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: "4px",
+                      mx: 0.25,
+                      "&:hover:not(.Mui-disabled)": {
                         bgcolor: "primary.main",
                         color: "white",
                         borderColor: "primary.main",
-                        },
+                      },
                     },
-
                     "& .MuiInputBase-root": {
-                        border: "1px solid",
-                        borderColor: "divider",
-                        borderRadius: "4px",
-                        px: 1,
-                        "&:hover": { borderColor: "text.secondary" },
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: "4px",
+                      px: 1,
+                      "&:hover": { borderColor: "text.secondary" },
                     },
-                    }}
+                  }}
+                  component="div"
+                  count={totalCount}
+                  rowsPerPage={pageSize}
+                  page={page}
+                  rowsPerPageOptions={[5, 10, 25]}
+                  onPageChange={handleChangePage}
+                  onRowsPerPageChange={handleChangeRowsPerPage}
                 />
-                </Box>
+              </Box>
             </TableContainer>
           ) : null}
         </Box>
@@ -650,6 +668,10 @@ function InstructorPage() {
             departments={departments}
             popupOptions={popupOptions}
             setPopupOptions={setPopupOptions}
+            autoOpenPrintDialog={autoOpenInstructorPrintDialog}
+            onAutoOpenPrintDialogHandled={() =>
+              setAutoOpenInstructorPrintDialog(false)
+            }
           />
         )}
       </MainHeader>

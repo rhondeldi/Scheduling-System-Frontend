@@ -125,6 +125,7 @@ const theme = createTheme({
           fontWeight: 600,
           transition: 'all 0.3s ease',
         },
+        // ===== CONTAINED BUTTONS =====
         containedPrimary: {
           backgroundImage: gradients.primary,
           '&:hover': {
@@ -162,6 +163,50 @@ const theme = createTheme({
           '&:hover': {
             backgroundPosition: 'right center',
             boxShadow: `0 4px 12px ${alpha(brand.success, 0.28)}`,
+          },
+        },
+        // ===== OUTLINED BUTTONS =====
+        outlined: {
+           borderWidth: '1px',
+        },
+        outlinedPrimary: {
+          borderColor: brand.primary,
+          color: brand.primary,
+          '&:hover': {
+            borderColor: brand.primaryDark,
+            backgroundColor: alpha(brand.primary, 0.08),
+          },
+        },
+        outlinedSecondary: {
+          borderColor: brand.secondaryDark,
+          color: brand.secondaryDark,
+          '&:hover': {
+            borderColor: brand.secondaryDark,
+            backgroundColor: alpha(brand.secondaryDark, 0.08),
+          },
+        },
+        outlinedWarning: {
+          borderColor: brand.warning,
+          color: brand.warning,
+         '&:hover': {
+            borderColor: brand.warningDark,
+            backgroundColor: alpha(brand.warning, 0.08),
+          },
+        },
+        outlinedError: {
+          borderColor: brand.danger,
+          color: brand.danger,
+          '&:hover': {
+            borderColor: brand.dangerDark,
+            backgroundColor: alpha(brand.danger, 0.08),
+          },
+        },
+        outlinedSuccess: {
+          borderColor: brand.success,
+          color: brand.success,
+          '&:hover': {
+            borderColor: brand.success,
+            backgroundColor: alpha(brand.success, 0.08),
           },
         },
       },

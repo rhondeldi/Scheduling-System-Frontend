@@ -1,12 +1,14 @@
 // ===================== IMPORTS =====================
 import { Navigate, Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { isAdminAuthenticated } from "../utils/adminAuth.js";
+import { hasAdminSessionHint, isAdminAuthenticated } from "../utils/adminAuth.js";
 
 // ===================== MAIN COMPONENT =====================
 export default function AdminRoute({ children }) {
   // ---- STATE ----
-  const [allowed, setAllowed] = useState(null);
+  const [allowed, setAllowed] = useState(() =>
+    hasAdminSessionHint() ? true : null,
+  );
 
   // ---- EFFECTS ----
   useEffect(() => {

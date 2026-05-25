@@ -1,14 +1,16 @@
 // ===================== IMPORTS =====================
 import { useState, useEffect, useRef } from "react";
 
+import IconButton from "@mui/material/IconButton";
 import Button from "@mui/material/Button";
 import DoneIcon from "@mui/icons-material/Done";
 import CancelIcon from "@mui/icons-material/Cancel";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import Tooltip from "@mui/material/Tooltip";
 
 import { InstructorTimeSlotBitMap } from "../js/instructor-time-slot-bit-map";
 
@@ -82,6 +84,8 @@ export default function InstructorDataView({
   departments,
   popupOptions,
   setPopupOptions,
+  autoOpenPrintDialog = false,
+  onAutoOpenPrintDialogHandled = () => {},
 }) {
   const [subjectColors, setSubjectColors] = useState({});
 
@@ -174,8 +178,6 @@ export default function InstructorDataView({
     const semester_idx = Number.parseInt(e.target.value, 10);
 
     if (Number.isInteger(semester_idx)) {
-      console.log("selected semester index:", e.target.value);
-
       setAllocatedSubjectAssign(
         instructorResources.current.semesters_sub_assign[semester_idx],
       );
@@ -196,20 +198,7 @@ export default function InstructorDataView({
       );
 
       setSubjectColors(subject_colors);
-
-      console.log(
-        "allocated time slots:",
-        new InstructorTimeSlotBitMap(
-          instructorResources.current.semesters_time_slots[semester_idx],
-        ),
-      );
-
-      console.log(
-        "subjects allocated:",
-        instructorResources.current.semesters_sub_assign[semester_idx],
-      );
     } else {
-      console.log("selected semester index: none");
       setAllocatedSubjectAssign([]);
       setSubjectColors([]);
     }
@@ -227,7 +216,7 @@ export default function InstructorDataView({
   const [timeSlotMinuteInterval, setTimeSlotMinuteInterval] = useState(30);
   const [dailyTimeSlots, setDailyTimeSlots] = useState(24);
 
-  const [isDragSelect, setIsDragSelect] = useState();
+  const [isDragSelect, setIsDragSelect] = useState(false);
   const [instructorBackup, setInstructorBackup] = useState();
 
   const instructorResources = useRef(null);
@@ -260,10 +249,6 @@ export default function InstructorDataView({
 
       const instructor_resources = await fetchInstructorResources(
         selectedInstructor.InstructorID,
-      );
-      console.log(
-        "load_resources -> fetchInstructorResources  : ",
-        instructor_resources,
       );
 
       const base_time_slots = new InstructorTimeSlotBitMap(
@@ -308,8 +293,6 @@ export default function InstructorDataView({
   };
 
   useEffect(() => {
-    // TODO: fetch basic const values (data below is just temporary);
-
     const starting_hour = 7;
     const time_slot_per_hour = 2;
     const daily_time_slots = 24;
@@ -320,7 +303,6 @@ export default function InstructorDataView({
     setTimeSlotMinuteInterval(time_slot_minute_interval);
     setDailyTimeSlots(daily_time_slots);
 
-    console.log("selectedDepartment :", selectedDepartment);
     setInstructorBackup(structuredClone(selectedInstructor));
 
     load_resources();
@@ -331,8 +313,6 @@ export default function InstructorDataView({
   const contextMenuState = useContextMenuState();
 
   const handleContextMenuEnable = () => {
-    console.log("before enable =", selectedInstructor);
-
     let is_all_enabled = true;
     let has_impossible_error = false;
     let enabled_time_slots = 0;
@@ -416,8 +396,6 @@ export default function InstructorDataView({
   };
 
   const handleContextMenuDisable = () => {
-    console.log("before disable =", selectedInstructor);
-
     let is_all_disabled = true;
     let has_impossible_error = false;
     let disabled_time_slots = 0;
@@ -503,17 +481,12 @@ export default function InstructorDataView({
   // ---- TIME SLOT SELECTION BUTTON HANDLERS ----
 
   const handleEditOrNewAction = async () => {
-    console.log("handleEditOrNewAction: called");
     try {
-      console.log("handleEditOrNewAction: called 1");
-
       let new_default_time = [];
 
       for (let i = 0; i < baseResourceTimeSlots.bitset.length; i++) {
         new_default_time.push(`${baseResourceTimeSlots.bitset[i]}`);
       }
-
-      console.log("handleEditOrNewAction: called 2");
 
       const updated_instructor_time_str = {
         InstructorID: selectedInstructor.InstructorID,
@@ -524,13 +497,9 @@ export default function InstructorDataView({
         Time: new_default_time,
       };
 
-      console.log("handleEditOrNewAction: called 3");
-
       setIsLoading(true);
 
       if (mode === "edit") {
-        console.log("mode: edit - save changes");
-
         await patchUpdateInsturctor(updated_instructor_time_str);
 
         setPopupOptions({
@@ -541,8 +510,6 @@ export default function InstructorDataView({
 
         reloadInstructorsTable();
       } else if (mode === "new") {
-        console.log("mode: new - save new instructor");
-
         await postCreateInsturctor(updated_instructor_time_str);
 
         setPopupOptions({
@@ -553,7 +520,6 @@ export default function InstructorDataView({
 
         reloadInstructorsTable();
       } else {
-        console.log("mode: wrong mode detected");
         throw new Error("there was a problem in the v2 instructor page");
       }
 
@@ -681,6 +647,19 @@ export default function InstructorDataView({
     setIsPrintDialogShow(true);
   };
 
+  useEffect(() => {
+    if (
+      !autoOpenPrintDialog ||
+      mode !== "view" ||
+      !Number.isInteger(Number.parseInt(semesterIndex, 10))
+    ) {
+      return;
+    }
+
+    handleOpenSignatoriesDialog();
+    onAutoOpenPrintDialogHandled();
+  }, [autoOpenPrintDialog, mode, semesterIndex]);
+
   const saveAddedOptionalPrintingValues = () => {
     localStorage.setItem("academic-year", academicYear);
 
@@ -790,125 +769,179 @@ export default function InstructorDataView({
                 </Select>
               </FormControl>
             ) : null}
-
             {mode === "view" ? (
-              <Button
-                endIcon={<OpenInNewIcon />}
-                size="small"
-                color="primary"
-                variant="contained"
-                onClick={() => window.open("/view_instructors/", "_blank")}
-              >
-                Public View
-              </Button>
-            ) : null}
+            <Box sx={{ display: "flex", gap: .5 }}>
 
-            {mode === "view" ? (
-              <Button
-                endIcon={<EditIcon />}
-                size="small"
-                color="primary"
-                variant="contained"
-                onClick={() => {
-                  setMode("edit");
-                  setInstructorBackup(structuredClone(selectedInstructor));
+            <Tooltip
+            title={
+            semesterIndex === ""
+            ? "Select a semester first"
+            : "Print Schedule"
+            }
+            >
+            <span>
+            <IconButton
+            color="view"
+            variant="outlined"
+            disabled={semesterIndex === ""}
+            onClick={handleOpenSignatoriesDialog}
+            sx={{
+            borderRadius: 5,
+            width: 38,
+            height: 38,
+            }}
+            >
+            <PrintIcon />
+            </IconButton>
+            </span>
+            </Tooltip>
 
-                  backupBaseResourceTimeSlots.current =
-                    new InstructorTimeSlotBitMap(baseResourceTimeSlots.bitset);
-                  backupSemsResourceTimeSlots.current =
-                    new InstructorTimeSlotBitMap(semsResourceTimeSlots.bitset);
-                }}
-                loading={IsLoading}
-              >
-                Edit
-              </Button>
-            ) : mode === "edit" ? (
-              <Button
-                endIcon={<DoneIcon />}
-                size="small"
-                color="success"
-                variant="contained"
-                onClick={() => {
-                  handleEditOrNewAction();
-                  setMode("");
-                }}
-                loading={IsLoading}
-              >
-                Apply Changes
-              </Button>
-            ) : mode === "new" ? (
-              <Button
-                endIcon={<AddIcon />}
-                size="small"
-                color="success"
-                variant="contained"
-                onClick={() => {
-                  handleEditOrNewAction();
-                  setMode("");
-                }}
-              >
-                Save New Instructor
-              </Button>
-            ) : (
-              <p>green btn error: unknown mode</p>
+            <Tooltip title="Public View">
+            <IconButton
+            color="view"
+            onClick={() =>
+            window.open(
+            "/view_instructors/",
+            "_blank"
             )}
+            sx={{
+            borderRadius: 5,
+            width: 38,
+            height: 38,
+            }}
+            >
+            <OpenInNewIcon />
+            </IconButton>
+            </Tooltip>
 
-            {mode === "view" ? (
-              <Button
-                endIcon={<ExitToAppIcon />}
-                size="small"
-                color="error"
-                variant="outlined"
-                onClick={() => {
-                  setMode("");
-                  onInstructorDataViewClose();
-                }}
-              >
-                Go Back
-              </Button>
+            <Tooltip title="Edit">
+            <IconButton
+            color="edit"
+            onClick={() => {
+            setMode("edit");
+            
+
+            setInstructorBackup(
+            structuredClone(
+            selectedInstructor
+            )
+            );
+
+            backupBaseResourceTimeSlots.current =
+            new InstructorTimeSlotBitMap(
+            baseResourceTimeSlots.bitset
+            );
+
+            backupSemsResourceTimeSlots.current =
+            new InstructorTimeSlotBitMap(
+            semsResourceTimeSlots.bitset
+            );
+            }}
+            sx={{
+            borderRadius: 5,
+            width: 38,
+            height: 38,
+            }}
+            >
+            <EditIcon />
+            </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Go Back">
+            <IconButton
+            color="delete"
+            onClick={() => {
+            setMode("");
+            onInstructorDataViewClose();
+            }}
+            sx={{
+            borderRadius: 5,
+            width: 38,
+            height: 38,
+            }}
+            >
+            <ExitToAppIcon />
+            </IconButton>
+            </Tooltip>
+
+            </Box>
+          
             ) : mode === "edit" ? (
-              <Button
-                endIcon={<CancelIcon />}
-                size="small"
-                color="error"
-                variant="outlined"
-                onClick={() => {
-                  setMode("view");
-
-                  // set the original values of the selected instructors defaults and allocated back to unedited version
-
-                  selectedInstructor.InstructorID =
-                    instructorBackup.InstructorID;
-                  selectedInstructor.DepartmentID =
-                    instructorBackup.DepartmentID;
-                  selectedInstructor.FirstName = instructorBackup.FirstName;
-                  selectedInstructor.MiddleInitial =
-                    instructorBackup.MiddleInitial;
-                  selectedInstructor.LastName = instructorBackup.LastName;
-                  selectedInstructor.Time = instructorBackup.Time;
-
-                  setBaseResourceTimeSlots(backupBaseResourceTimeSlots.current);
-                  setSemsResourceTimeSlots(backupSemsResourceTimeSlots.current);
-
-                  setSelectedTimeSlots(new Set());
-                }}
-              >
-                Cancel
-              </Button>
+                <>
+                <Button
+                    endIcon={<DoneIcon />}
+                    size="small"
+                    color="success"
+                    variant="contained"
+                    onClick={() => {
+                    handleEditOrNewAction();
+                    setMode("view");
+                    }}
+                >
+                    Save Changes
+                </Button>
+            
+                <Button
+                    endIcon={<CancelIcon />}
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    onClick={() => {
+                    setMode("view");
+            
+                    selectedInstructor.InstructorID =
+                        instructorBackup.InstructorID;
+                    selectedInstructor.DepartmentID =
+                        instructorBackup.DepartmentID;
+                    selectedInstructor.FirstName =
+                        instructorBackup.FirstName;
+                    selectedInstructor.MiddleInitial =
+                        instructorBackup.MiddleInitial;
+                    selectedInstructor.LastName =
+                        instructorBackup.LastName;
+            
+                    setBaseResourceTimeSlots(
+                        backupBaseResourceTimeSlots.current
+                    );
+                    setSemsResourceTimeSlots(
+                        backupSemsResourceTimeSlots.current
+                    );
+            
+                    setSelectedTimeSlots(new Set());
+                    }}
+                >
+                    Cancel
+                </Button>
+                </>
             ) : mode === "new" ? (
-              <Button
-                endIcon={<CancelIcon />}
-                size="small"
-                color="error"
-                variant="outlined"
-                onClick={() => {
-                  setMode("");
-                  onInstructorDataViewClose();
-                }}
-              >
-                Close
-              </Button>
-            ) : (
+                <>
+                  <Button
+                    endIcon={<AddIcon />}
+                    size="small"
+                    color="success"
+                    variant="contained"
+                    onClick={() => {
+                      handleEditOrNewAction();
+                      setMode("");
+                    }}
+                  >
+                    Save New Instructor
+                  </Button>
+              
+                  <Button
+                    endIcon={<CancelIcon />}
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    onClick={() => {
+                      setMode("");
+                      onInstructorDataViewClose();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
               <p>red btn error: unknown mode</p>
             )}
           </Box>
@@ -1097,7 +1130,7 @@ export default function InstructorDataView({
             )}
           </Box>
 
-          {mode === "edit" ? (
+          {mode === "edit" && departments.length > 1 ? (
             <Box maxWidth={200}>
               <FormControl size="small" fullWidth>
                 <InputLabel id="label-id-edit-department">
@@ -1109,12 +1142,7 @@ export default function InstructorDataView({
                   label="Move to Department"
                   defaultValue={selectedInstructor?.DepartmentID}
                   onChange={(e) => {
-                    console.log("change department : ", departments);
-                    selectedInstructor.DepartmentID = Number(e.target.value);
-                  }}
-                  onClick={() => {
-                    console.log("change department : ", departments);
-                    console.log("instructor : ", selectedInstructor);
+                    updateInstructorField("DepartmentID", Number(e.target.value));
                   }}
                 >
                   {departments
@@ -1130,35 +1158,10 @@ export default function InstructorDataView({
                 </Select>
               </FormControl>
             </Box>
-          ) : mode === "new" && departments?.length > 1 ? (
-            <Box maxWidth={260}>
-              <FormControl size="small" fullWidth>
-                <InputLabel id="label-id-new-department">
-                  Add Instructor to Department
-                </InputLabel>
-                <Select
-                  id="id-new-department"
-                  labelId="label-id-new-department"
-                  label="Add Instructor to Department"
-                  value={selectedInstructor?.DepartmentID ?? ""}
-                  onChange={(e) => {
-                    updateInstructorField("DepartmentID", Number(e.target.value));
-                  }}
-                >
-                  {departments.map((department, index) => (
-                    <MenuItem key={index} value={department.DepartmentID}>
-                      {Number(department.DepartmentID) === 0
-                        ? `${department.Code} - ${department.Name} (Shared with all)`
-                        : `${department.Code} - ${department.Name}`}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
           ) : (
             <Typography align="right" variant="body1" fontStyle={"italic"}>
               {departments.find(
-                (dept) => dept.DepartmentID == selectedInstructor?.DepartmentID,
+                (dept) => dept.DepartmentID === selectedInstructor?.DepartmentID,
               )?.Name || "Department not found"}
             </Typography>
           )}
@@ -1431,26 +1434,13 @@ export default function InstructorDataView({
                           return;
                         }
 
-                        console.log(
-                          `right click: class="${event.target.className}"`,
-                        );
-
-                        const available =
-                          semsResourceTimeSlots?.getAvailability(
-                            day_index,
-                            time_slot_index,
-                          );
-                        console.log(
-                          `day(${day_index}), time_slot(${time_slot_index} = available? ${available})`,
-                        );
-
                         contextMenuState.setShow(true);
                         contextMenuState.setPosition(
                           new Position(event.clientX, event.clientY),
                         );
 
                         const is_selected = selectedTimeSlots.has(
-                          `${day_index}${time_slot_index}`,
+                          `${day_index}:${time_slot_index}`,
                         );
 
                         if (!is_selected) {
@@ -1461,7 +1451,6 @@ export default function InstructorDataView({
                             `${day_index}:${time_slot_index}`,
                           );
                           setSelectedTimeSlots(new_selected_time_slots);
-                          console.log(new_selected_time_slots);
                         }
                       }}
                       onMouseDown={(event) => {
@@ -1469,13 +1458,10 @@ export default function InstructorDataView({
                           return;
                         }
 
-                        console.log(
-                          `drag start: class="${event.target.className}"`,
-                        );
                         setIsDragSelect(true);
 
                         const is_selected = selectedTimeSlots.has(
-                          `${day_index}${time_slot_index}`,
+                          `${day_index}:${time_slot_index}`,
                         );
 
                         if (!is_selected) {
@@ -1486,7 +1472,6 @@ export default function InstructorDataView({
                             `${day_index}:${time_slot_index}`,
                           );
                           setSelectedTimeSlots(new_selected_time_slots);
-                          console.log(new_selected_time_slots);
                         }
                       }}
                       onMouseEnter={(event) => {
@@ -1494,12 +1479,8 @@ export default function InstructorDataView({
                           return;
                         }
 
-                        console.log(
-                          `dragging: class="${event.target.className}"`,
-                        );
-
                         const is_selected = selectedTimeSlots.has(
-                          `${day_index}${time_slot_index}`,
+                          `${day_index}:${time_slot_index}`,
                         );
 
                         if (!is_selected && isDragSelect) {
@@ -1510,7 +1491,6 @@ export default function InstructorDataView({
                             `${day_index}:${time_slot_index}`,
                           );
                           setSelectedTimeSlots(new_selected_time_slots);
-                          console.log(new_selected_time_slots);
                         }
                       }}
                       onMouseUp={(event) => {
@@ -1518,9 +1498,6 @@ export default function InstructorDataView({
                           return;
                         }
 
-                        console.log(
-                          `drag end: class="${event.target.className}"`,
-                        );
                         setIsDragSelect(false);
                       }}
                     >
@@ -1594,28 +1571,6 @@ export default function InstructorDataView({
 
       {!semesterIndex ? <Box height={5}></Box> : null}
 
-      {/* ===================== PRINT BUTTON ===================== */}
-      {mode === "view" ? (
-        <Box
-          gap={1}
-          display={
-            Number.isInteger(Number.parseInt(semesterIndex, 10))
-              ? "flex"
-              : "none"
-          }
-          justifyContent={"center"}
-        >
-          <Button
-            variant="outlined"
-            size="medium"
-            onClick={handleOpenSignatoriesDialog}
-            endIcon={<PrintIcon />}
-          >
-            Print
-          </Button>
-        </Box>
-      ) : null}
-
       {/* ===================== PRINT DIALOG ===================== */}
       <Dialog
         open={isPrintDialogShow}
@@ -1629,7 +1584,8 @@ export default function InstructorDataView({
 
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Add signatories if needed to include in printing
+            Add signatories if needed.
+            browser print dialog.
           </DialogContentText>
 
           <Box display={"flex"} flexDirection={"column"} gap={2} marginTop={2}>
@@ -1669,14 +1625,15 @@ export default function InstructorDataView({
                     </Box> */}
 
             <Box width={"100%"} display={"flex"} gap={1}>
-              <TextField
+                <TextField
                 fullWidth
                 label="Conforme"
-                autoFocus
                 variant="standard"
-                onChange={(e) => setSignatoryConforme(e.target.value)}
-                defaultValue={signatoryConforme ? signatoryConforme : ""}
-              />
+                value={signatoryConforme || ""}
+                InputProps={{
+                    readOnly: true,
+                }}
+                />
               <TextField
                 label="Position"
                 autoFocus

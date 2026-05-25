@@ -18,9 +18,9 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 import { InputAdornment, IconButton } from "@mui/material";
-import { isAdminAuthenticated, loginAdmin } from "../utils/adminAuth";
+import { clearAdminSessionHint, isAdminAuthenticated, loginAdmin } from "../utils/adminAuth";
 import { fetchAllDepartments, fetchWho, loginDepartment } from "../js/departments";
-import { clearAuthData } from "../utils/authStorage";
+import { AUTH_LOGIN_EVENT_KEY, broadcastLogin, clearAuthData } from "../utils/authStorage";
 
 import LOGIN_LOGO from "../assets/cvsu-silang.jpg";
 
@@ -43,9 +43,10 @@ export default function Login() {
 
   // ---- EFFECTS ----
   useEffect(() => {
-    (async () => {
+    const goToExistingSession = async () => {
       const ok = await isAdminAuthenticated();
       if (ok) {
+        clearAuthData();
         navigate("/departments", { replace: true });
         return;
       }
@@ -56,7 +57,34 @@ export default function Login() {
           navigate("/schedule", { replace: true });
         }
       } catch {}
-    })();
+    };
+
+    const handleCrossTabLogin = (event) => {
+      if (event.key !== AUTH_LOGIN_EVENT_KEY || !event.newValue) return;
+
+      try {
+        const payload = JSON.parse(event.newValue);
+        if (payload.accountType === "admin") {
+          clearAuthData();
+          navigate("/departments", { replace: true });
+          return;
+        }
+
+        if (payload.accountType === "department") {
+          navigate("/schedule", { replace: true });
+        }
+      } catch {
+        goToExistingSession();
+      }
+    };
+
+    window.addEventListener("storage", handleCrossTabLogin);
+
+    goToExistingSession();
+
+    return () => {
+      window.removeEventListener("storage", handleCrossTabLogin);
+    };
   }, [navigate]);
 
   // ---- HANDLERS ----
@@ -90,6 +118,8 @@ export default function Login() {
 
       if (isAdminSuccess) {
         clearAuthData();
+        localStorage.setItem("gasss_admin_username", form.account.trim());
+        broadcastLogin("admin");
         setSnackbar({
           open: true,
           severity: "success",
@@ -127,8 +157,10 @@ export default function Login() {
         const deptCode = matchingDepartment.Code;
         const deptName = matchingDepartment.Name;
 
+        clearAdminSessionHint();
         localStorage.setItem("departmentCode", deptCode);
         localStorage.setItem("departmentName", deptName);
+        broadcastLogin("department");
 
         setSnackbar({
           open: true,

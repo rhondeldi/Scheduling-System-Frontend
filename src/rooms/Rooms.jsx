@@ -1,5 +1,6 @@
 // ===================== IMPORTS =====================
 import { useCallback, useEffect, useState, useRef } from "react";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import PreviewIcon from "@mui/icons-material/Preview";
 
 import {
@@ -31,6 +32,7 @@ import {
   ListItemText,
   Chip,
   IconButton,
+  Tooltip,
 } from "@mui/material";
 
 import {
@@ -42,6 +44,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import PrintIcon from "@mui/icons-material/Print";
 
 import "../assets/main.css";
 
@@ -68,7 +71,7 @@ function RoomTypeName(room_type) {
 }
 
 // ===================== MAIN COMPONENT =====================
-function Rooms() {
+function Rooms({ adminMode = false, pageName = "rooms" }) {
   const ROOM_TYPES = [
     0, // lecture
     1, // laboratory
@@ -87,13 +90,11 @@ function Rooms() {
   // ---- HANDLERS ----
   const handleRoomDelete = async (room_id) => {
     setIsOperationLoading(true);
-  
+
     try {
-      console.log(`Attempting to delete room with ID: ${room_id}`);
       await deleteRemoveRoom(room_id);
-      console.log(`Successfully deleted room with ID: ${room_id}`);
       await load_rooms(departmentID, pageSize, page, searchTerm);
-  
+
       setPopupOptions({
         Heading: "Delete Success",
         HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
@@ -103,20 +104,14 @@ function Rooms() {
       setIsDialogDeleteShow(false);
       setRoomToDelete(null);
     } catch (err) {
-      console.error(`Delete failed for room ID ${room_id}:`, err);
       setPopupOptions({
         Heading: "Delete Failed",
         HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
         Message: `${err.message || err}`,
       });
     } finally {
-      setLoading(false);
+      setIsOperationLoading(false);
     }
-
-    setRoomToDelete(null);
-    setLoading(false);
-    setIsDialogDeleteShow(false);
-
   };
 
   const [room, setRoom] = useState({
@@ -126,16 +121,14 @@ function Rooms() {
   });
 
   const [roomList, setRoomList] = useState([]);
-  const [genRoomList, setGenRoomList] = useState([]);
-  const [newRoomDepartmentID, setNewRoomDepartmentID] = useState("");
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isPaginating, setIsPaginating] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [totalCount, setTotalCount] = useState(0);
 
-  const [departmentList, setDepartmentList] = useState("");
+  const [departmentList, setDepartmentList] = useState([]);
 
   // ---- EFFECTS ----
   useEffect(() => {
@@ -143,37 +136,33 @@ function Rooms() {
       try {
         setLoading(true);
 
-        const who = await fetchWho();
-        const loggedInDepartmentID = Number(who);
-
-        if (!Number.isInteger(loggedInDepartmentID)) {
-          throw new Error("Unable to resolve logged-in department");
-        }
-
         const all_departments = await fetchAllDepartments();
-        const loggedInDepartment = all_departments.find(
-          (department_iter) =>
-            Number(department_iter.DepartmentID) === loggedInDepartmentID,
-        );
 
-        if (!loggedInDepartment) {
-          throw new Error("Logged-in department data was not found");
+        if (adminMode) {
+          setDepartmentList(all_departments);
+          setLoading(false);
+        } else {
+          const who = await fetchWho();
+          const loggedInDepartmentID = Number(who);
+
+          if (!Number.isInteger(loggedInDepartmentID)) {
+            throw new Error("Unable to resolve logged-in department");
+          }
+
+          const loggedInDepartment = all_departments.find(
+            (department_iter) =>
+              Number(department_iter.DepartmentID) === loggedInDepartmentID,
+          );
+
+          if (!loggedInDepartment) {
+            throw new Error("Logged-in department data was not found");
+          }
+
+          setDepartmentList([loggedInDepartment]);
+          setDepartmentID(loggedInDepartment.DepartmentID);
+          setDepartment(loggedInDepartment);
+          // loading stays true — the rooms useEffect will setLoading(false) after fetching
         }
-
-        const genDepartment = all_departments.find(
-          (department_iter) => Number(department_iter.DepartmentID) === 0,
-        );
-
-        const dept_list =
-          Number(loggedInDepartment.DepartmentID) === 0 || !genDepartment
-            ? [loggedInDepartment]
-            : [loggedInDepartment, genDepartment];
-
-        setDepartmentList(dept_list);
-        setDepartmentID(loggedInDepartment.DepartmentID);
-        setDepartment(loggedInDepartment);
-        setNewRoomDepartmentID(loggedInDepartment.DepartmentID);
-        setLoading(false);
       } catch (err) {
         setPopupOptions({
           Heading: "Failed to Fetch All Department Data",
@@ -185,7 +174,7 @@ function Rooms() {
     };
 
     useEffectAsyncs();
-  }, []);
+  }, [adminMode]);
 
   const skipAnimRef = useRef(false);
 
@@ -197,20 +186,10 @@ function Rooms() {
         new_page,
         name_match,
       );
-      setRoomList(rooms.Rooms);
-      setTotalCount(rooms.TotalRooms);
-
-      if (Number(department_id) !== 0) {
-        try {
-          const gen_rooms = await fetchDepartmentRooms(0, 999, 0, name_match);
-          setGenRoomList(gen_rooms.Rooms || []);
-        } catch (gen_err) {
-          console.warn("Failed to fetch GEN shared rooms:", gen_err);
-          setGenRoomList([]);
-        }
-      } else {
-        setGenRoomList([]);
-      }
+      console.log("Department:", department_id);
+      console.log("Rooms:", rooms);
+      setRoomList(Array.isArray(rooms?.Rooms) ? rooms.Rooms : []);
+      setTotalCount(rooms?.TotalRooms ?? 0);
     } catch (err) {
       setPopupOptions({
         Heading: "Failed to fetch rooms",
@@ -249,14 +228,49 @@ function Rooms() {
     return () => clearTimeout(debounceTimer);
   }, [departmentID, load_rooms, page, pageSize, searchTerm]);
 
-  // room schedule view
+  // room schedule view (department mode only)
 
   const [isViewRoomSchedule, setIsViewRoomSchedule] = useState(false);
   const [roomToView, setRoomToView] = useState(null);
+  const [autoOpenRoomPrintDialog, setAutoOpenRoomPrintDialog] = useState(false);
+
+  // duplicate detection (admin mode)
+
+  const [duplicateRoomNames, setDuplicateRoomNames] = useState(new Set());
+
+  useEffect(() => {
+    if (!adminMode || !Number.isInteger(Number.parseInt(departmentID, 10)) || departmentList.length === 0) {
+      setDuplicateRoomNames(new Set());
+      return;
+    }
+
+    const checkDuplicates = async () => {
+      const otherDepts = departmentList.filter(
+        (d) => Number(d.DepartmentID) !== Number(departmentID),
+      );
+
+      const results = await Promise.all(
+        otherDepts.map((d) =>
+          fetchDepartmentRooms(d.DepartmentID, 999, 0, "").catch(() => ({ Rooms: [] })),
+        ),
+      );
+
+      const otherNames = new Set();
+      for (const result of results) {
+        for (const room of result.Rooms || []) {
+          otherNames.add(room.Name.toLowerCase().trim());
+        }
+      }
+
+      setDuplicateRoomNames(otherNames);
+    };
+
+    checkDuplicates();
+  }, [adminMode, departmentID, departmentList]);
 
   return (
     <>
-      <MainHeader pageName={"rooms"}>
+      <MainHeader pageName={pageName}>
 
       {/* ===================== POPUP ===================== */}
       <Popup
@@ -267,7 +281,33 @@ function Rooms() {
       />
 
       {!isViewRoomSchedule ? (
-        <Box>
+      <Box>
+          {adminMode && (
+            <Box sx={{ mb: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 300 }}>
+                <InputLabel id="admin-department-select-label">Select Department</InputLabel>
+                <Select
+                  labelId="admin-department-select-label"
+                  value={departmentID}
+                  label="Select Department"
+                  onChange={(e) => {
+                    const selected = departmentList.find(
+                      (d) => d.DepartmentID === e.target.value,
+                    );
+                    setDepartmentID(e.target.value);
+                    setDepartment(selected || "");
+                    setPage(0);
+                  }}
+                >
+                  {departmentList.map((d) => (
+                    <MenuItem key={d.DepartmentID} value={d.DepartmentID}>
+                      {d.Code} — {d.Name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
           <Box
             sx={{
               display: "flex",
@@ -290,30 +330,31 @@ function Rooms() {
               />
             </Box>
 
-            <Button
-              disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
-              endIcon={<AddIcon />}
-              size="medium"
-              color="secondary"
-              variant="contained"
-              onClick={() => {
-                const new_empty_room_fields = {
-                  Name: null,
-                  Capacity: null,
-                  RoomType: null,
-                };
+            {adminMode && (
+              <Button
+                disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
+                endIcon={<AddIcon />}
+                size="medium"
+                color="secondary"
+                variant="contained"
+                onClick={() => {
+                  const new_empty_room_fields = {
+                    Name: null,
+                    Capacity: null,
+                    RoomType: null,
+                  };
 
-                setSharingDepartmentIDs([]);
-                setSharingDepartments([]);
+                  setSharingDepartmentIDs([]);
+                  setSharingDepartments([]);
 
-                setNewRoomDepartmentID(departmentID);
-                setRoom(new_empty_room_fields);
-                setMode("new");
-                setIsDialogFormOpen(true);
-              }}
-            >
-              Add New Room to {department.Code}
-            </Button>
+                  setRoom(new_empty_room_fields);
+                  setMode("new");
+                  setIsDialogFormOpen(true);
+                }}
+              >
+                Add New Room to {department.Code}
+              </Button>
+            )}
           </Box>
 
           {/* ===================== TABLE ===================== */}
@@ -329,11 +370,11 @@ function Rooms() {
             <Table stickyHeader size="small" sx={{ tableLayout: "fixed" }}>
                 <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                   <TableRow sx={{ height: 1 }}>
-                    <TableCell sx={{ width: "25%" }}>Room Name</TableCell>
-                    <TableCell sx={{ width: "20%" }}>Room Type</TableCell>
-                    <TableCell sx={{ width: "12%" }}>Capacity</TableCell>
-                    {departmentID == 0 ? (
-                      <TableCell sx={{ width: "18%" }}></TableCell>
+                    <TableCell sx={{ width: "25%" }}>ROOM NAME</TableCell>
+                    <TableCell sx={{ width: "20%" }}>ROOM TYPE</TableCell>
+                    <TableCell sx={{ width: "20%" }}>SECTION CAPACITY</TableCell>
+                    {departmentID !== "" && Number(departmentID) === 0 ? (
+                      <TableCell sx={{ width: "10%" }}></TableCell>
                     ) : null}
                     <TableCell sx={{ width: "112px" }} align="right"></TableCell>
                   </TableRow>
@@ -345,7 +386,7 @@ function Rooms() {
                           <TableCell><Skeleton /></TableCell>
                           <TableCell><Skeleton /></TableCell>
                           <TableCell><Skeleton /></TableCell>
-                          {departmentID == 0 ? <TableCell><Skeleton /></TableCell> : null}
+                          {departmentID !== "" && Number(departmentID) === 0 ? <TableCell><Skeleton /></TableCell> : null}
                           <TableCell align="right">
                             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: "0.5em" }}>
                               <Skeleton variant="circular" width={32} height={32} />
@@ -355,168 +396,118 @@ function Rooms() {
                           </TableCell>
                         </TableRow>
                       ))
-                    : roomList.length === 0 && genRoomList.length === 0 ? (
+                    : !departmentID ? (
                       <TableRow>
-                        <TableCell colSpan={departmentID == 0 ? 5 : 4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                        <TableCell colSpan={4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                          Please select a department first
+                        </TableCell>
+                      </TableRow>
+                    ) : roomList.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={departmentID !== "" && Number(departmentID) === 0 ? 5 : 4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
                           No rooms found
                         </TableCell>
                       </TableRow>
                   ) : (
-                    <>
-                      {genRoomList?.map((room) => (
-                        <TableRow key={`gen-${room.RoomID}`} sx={{ backgroundColor: "rgba(46, 100, 23, 0.04)" }}>
-                          <TableCell sx={{ fontWeight: "bold" }}>
+                    roomList?.map((room, index) => (
+                        
+                      <TableRow key={room.RoomID}>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                             {room.Name}
-                            <Chip
-                              size="small"
-                              label="GEN"
-                              color="success"
-                              variant="outlined"
-                              sx={{ ml: 1, height: 18, fontSize: "0.65rem" }}
-                            />
+                            {adminMode && duplicateRoomNames.has(room.Name.toLowerCase().trim()) && (
+                              <Tooltip title="A room with this name already exists in another department">
+                                <WarningAmberIcon color="warning" fontSize="small" />
+                              </Tooltip>
+                            )}
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ fontStyle: "italic" }}>{RoomTypeName(room.RoomType)}</TableCell>
+                        <TableCell>{room.Capacity}</TableCell>
+                        {departmentID !== "" && Number(departmentID) === 0 ? (
+                          <TableCell>
+                            {room?.SharingDepartments
+                              ? `${room?.SharingDepartments?.length}x`
+                              : "all"}
                           </TableCell>
-                          <TableCell sx={{ fontStyle: "italic" }}>{RoomTypeName(room.RoomType)}</TableCell>
-                          <TableCell>{room.Capacity}</TableCell>
-                          {departmentID == 0 ? (
-                            <TableCell>
-                              {room?.SharingDepartments
-                                ? `${room?.SharingDepartments?.length}x`
-                                : "all"}
-                            </TableCell>
-                          ) : null}
-                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
-                              <IconButton
-                                title="View Schedule"
-                                color="view"
-                                disabled={loading}
-                                onClick={() => {
-                                  setRoomToView(room);
-                                  setIsViewRoomSchedule(true);
-                                }}
-                              >
-                                <PreviewIcon />
-                              </IconButton>
-                              <IconButton
-                                title="Edit (shared from GEN)"
-                                color="edit"
-                                disabled={loading}
-                                onClick={() => {
-                                  if (room.SharingDepartments) {
-                                    setSharingDepartmentIDs(
-                                      room.SharingDepartments,
-                                    );
+                        ) : null}
+                        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
+                            {!adminMode && (
+                              <>
+                                <IconButton
+                                  title="View Schedule"
+                                  color="view"
+                                  disabled={loading}
+                                  onClick={() => {
+                                    setAutoOpenRoomPrintDialog(false);
+                                    setRoomToView(room);
+                                    setIsViewRoomSchedule(true);
+                                  }}
+                                >
+                                  <PreviewIcon />
+                                </IconButton>
+                                <IconButton
+                                  title="Print Schedule"
+                                  color="primary"
+                                  disabled={loading}
+                                  onClick={() => {
+                                    setAutoOpenRoomPrintDialog(true);
+                                    setRoomToView(room);
+                                    setIsViewRoomSchedule(true);
+                                  }}
+                                >
+                                  <PrintIcon />
+                                </IconButton>
+                              </>
+                            )}
+                            <IconButton
+                              title="Edit"
+                              color="edit"
+                              disabled={loading}
+                              onClick={() => {
+                                if (room.SharingDepartments) {
+                                  setSharingDepartmentIDs(
+                                    room.SharingDepartments,
+                                  );
 
-                                    const current_sharing_departments =
-                                      room.SharingDepartments?.map((id) => {
-                                        return departmentList.find((find_dept) => {
-                                          return id == find_dept.DepartmentID;
-                                        });
+                                  const current_sharing_departments =
+                                    room.SharingDepartments?.map((id) => {
+                                      return departmentList.find((find_dept) => {
+                                        return id == find_dept.DepartmentID;
                                       });
+                                    });
 
-                                    setSharingDepartments(
-                                      current_sharing_departments,
-                                    );
-                                  } else {
-                                    setSharingDepartmentIDs([]);
-                                    setSharingDepartments([]);
-                                  }
+                                  setSharingDepartments(
+                                    current_sharing_departments,
+                                  );
+                                } else {
+                                  setSharingDepartmentIDs([]);
+                                  setSharingDepartments([]);
+                                }
 
-                                  setRoom(room);
-                                  setMode("edit");
-                                  setIsDialogFormOpen(true);
-                                }}
-                              >
-                                <EditIcon />
-                              </IconButton>
-                              <IconButton
-                                title="Delete (shared from GEN)"
-                                color="delete"
-                                disabled={loading}
-                                onClick={() => {
-                                  setRoomToDelete(room);
-                                  setIsDialogDeleteShow(true);
-                                }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {roomList?.map((room, index) => (
-                        <TableRow key={room.RoomID}>
-                          <TableCell sx={{ fontWeight: "bold" }}>{room.Name}</TableCell>
-                          <TableCell sx={{ fontStyle: "italic" }}>{RoomTypeName(room.RoomType)}</TableCell>
-                          <TableCell>{room.Capacity}</TableCell>
-                          {departmentID == 0 ? (
-                            <TableCell>
-                              {room?.SharingDepartments
-                                ? `${room?.SharingDepartments?.length}x`
-                                : "all"}
-                            </TableCell>
-                          ) : null}
-                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
-                              <IconButton
-                                title="View Schedule"
-                                color="view"
-                                disabled={loading}
-                                onClick={() => {
-                                  setRoomToView(room);
-                                  setIsViewRoomSchedule(true);
-                                }}
-                              >
-                                <PreviewIcon />
-                              </IconButton>
-                              <IconButton
-                                title="Edit"
-                                color="edit"
-                                disabled={loading}
-                                onClick={() => {
-                                  if (room.SharingDepartments) {
-                                    setSharingDepartmentIDs(
-                                      room.SharingDepartments,
-                                    );
-
-                                    const current_sharing_departments =
-                                      room.SharingDepartments?.map((id) => {
-                                        return departmentList.find((find_dept) => {
-                                          return id == find_dept.DepartmentID;
-                                        });
-                                      });
-
-                                    setSharingDepartments(
-                                      current_sharing_departments,
-                                    );
-                                  } else {
-                                    setSharingDepartmentIDs([]);
-                                    setSharingDepartments([]);
-                                  }
-
-                                  setRoom(room);
-                                  setMode("edit");
-                                  setIsDialogFormOpen(true);
-                                }}
-                              >
-                                <EditIcon />
-                              </IconButton>
-                              <IconButton
-                                title="Delete"
-                                color="delete"
-                                disabled={loading}
-                                onClick={async () => {
-                                  setRoomToDelete(room);
-                                  setIsDialogDeleteShow(true);
-                                }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </>
+                                setRoom(room);
+                                setMode("edit");
+                                setIsDialogFormOpen(true);
+                              }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton
+                              title="Delete"
+                              color="delete"
+                              disabled={loading}
+                              onClick={async () => {
+                                setRoomToDelete(room);
+                                setIsDialogDeleteShow(true);
+                              }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))
                     )
                   }
                 </TableBody>
@@ -568,9 +559,8 @@ function Rooms() {
               />
             </TableContainer>
           </Box>
-        </Box>
+      </Box>
       ) : (
-        // ===================== ROOM SCHEDULE VIEW =====================
         <RoomSchedule
           roomToView={roomToView}
           setRoomToView={setRoomToView}
@@ -578,6 +568,8 @@ function Rooms() {
           selectedDepartment={department}
           popupOptions={popupOptions}
           setPopupOptions={setPopupOptions}
+          autoOpenPrintDialog={autoOpenRoomPrintDialog}
+          onAutoOpenPrintDialogHandled={() => setAutoOpenRoomPrintDialog(false)}
         />
       )}
 
@@ -658,12 +650,12 @@ function Rooms() {
               const formJson = Object.fromEntries(formData.entries());
 
               if (mode === "new") {
-                formJson.DepartmentID = Number(newRoomDepartmentID);
+                formJson.DepartmentID = departmentID;
               } else {
                 formJson.DepartmentID = Number(formJson.DepartmentID);
               }
 
-              if (Number(formJson.DepartmentID) === 0) {
+              if (departmentID !== "" && Number(departmentID) === 0) {
                 formJson.SharingDepartments = sharingDepartmentIDs;
               } else {
                 formJson.SharingDepartments = [];
@@ -791,35 +783,7 @@ function Rooms() {
             </Select>
           </FormControl>
 
-          {mode === "new" && departmentList?.length > 1 ? (
-            <FormControl fullWidth margin="dense">
-              <InputLabel id="label-id-new-department">
-                Add Room to Department
-              </InputLabel>
-              <Select
-                required
-                variant="standard"
-                id="id-new-department"
-                labelId="label-id-new-department"
-                label="Add Room to Department"
-                value={newRoomDepartmentID}
-                onChange={(e) => setNewRoomDepartmentID(e.target.value)}
-              >
-                {departmentList.map((department, index) => (
-                  <MenuItem
-                    key={index}
-                    value={department.DepartmentID}
-                  >
-                    {Number(department.DepartmentID) === 0
-                      ? `${department.Code} - ${department.Name} (Shared with all)`
-                      : `${department.Code} - ${department.Name}`}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          ) : null}
-
-          {mode === "edit" ? (
+          {mode === "edit" && adminMode ? (
             <FormControl fullWidth margin="dense">
               <InputLabel id="label-id-edit-department">
                 Move to Department
@@ -855,7 +819,7 @@ function Rooms() {
             </FormControl>
           ) : null}
 
-          {departmentID == 0 && departmentList ? (
+          {departmentID !== "" && Number(departmentID) === 0 && departmentList ? (
             <>
               <FormControl sx={{ m: 1 }} fullWidth>
                 <InputLabel id="multiple-department-checkbox-label">

@@ -235,7 +235,7 @@ export default function Subjects() {
             sx={{
               display: "flex",
               justifyContent: "space-between",
-              py: 1.5,
+              paddingBlock: "0.6em",
               gap: 2,
               flexWrap: "wrap",
             }}
@@ -252,14 +252,16 @@ export default function Subjects() {
 
             <Button
               startIcon={<AddIcon />}
+              color="secondary"
               variant="contained"
+              size="small"
               onClick={() => {
                 setSubject(emptySubject);
                 setMode("new");
                 setIsDialogFormOpen(true);
               }}
             >
-              Add Subject
+              Add New Subject
             </Button>
           </Box>
 

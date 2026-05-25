@@ -195,6 +195,9 @@ function CurriculumView({
             {mode === "view" && (
               <>
                 <Button
+                  size="small"
+                  color="secondary"
+                  variant="contained"
                   startIcon={<EditIcon />}
                   onClick={() => {
                     setMode("edit");
@@ -203,7 +206,11 @@ function CurriculumView({
                 >
                   Edit
                 </Button>
-                <Button color="error" onClick={onClose}>
+                <Button
+                size="small"
+                color="error"
+                variant="outlined"
+                onClick={onClose}>
                   Close
                 </Button>
               </>
@@ -212,20 +219,33 @@ function CurriculumView({
             {mode === "edit" && (
               <>
                 <Button
+                  size="small"
+                  color="secondary"
+                  variant="contained"
                   startIcon={<CheckIcon />}
                   onClick={async () => {
-                    const updated = structuredClone(editedCurriculum);
-                    await patchUpdateCurriculum(updated);
-                    setCurriculum(updated);
-                    reloadList();
-                    setMode("view");
+                    try {
+                      const updated = structuredClone(editedCurriculum);
+                      await patchUpdateCurriculum(updated);
+                      setCurriculum(updated);
+                      reloadList();
+                      setMode("view");
+                    } catch (err) {
+                      setPopupOptions({
+                        Heading: "Update Failed",
+                        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
+                        Message: `${err.message || err}`,
+                      });
+                    }
                   }}
                 >
                   Apply
                 </Button>
 
                 <Button
+                  size="small"
                   color="error"
+                  variant="contained"
                   onClick={() => {
                     setMode("view");
                     setEditedCurriculum(structuredClone(curriculum));
@@ -241,11 +261,19 @@ function CurriculumView({
                 <Button
                   startIcon={<SaveIcon />}
                   onClick={async () => {
-                    const newC = structuredClone(editedCurriculum);
-                    await postCreateCurriculum(newC);
-                    setCurriculum(newC);
-                    reloadList();
-                    setMode("view");
+                    try {
+                      const newC = structuredClone(editedCurriculum);
+                      await postCreateCurriculum(newC);
+                      setCurriculum(newC);
+                      reloadList();
+                      setMode("view");
+                    } catch (err) {
+                      setPopupOptions({
+                        Heading: "Save Failed",
+                        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
+                        Message: `${err.message || err}`,
+                      });
+                    }
                   }}
                 >
                   Save
@@ -310,10 +338,6 @@ function CurriculumView({
 
                 {(mode === "edit" || mode === "new") && (
                   <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<AddIcon />}
-                    sx={{ ml: 1, mr: 1, minWidth: "auto" }}
                     onClick={() => {
                       const c = structuredClone(editedCurriculum);
 
@@ -339,13 +363,13 @@ function CurriculumView({
                       setYearTabIndex(c.YearLevels.length - 1);
                     }}
                   >
-                    Add Year
+                    +
                   </Button>
                 )}
               </Box>
 
               {/* Tab Content */}
-              <Box p={2} flex={1} overflow="auto">
+              <Box sx={{ p: 1, flex: 1, overflow: "auto" }}>
                 {editedCurriculum.YearLevels[yearTabIndex] && (
                   <>
                     {/* Year controls */}
@@ -477,7 +501,7 @@ function CurriculumView({
                             </Typography>
                           </AccordionSummary>
 
-                          <AccordionDetails>
+                          <AccordionDetails sx={{ pt: 1, px: 2, pb: 0 }}>
                             {(mode === "edit" || mode === "new") && (
                               <Box
                                 display="flex"
@@ -521,7 +545,7 @@ function CurriculumView({
                             )}
                             <TableContainer component={Paper}>
                               <Table size="small">
-                                <TableHead>
+                                <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                                   <TableRow>
                                     <TableCell>Code</TableCell>
                                     <TableCell>Name</TableCell>
@@ -661,36 +685,8 @@ function CurriculumView({
               </Box>
             </>
           ) : (
-            <Box
-              p={2}
-              display="flex"
-              flexDirection="column"
-              alignItems="flex-start"
-              gap={1.5}
-            >
+            <Box p={1}>
               <Typography fontStyle="italic">empty year levels</Typography>
-
-              {(mode === "edit" || mode === "new") && (
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={<AddIcon />}
-                  onClick={() => {
-                    const c = structuredClone(editedCurriculum);
-
-                    c.YearLevels.push({
-                      Name: YEAR_LEVEL_NAMES[c.YearLevels.length],
-                      IsActive: true,
-                      Semesters: [],
-                    });
-
-                    setEditedCurriculum(c);
-                    setYearTabIndex(c.YearLevels.length - 1);
-                  }}
-                >
-                  Add Year Level
-                </Button>
-              )}
             </Box>
           )}
         </Box>

@@ -1,5 +1,5 @@
 // ===================== IMPORTS =====================
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -24,13 +24,16 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
 import PeopleIcon from "@mui/icons-material/People";
 import LogoutIcon from "@mui/icons-material/Logout";
+import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 
 import { Popup } from "../components/Loading";
-import { getAdminAllowedPages, logoutAdmin } from "../utils/adminAuth.js";
+import { clearAdminSessionHint, getAdminAllowedPages, logoutAdmin } from "../utils/adminAuth.js";
 import { logoutDepartment } from "../js/departments.js";
+import { AUTH_LOGOUT_EVENT_KEY, broadcastLogout, clearAuthData } from "../utils/authStorage.js";
 
 // ===================== CONSTANTS =====================
 const departmentPages = ["schedule", "rooms", "instructors"];
+const accountSettingsPage = "account-settings";
 
 const getPageDisplayInfo = (page) => {
   const pageInfo = {
@@ -40,13 +43,16 @@ const getPageDisplayInfo = (page) => {
     schedule: { label: "Schedule", icon: CalendarTodayIcon },
     rooms: { label: "Rooms", icon: MeetingRoomIcon },
     instructors: { label: "Instructors", icon: PeopleIcon },
+    "admin-rooms": { label: "Rooms", icon: MeetingRoomIcon },
+    "admin-instructors": { label: "Instructors", icon: PeopleIcon },
+    [accountSettingsPage]: { label: "Account Settings", icon: ManageAccountsIcon },
   };
 
   return pageInfo[page] || { label: page, icon: null };
 };
 
 // ===================== MAIN COMPONENT =====================
-export function MainHeader({ pageName, children, navigationDisabled = false }) {
+export function MainHeader({ pageName, children, navigationDisabled = false, accountType }) {
   const navigate = useNavigate();
 
   // ---- STATE ----
@@ -58,11 +64,90 @@ export function MainHeader({ pageName, children, navigationDisabled = false }) {
   });
 
   // ---- DERIVED ----
-  const departmentName = localStorage.getItem("departmentName");
   const adminPages = getAdminAllowedPages();
-  const isDepartmentPage = departmentPages.includes(pageName);
+  const isDepartmentPage = accountType === "department" || departmentPages.includes(pageName);
+  const departmentName = isDepartmentPage
+    ? localStorage.getItem("departmentName")
+    : null;
   const pages = isDepartmentPage ? departmentPages : adminPages;
-  const { label: pageLabel, icon: PageIcon } = getPageDisplayInfo(pageName);
+  const accountSettingsInfo = getPageDisplayInfo(accountSettingsPage);
+  const { label: pageLabel } = getPageDisplayInfo(pageName);
+
+  const getAccountType = () => (isDepartmentPage ? "department" : "admin");
+
+  const renderSidebarButton = ({ page, label, Icon, isActive, onClick, disabled = false }) => (
+    <Button
+      key={page}
+      disabled={navigationDisabled || disabled}
+      onClick={onClick}
+      sx={{
+        width: "100%",
+        minHeight: 50,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        p: 1.5,
+        borderRadius: 2,
+        textTransform: "none",
+
+        color: isActive ? "primary.dark" : "white",
+        backgroundColor: isActive ? "secondary.light" : "transparent",
+
+        "&:hover": {
+          backgroundColor: isActive
+            ? "secondary.light"
+            : "#ffffff11",
+        },
+        "&.Mui-disabled": {
+          color: "rgba(255,255,255,0.48)",
+          backgroundColor: isActive ? "rgba(237,247,241,0.16)" : "transparent",
+        },
+      }}
+    >
+      <Box
+        sx={{
+          width: 40,
+          minWidth: 40,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <Icon />
+      </Box>
+
+      <Box
+        sx={{
+          opacity: collapsed ? 0 : 1,
+          transform: collapsed ? "translateX(-10px)" : "translateX(0px)",
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+          transition: "opacity 0.25s ease, transform 0.25s ease",
+          pointerEvents: collapsed ? "none" : "auto",
+        }}
+      >
+        {label}
+      </Box>
+    </Button>
+  );
+
+  // ---- EFFECTS ----
+  useEffect(() => {
+    const handleCrossTabLogout = (event) => {
+      if (event.key !== AUTH_LOGOUT_EVENT_KEY || !event.newValue) return;
+
+      clearAuthData();
+      clearAdminSessionHint();
+      navigate("/login", { replace: true });
+    };
+
+    window.addEventListener("storage", handleCrossTabLogout);
+
+    return () => {
+      window.removeEventListener("storage", handleCrossTabLogout);
+    };
+  }, [navigate]);
 
   // ---- HANDLERS ----
   const toggleSidebar = () => {
@@ -79,11 +164,14 @@ export function MainHeader({ pageName, children, navigationDisabled = false }) {
     try {
       if (isDepartmentPage) {
         await logoutDepartment();
+        clearAuthData();
       } else {
         await logoutAdmin();
+        clearAuthData();
       }
 
       localStorage.removeItem("sidebarCollapsed");
+      broadcastLogout();
 
       setTimeout(() => {
         navigate("/login", { replace: true });
@@ -136,14 +224,14 @@ export function MainHeader({ pageName, children, navigationDisabled = false }) {
         <DialogActions sx={{ justifyContent: "flex-end" }}>
           <Button
             color="secondary"
-            variant="contained"
+            variant="outlined"
             onClick={() => setLogoutConfirmOpen(false)}
           >
             Cancel
           </Button>
           <Button
             color="error"
-            variant="outlined"
+            variant="contained"
             onClick={() => {
               setLogoutConfirmOpen(false);
               handleLogout();
@@ -234,133 +322,41 @@ export function MainHeader({ pageName, children, navigationDisabled = false }) {
                 const { label, icon: Icon } = getPageDisplayInfo(page);
                 const isActive = pageName === page;
 
-                return (
-                  <Button
-                    key={page}
-                    disabled={navigationDisabled}
-                    onClick={() => navigate(`/${page}`)}
-                    sx={{
-                      width: "100%",
-                      minHeight: 50,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "flex-start",
-                      p: 1.5,
-                      borderRadius: 2,
-                      textTransform: "none",
-
-                      color: isActive ? "primary.dark" : "white",
-                      backgroundColor: isActive ? "secondary.light" : "transparent",
-
-                      "&:hover": {
-                        backgroundColor: isActive
-                          ? "secondary.light"
-                          : "#ffffff11",
-                      },
-                      "&.Mui-disabled": {
-                        color: "rgba(255,255,255,0.48)",
-                        backgroundColor: isActive ? "rgba(237,247,241,0.16)" : "transparent",
-                      },
-                    }}
-                  >
-                    {/* ICON */}
-                    <Box
-                      sx={{
-                        width: 40,
-                        minWidth: 40,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Icon />
-                    </Box>
-
-                    {/* LABEL */}
-                    <Box
-                        sx={{
-                            opacity: collapsed ? 0 : 1,
-                            transform: collapsed
-                            ? "translateX(-10px)"
-                            : "translateX(0px)",
-
-                            overflow: "hidden",
-                            whiteSpace: "nowrap",
-
-                            transition:
-                            "opacity 0.25s ease, transform 0.25s ease",
-
-                            pointerEvents: collapsed ? "none" : "auto",
-                        }}
-                    >
-                    {label}
-                    </Box>
-                  </Button>
-                );
+                return renderSidebarButton({
+                  page,
+                  label,
+                  Icon,
+                  isActive,
+                  onClick: () => navigate(`/${page}`),
+                });
               })}
             </Box>
           </Box>
 
-          {/* ===================== LOGOUT ===================== */}
-          <Button
-            onClick={() => setLogoutConfirmOpen(true)}
-            disabled={loggingOut || navigationDisabled}
-            sx={{
-                width: "calc(100% - 16px)",
-                minHeight: 48,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-start",
-                p: 1.5,
-                mx: 1,
-                borderRadius: 2,
-                textTransform: "none",
+          {/* ===================== ACCOUNT ACTIONS ===================== */}
+          <Box sx={{ mx: 1, display: "flex", flexDirection: "column", gap: 1 }}>
+            <Divider sx={{ mb: 0.5, bgcolor: "rgba(220, 239, 229, 0.35)" }} />
 
-                color: "white",
+            {renderSidebarButton({
+              page: accountSettingsPage,
+              label: accountSettingsInfo.label,
+              Icon: accountSettingsInfo.icon,
+              isActive: pageName === accountSettingsPage,
+              onClick: () =>
+                navigate(`/${accountSettingsPage}`, {
+                  state: { accountType: getAccountType() },
+                }),
+            })}
 
-                "&:hover": {
-                backgroundColor: "#ffffff11",
-                },
-                "&.Mui-disabled": {
-                color: "rgba(255,255,255,0.48)",
-                },
-            }}
-            >
-            {/* ICON */}
-            <Box
-                sx={{
-                width: 40,
-                minWidth: 40,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                }}
-            >
-                <LogoutIcon />
-            </Box>
-
-            {/* LABEL */}
-            <Box
-                sx={{
-                opacity: collapsed ? 0 : 1,
-                transform: collapsed
-                    ? "translateX(-10px)"
-                    : "translateX(0px)",
-
-                overflow: "hidden",
-                whiteSpace: "nowrap",
-
-                transition:
-                    "opacity 0.25s ease, transform 0.25s ease",
-
-                pointerEvents: collapsed ? "none" : "auto",
-                }}
-            >
-                {loggingOut ? "Logging out..." : "Logout"}
-            </Box>
-            </Button>
+            {renderSidebarButton({
+              page: "logout",
+              label: loggingOut ? "Logging out..." : "Logout",
+              Icon: LogoutIcon,
+              isActive: false,
+              disabled: loggingOut,
+              onClick: () => setLogoutConfirmOpen(true),
+            })}
+          </Box>
         </Box>
 
         {/* ===================== MAIN CONTENT ===================== */}
@@ -386,7 +382,7 @@ export function MainHeader({ pageName, children, navigationDisabled = false }) {
               {/* TITLE TEXT */}
               <Box sx={{ position: "relative" }}>
                 <Typography variant="h5" fontWeight={700}>
-                  {departmentName || "Administration Department"}
+                  {departmentName || (isDepartmentPage ? "Department" : "Administration Department")}
                 </Typography>
 
                 {/* SUBTITLE (visible when sidebar is collapsed) */}
