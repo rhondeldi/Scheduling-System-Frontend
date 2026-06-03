@@ -2,17 +2,21 @@ import { DEV, base_url } from "../js/basics.js";
 
 const ADMIN_SESSION_KEY = "gasss_admin_authenticated";
 
-const ADMIN_ALLOWED_PAGES = ["departments", "curriculums", "subjects"];
+const ADMIN_ALLOWED_PAGES = ["departments", "curriculums", "subjects", "admin-rooms", "admin-instructors"];
 
 export function getAdminAllowedPages() {
   return ADMIN_ALLOWED_PAGES;
 }
 
-export async function isAdminAuthenticated() {
-  if (window.sessionStorage.getItem(ADMIN_SESSION_KEY) !== "true") {
-    return false;
-  }
+export function hasAdminSessionHint() {
+  return window.sessionStorage.getItem(ADMIN_SESSION_KEY) === "true";
+}
 
+export function clearAdminSessionHint() {
+  window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+}
+
+export async function isAdminAuthenticated() {
   let apiRequest = "/admin_who";
 
   if (DEV) {
@@ -25,21 +29,29 @@ export async function isAdminAuthenticated() {
     });
 
     if (!res.ok) {
-      window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      clearAdminSessionHint();
       return false;
     }
 
     const text = await res.text();
+    const normalizedText = text.trim().toLowerCase();
     const isLoggedOut =
-      !text || text.trim().toLowerCase() === "no one is logged in";
+      !normalizedText ||
+      normalizedText === "no one is logged in" ||
+      normalizedText === "no admin is logged in";
 
     if (isLoggedOut) {
-      window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      clearAdminSessionHint();
       return false;
     }
 
+    window.sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
     return true;
   } catch {
+    if (hasAdminSessionHint()) {
+      return true;
+    }
+
     return false;
   }
 }
@@ -71,8 +83,65 @@ export async function loginAdmin(username, password) {
   return true;
 }
 
+export async function updateAdminAccount({ username, currentPassword, newPassword }) {
+  const apiRequest = DEV
+    ? `${base_url}/auth_admin_account`
+    : "/auth_admin_account";
+
+  const response = await fetch(apiRequest, {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      Accept: "text/plain",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: username.trim(),
+      currentPassword,
+      newPassword,
+    }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(
+        "Admin account updates are not available on the running backend. Please restart the backend so the new account settings route is loaded.",
+      );
+    }
+
+    throw new Error(`${response.status} : ${await response.text()}`);
+  }
+}
+
+export async function fetchAdminAccount() {
+  const apiRequest = DEV
+    ? `${base_url}/auth_admin_account`
+    : "/auth_admin_account";
+
+  const response = await fetch(apiRequest, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return {
+        username: "admin",
+        endpointMissing: true,
+      };
+    }
+
+    throw new Error(`${response.status} : ${await response.text()}`);
+  }
+
+  return response.json();
+}
+
 export async function logoutAdmin() {
-  window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  clearAdminSessionHint();
 
   const logoutPaths = ["/auth_admin_logout", "/auth_gasss_logout"];
 

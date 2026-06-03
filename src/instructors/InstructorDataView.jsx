@@ -1,13 +1,16 @@
+// ===================== IMPORTS =====================
 import { useState, useEffect, useRef } from "react";
 
+import IconButton from "@mui/material/IconButton";
 import Button from "@mui/material/Button";
 import DoneIcon from "@mui/icons-material/Done";
 import CancelIcon from "@mui/icons-material/Cancel";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
-import Divider from "@mui/material/Divider";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import Tooltip from "@mui/material/Tooltip";
 
 import { InstructorTimeSlotBitMap } from "../js/instructor-time-slot-bit-map";
 
@@ -19,6 +22,7 @@ import {
   Typography,
   TextField,
   FormControl,
+  InputAdornment,
   InputLabel,
   Select,
   MenuItem,
@@ -41,7 +45,6 @@ import { fetchInstructorResources } from "../js/instructors_v2";
 
 import {
   Loading,
-  Popup,
   POPUP_ERROR_COLOR,
   POPUP_SUCCESS_COLOR,
   POPUP_WARNING_COLOR,
@@ -50,8 +53,10 @@ import {
 import "../assets/SubjectColors.css";
 import { PrintHeader } from "../components/PrintHeader";
 
+// ===================== CONSTANTS =====================
 const SEMESTER_NAMES = ["1st Semester", "2nd Semester", "Mid-year"];
 
+// ===================== HELPERS =====================
 function get_total_contact_hours(subjects) {
   let total_contact_hours = 0;
   if (Array.isArray(subjects) && Number.isInteger(subjects?.SubjectTimeSlots)) {
@@ -67,6 +72,7 @@ function to_title_case(str = "") {
   return str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+// ===================== MAIN COMPONENT =====================
 export default function InstructorDataView({
   selectedDepartment,
   selectedInstructor,
@@ -78,24 +84,102 @@ export default function InstructorDataView({
   departments,
   popupOptions,
   setPopupOptions,
+  autoOpenPrintDialog = false,
+  onAutoOpenPrintDialogHandled = () => {},
 }) {
   const [subjectColors, setSubjectColors] = useState({});
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       SELECTED TIME SLOT CELL
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- ASYNC LOAD STATE ----
+
+  const [asyncAssignments, setAsyncAssignments] = useState([]);
+  const [asyncPlacements, setAsyncPlacements] = useState([]);
+  const [asyncOverflow, setAsyncOverflow] = useState([]);
+  const [hourTotals, setHourTotals] = useState({
+    SyncHours: 0,
+    AsyncHours: 0,
+    TotalHours: 0,
+  });
+
+  // ---- SELECTED TIME SLOT CELL ----
 
   const [selectedTimeSlots, setSelectedTimeSlots] = useState(new Set());
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                     LOAD GUARD COMPONENT STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- LOAD GUARD COMPONENT STATES ----
 
   const [IsLoading, setIsLoading] = useState(false);
+  const [firstName, setFirstName] = useState(selectedInstructor?.FirstName ?? "");
+  const [middleInitial, setMiddleInitial] = useState(
+    selectedInstructor?.MiddleInitial ?? "",
+  );
+  const [lastName, setLastName] = useState(selectedInstructor?.LastName ?? "");
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       TIME TABLE GRID STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  const sanitizeNameValue = (value = "") => {
+    return value
+      .toUpperCase()
+      .replace(/[^A-Z\s\-']/g, "")
+      .replace(/^\s+/, "");
+  };
+
+  const sanitizeMiddleInitialValue = (value = "") => {
+    return value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 1);
+  };
+
+  const handleNameKeyDown = (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if ([
+      "Backspace",
+      "Delete",
+      "Tab",
+      "Enter",
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowDown",
+      "Home",
+      "End",
+    ].includes(e.key)) {
+      return;
+    }
+
+    if (!/^[a-zA-Z\s\-']$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleMiddleInitialKeyDown = (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if ([
+      "Backspace",
+      "Delete",
+      "Tab",
+      "Enter",
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowDown",
+      "Home",
+      "End",
+    ].includes(e.key)) {
+      return;
+    }
+
+    if (!/^[a-zA-Z]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const updateInstructorField = (field, value) => {
+    if (!selectedInstructor) return;
+    setSelectedInstructor({ ...selectedInstructor, [field]: value });
+  };
+
+  useEffect(() => {
+    setFirstName(selectedInstructor?.FirstName ?? "");
+    setMiddleInitial(selectedInstructor?.MiddleInitial ?? "");
+    setLastName(selectedInstructor?.LastName ?? "");
+  }, [selectedInstructor]);
+
+  // ---- TIME TABLE GRID STATES ----
 
   const [semesterIndex, setSemesterIndex] = useState("");
 
@@ -105,8 +189,6 @@ export default function InstructorDataView({
     const semester_idx = Number.parseInt(e.target.value, 10);
 
     if (Number.isInteger(semester_idx)) {
-      console.log("selected semester index:", e.target.value);
-
       setAllocatedSubjectAssign(
         instructorResources.current.semesters_sub_assign[semester_idx],
       );
@@ -128,22 +210,153 @@ export default function InstructorDataView({
 
       setSubjectColors(subject_colors);
 
-      console.log(
-        "allocated time slots:",
-        new InstructorTimeSlotBitMap(
-          instructorResources.current.semesters_time_slots[semester_idx],
-        ),
+      const semesters_async_assign =
+        instructorResources.current.semesters_async_assign || [];
+      const semesters_hour_totals =
+        instructorResources.current.semesters_hour_totals || [];
+
+      const asyncRecords = semesters_async_assign[semester_idx] || [];
+      setAsyncAssignments(asyncRecords);
+      setHourTotals(
+        semesters_hour_totals[semester_idx] || {
+          SyncHours: 0,
+          AsyncHours: 0,
+          TotalHours: 0,
+        },
       );
 
-      console.log(
-        "subjects allocated:",
-        instructorResources.current.semesters_sub_assign[semester_idx],
+      const semAvailabilityRaw =
+        instructorResources.current.semesters_time_slots?.[semester_idx];
+
+      const semAvailability = semAvailabilityRaw
+        ? new InstructorTimeSlotBitMap(semAvailabilityRaw)
+        : new InstructorTimeSlotBitMap();
+
+      const allocatedSubjects =
+        instructorResources.current.semesters_sub_assign[semester_idx] || [];
+
+      const { placements, overflow } = computeAsyncPlacements(
+        asyncRecords,
+        allocatedSubjects,
+        semAvailability,
+        DAYS.length,
+        dailyTimeSlots,
       );
+
+      setAsyncPlacements(placements);
+      setAsyncOverflow(overflow);
     } else {
-      console.log("selected semester index: none");
       setAllocatedSubjectAssign([]);
       setSubjectColors([]);
+      setAsyncAssignments([]);
+      setAsyncPlacements([]);
+      setAsyncOverflow([]);
+      setHourTotals({ SyncHours: 0, AsyncHours: 0, TotalHours: 0 });
     }
+  };
+
+  const computeAsyncPlacements = (
+    asyncRecords,
+    allocatedSubjects,
+    availabilityBitmap,
+    days,
+    perDay,
+  ) => {
+    const occupied = Array.from({ length: days }, () =>
+      Array(perDay).fill(false),
+    );
+
+    for (let d = 0; d < days; d++) {
+      for (let t = 0; t < perDay; t++) {
+        if (!availabilityBitmap.getAvailability(d, t)) {
+          occupied[d][t] = true;
+        }
+      }
+    }
+
+    // earliest slot per day where async may start: end of the last sync subject of that day.
+    // days with no sync subject default to 0 (async may take the day entirely).
+    const dayMinStart = Array(days).fill(0);
+
+    for (const subj of allocatedSubjects) {
+      for (let i = 0; i < subj.SubjectTimeSlots; i++) {
+        const slot = subj.TimeSlotIdx + i;
+        if (slot >= 0 && slot < perDay) {
+          occupied[subj.DayIdx][slot] = true;
+        }
+      }
+
+      const endSlot = subj.TimeSlotIdx + subj.SubjectTimeSlots;
+      if (endSlot > dayMinStart[subj.DayIdx]) {
+        dayMinStart[subj.DayIdx] = endSlot;
+      }
+    }
+
+    const placements = [];
+    const overflow = [];
+
+    for (const record of asyncRecords) {
+      const slotsNeeded = Math.max(
+        1,
+        Math.round((Number(record.AsyncHours) || 0) * 2),
+      );
+
+      const subjectCode = (record.DisplayLabel || "")
+        .replace(/\s*\(Async\)\s*$/i, "")
+        .trim() || `S${record.SubjectID}`;
+
+      const sectionLabel =
+        record.CourseSection ||
+        `Yr ${(record.YearLevelIdx ?? 0) + 1}-S${
+          (record.SectionIdx ?? 0) + 1
+        }`;
+
+      let placed = false;
+
+      for (let d = 0; d < days && !placed; d++) {
+        for (
+          let t = dayMinStart[d];
+          t <= perDay - slotsNeeded && !placed;
+          t++
+        ) {
+          let canPlace = true;
+          for (let i = 0; i < slotsNeeded; i++) {
+            if (occupied[d][t + i]) {
+              canPlace = false;
+              break;
+            }
+          }
+          if (canPlace) {
+            for (let i = 0; i < slotsNeeded; i++) {
+              occupied[d][t + i] = true;
+            }
+            dayMinStart[d] = t + slotsNeeded;
+            placements.push({
+              DayIdx: d,
+              TimeSlotIdx: t,
+              SubjectTimeSlots: slotsNeeded,
+              SubjectCode: subjectCode,
+              SectionLabel: sectionLabel,
+              AsyncHours: Number(record.AsyncHours) || 0,
+              RecordKey: `${record.SectionID}-${record.SubjectID}`,
+            });
+            placed = true;
+          }
+        }
+      }
+
+      if (!placed) {
+        overflow.push({
+          SubjectCode: subjectCode,
+          SectionLabel: sectionLabel,
+          AsyncHours: Number(record.AsyncHours) || 0,
+          RecordKey: `${record.SectionID}-${record.SubjectID}`,
+          SlotsNeeded: slotsNeeded,
+        });
+      }
+    }
+
+    return { placements, overflow };
   };
 
   const DAYS = [
@@ -158,7 +371,7 @@ export default function InstructorDataView({
   const [timeSlotMinuteInterval, setTimeSlotMinuteInterval] = useState(30);
   const [dailyTimeSlots, setDailyTimeSlots] = useState(24);
 
-  const [isDragSelect, setIsDragSelect] = useState();
+  const [isDragSelect, setIsDragSelect] = useState(false);
   const [instructorBackup, setInstructorBackup] = useState();
 
   const instructorResources = useRef(null);
@@ -191,10 +404,6 @@ export default function InstructorDataView({
 
       const instructor_resources = await fetchInstructorResources(
         selectedInstructor.InstructorID,
-      );
-      console.log(
-        "load_resources -> fetchInstructorResources  : ",
-        instructor_resources,
       );
 
       const base_time_slots = new InstructorTimeSlotBitMap(
@@ -239,8 +448,6 @@ export default function InstructorDataView({
   };
 
   useEffect(() => {
-    // TODO: fetch basic const values (data below is just temporary);
-
     const starting_hour = 7;
     const time_slot_per_hour = 2;
     const daily_time_slots = 24;
@@ -251,21 +458,16 @@ export default function InstructorDataView({
     setTimeSlotMinuteInterval(time_slot_minute_interval);
     setDailyTimeSlots(daily_time_slots);
 
-    console.log("selectedDepartment :", selectedDepartment);
     setInstructorBackup(structuredClone(selectedInstructor));
 
     load_resources();
   }, [selectedInstructor]);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                     CONTEXT MENU HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- CONTEXT MENU HANDLERS ----
 
   const contextMenuState = useContextMenuState();
 
   const handleContextMenuEnable = () => {
-    console.log("before enable =", selectedInstructor);
-
     let is_all_enabled = true;
     let has_impossible_error = false;
     let enabled_time_slots = 0;
@@ -349,8 +551,6 @@ export default function InstructorDataView({
   };
 
   const handleContextMenuDisable = () => {
-    console.log("before disable =", selectedInstructor);
-
     let is_all_disabled = true;
     let has_impossible_error = false;
     let disabled_time_slots = 0;
@@ -433,22 +633,15 @@ export default function InstructorDataView({
     setSelectedTimeSlots(new Set());
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                     TIME SLOT SELECTION BUTTON HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- TIME SLOT SELECTION BUTTON HANDLERS ----
 
   const handleEditOrNewAction = async () => {
-    console.log("handleEditOrNewAction: called");
     try {
-      console.log("handleEditOrNewAction: called 1");
-
       let new_default_time = [];
 
       for (let i = 0; i < baseResourceTimeSlots.bitset.length; i++) {
         new_default_time.push(`${baseResourceTimeSlots.bitset[i]}`);
       }
-
-      console.log("handleEditOrNewAction: called 2");
 
       const updated_instructor_time_str = {
         InstructorID: selectedInstructor.InstructorID,
@@ -459,13 +652,9 @@ export default function InstructorDataView({
         Time: new_default_time,
       };
 
-      console.log("handleEditOrNewAction: called 3");
-
       setIsLoading(true);
 
       if (mode === "edit") {
-        console.log("mode: edit - save changes");
-
         await patchUpdateInsturctor(updated_instructor_time_str);
 
         setPopupOptions({
@@ -476,19 +665,16 @@ export default function InstructorDataView({
 
         reloadInstructorsTable();
       } else if (mode === "new") {
-        console.log("mode: new - save new instructor");
-
         await postCreateInsturctor(updated_instructor_time_str);
 
         setPopupOptions({
           Heading: "Add Successful",
           HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
-          Message: "a new instructor was added",
+          Message: "A NEW INSTRUCTOR HAS BEEN ADDED",
         });
 
         reloadInstructorsTable();
       } else {
-        console.log("mode: wrong mode detected");
         throw new Error("there was a problem in the v2 instructor page");
       }
 
@@ -503,9 +689,7 @@ export default function InstructorDataView({
     }
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                      PRINTING STATES, REFS AND HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- PRINTING STATES, REFS AND HANDLERS ----
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [isBlackAndWhite, setIsBlackAndWhite] = useState(false);
@@ -579,10 +763,6 @@ export default function InstructorDataView({
 
   const [isPrintDialogShow, setIsPrintDialogShow] = useState(false);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                INSTRUCTOR SUBJECTS MANAGEMENT STATES
-  /////////////////////////////////////////////////////////////////////////////////
-
   const handleOpenSignatoriesDialog = () => {
     const academic_year = localStorage.getItem("academic-year");
 
@@ -622,6 +802,19 @@ export default function InstructorDataView({
     setIsPrintDialogShow(true);
   };
 
+  useEffect(() => {
+    if (
+      !autoOpenPrintDialog ||
+      mode !== "view" ||
+      !Number.isInteger(Number.parseInt(semesterIndex, 10))
+    ) {
+      return;
+    }
+
+    handleOpenSignatoriesDialog();
+    onAutoOpenPrintDialogHandled();
+  }, [autoOpenPrintDialog, mode, semesterIndex]);
+
   const saveAddedOptionalPrintingValues = () => {
     localStorage.setItem("academic-year", academicYear);
 
@@ -643,10 +836,9 @@ export default function InstructorDataView({
     localStorage.setItem("position-approved", positionApproved);
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
-
   return (
     <>
+      {/* ===================== CONTEXT MENU ===================== */}
       <ContextMenu closeAfterClick={true} conextMenuState={contextMenuState}>
         <ContextMenuItem onClick={handleContextMenuEnable}>
           Enable
@@ -658,6 +850,7 @@ export default function InstructorDataView({
 
       <Loading IsLoading={IsLoading} />
 
+      {/* ===================== HEADING ===================== */}
       <Box
         sx={{
           display: "flex",
@@ -731,118 +924,185 @@ export default function InstructorDataView({
                 </Select>
               </FormControl>
             ) : null}
-
             {mode === "view" ? (
-              <Button
-                endIcon={<EditIcon />}
-                size="small"
-                color="primary"
-                variant="contained"
-                onClick={() => {
-                  setMode("edit");
-                  setInstructorBackup(structuredClone(selectedInstructor));
+            <Box sx={{ display: "flex", gap: .5 }}>
 
-                  backupBaseResourceTimeSlots.current =
-                    new InstructorTimeSlotBitMap(baseResourceTimeSlots.bitset);
-                  backupSemsResourceTimeSlots.current =
-                    new InstructorTimeSlotBitMap(semsResourceTimeSlots.bitset);
-                }}
-                loading={IsLoading}
-              >
-                Edit
-              </Button>
-            ) : mode === "edit" ? (
-              <Button
-                endIcon={<DoneIcon />}
-                size="small"
-                color="success"
-                variant="contained"
-                onClick={() => {
-                  handleEditOrNewAction();
-                  setMode("");
-                }}
-                loading={IsLoading}
-              >
-                Apply Changes
-              </Button>
-            ) : mode === "new" ? (
-              <Button
-                endIcon={<AddIcon />}
-                size="small"
-                color="success"
-                variant="contained"
-                onClick={() => {
-                  handleEditOrNewAction();
-                  setMode("");
-                }}
-              >
-                Save New Instructor
-              </Button>
-            ) : (
-              <p>green btn error: unknown mode</p>
+            <Tooltip
+            title={
+            semesterIndex === ""
+            ? "Select a semester first"
+            : "Print Schedule"
+            }
+            >
+            <span>
+            <IconButton
+            color="view"
+            variant="outlined"
+            disabled={semesterIndex === ""}
+            onClick={handleOpenSignatoriesDialog}
+            sx={{
+            borderRadius: 5,
+            width: 38,
+            height: 38,
+            }}
+            >
+            <PrintIcon />
+            </IconButton>
+            </span>
+            </Tooltip>
+
+            <Tooltip title="Public View">
+            <IconButton
+            color="view"
+            onClick={() =>
+            window.open(
+            "/view_instructors/",
+            "_blank"
             )}
+            sx={{
+            borderRadius: 5,
+            width: 38,
+            height: 38,
+            }}
+            >
+            <OpenInNewIcon />
+            </IconButton>
+            </Tooltip>
 
-            {mode === "view" ? (
-              <Button
-                endIcon={<ExitToAppIcon />}
-                size="small"
-                color="error"
-                variant="outlined"
-                onClick={() => {
-                  setMode("");
-                  onInstructorDataViewClose();
-                }}
-              >
-                Go Back
-              </Button>
+            <Tooltip title="Edit">
+            <IconButton
+            color="edit"
+            onClick={() => {
+            setMode("edit");
+            
+
+            setInstructorBackup(
+            structuredClone(
+            selectedInstructor
+            )
+            );
+
+            backupBaseResourceTimeSlots.current =
+            new InstructorTimeSlotBitMap(
+            baseResourceTimeSlots.bitset
+            );
+
+            backupSemsResourceTimeSlots.current =
+            new InstructorTimeSlotBitMap(
+            semsResourceTimeSlots.bitset
+            );
+            }}
+            sx={{
+            borderRadius: 5,
+            width: 38,
+            height: 38,
+            }}
+            >
+            <EditIcon />
+            </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Go Back">
+            <IconButton
+            color="delete"
+            onClick={() => {
+            setMode("");
+            onInstructorDataViewClose();
+            }}
+            sx={{
+            borderRadius: 5,
+            width: 38,
+            height: 38,
+            }}
+            >
+            <ExitToAppIcon />
+            </IconButton>
+            </Tooltip>
+
+            </Box>
+          
             ) : mode === "edit" ? (
-              <Button
-                endIcon={<CancelIcon />}
-                size="small"
-                color="error"
-                variant="outlined"
-                onClick={() => {
-                  setMode("view");
-
-                  // set the original values of the selected instructors defaults and allocated back to unedited version
-
-                  selectedInstructor.InstructorID =
-                    instructorBackup.InstructorID;
-                  selectedInstructor.DepartmentID =
-                    instructorBackup.DepartmentID;
-                  selectedInstructor.FirstName = instructorBackup.FirstName;
-                  selectedInstructor.MiddleInitial =
-                    instructorBackup.MiddleInitial;
-                  selectedInstructor.LastName = instructorBackup.LastName;
-                  selectedInstructor.Time = instructorBackup.Time;
-
-                  setBaseResourceTimeSlots(backupBaseResourceTimeSlots.current);
-                  setSemsResourceTimeSlots(backupSemsResourceTimeSlots.current);
-
-                  setSelectedTimeSlots(new Set());
-                }}
-              >
-                Cancel
-              </Button>
+                <>
+                <Button
+                    endIcon={<DoneIcon />}
+                    size="small"
+                    color="success"
+                    variant="contained"
+                    onClick={() => {
+                    handleEditOrNewAction();
+                    setMode("view");
+                    }}
+                >
+                    Save Changes
+                </Button>
+            
+                <Button
+                    endIcon={<CancelIcon />}
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    onClick={() => {
+                    setMode("view");
+            
+                    selectedInstructor.InstructorID =
+                        instructorBackup.InstructorID;
+                    selectedInstructor.DepartmentID =
+                        instructorBackup.DepartmentID;
+                    selectedInstructor.FirstName =
+                        instructorBackup.FirstName;
+                    selectedInstructor.MiddleInitial =
+                        instructorBackup.MiddleInitial;
+                    selectedInstructor.LastName =
+                        instructorBackup.LastName;
+            
+                    setBaseResourceTimeSlots(
+                        backupBaseResourceTimeSlots.current
+                    );
+                    setSemsResourceTimeSlots(
+                        backupSemsResourceTimeSlots.current
+                    );
+            
+                    setSelectedTimeSlots(new Set());
+                    }}
+                >
+                    Cancel
+                </Button>
+                </>
             ) : mode === "new" ? (
-              <Button
-                endIcon={<CancelIcon />}
-                size="small"
-                color="error"
-                variant="outlined"
-                onClick={() => {
-                  setMode("");
-                  onInstructorDataViewClose();
-                }}
-              >
-                Close
-              </Button>
-            ) : (
+                <>
+                  <Button
+                    endIcon={<AddIcon />}
+                    size="small"
+                    color="success"
+                    variant="contained"
+                    onClick={() => {
+                      handleEditOrNewAction();
+                      setMode("");
+                    }}
+                  >
+                    Save New Instructor
+                  </Button>
+              
+                  <Button
+                    endIcon={<CancelIcon />}
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    onClick={() => {
+                      setMode("");
+                      onInstructorDataViewClose();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
               <p>red btn error: unknown mode</p>
             )}
           </Box>
         </Box>
 
+        {/* ===================== NAME BAR ===================== */}
         {/* second page heading - instructor name display */}
 
         <Box
@@ -876,64 +1136,148 @@ export default function InstructorDataView({
                   variant="outlined"
                   size="small"
                   label="First Name"
-                  defaultValue={selectedInstructor.FirstName}
-                  onChange={(e) => {
-                    selectedInstructor.FirstName = e.target.value;
-                    console.log(`FirstName : ${e.target.value}`);
+                  value={firstName}
+                  helperText="Letters, spaces, hyphens, apostrophes only"
+                  inputProps={{
+                    style: { textTransform: "uppercase" },
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeNameValue(e.target.value);
+                    setFirstName(sanitized);
+                    updateInstructorField("FirstName", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeNameValue(pasted);
+                    setFirstName(sanitized);
+                    updateInstructorField("FirstName", sanitized);
+                  }}
+                  onKeyDown={handleNameKeyDown}
                 />
                 <TextField
                   variant="outlined"
                   size="small"
                   label="M.I."
-                  defaultValue={selectedInstructor.MiddleInitial}
-                  onChange={(e) => {
-                    selectedInstructor.MiddleInitial = e.target.value;
-                    console.log(`MiddleInitial : ${e.target.value}`);
+                  value={middleInitial}
+                  helperText="Single initial only"
+                  inputProps={{ maxLength: 1 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">.</InputAdornment>
+                    ),
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeMiddleInitialValue(e.target.value);
+                    setMiddleInitial(sanitized);
+                    updateInstructorField("MiddleInitial", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeMiddleInitialValue(pasted);
+                    setMiddleInitial(sanitized);
+                    updateInstructorField("MiddleInitial", sanitized);
+                  }}
+                  onKeyDown={handleMiddleInitialKeyDown}
                 />
                 <TextField
                   variant="outlined"
                   size="small"
                   label="Last Name"
-                  defaultValue={selectedInstructor.LastName}
-                  onChange={(e) => {
-                    selectedInstructor.LastName = e.target.value;
-                    console.log(`LastName : ${e.target.value}`);
+                  value={lastName}
+                  helperText="Letters, spaces, hyphens, apostrophes only"
+                  inputProps={{
+                    style: { textTransform: "uppercase" },
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeNameValue(e.target.value);
+                    setLastName(sanitized);
+                    updateInstructorField("LastName", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeNameValue(pasted);
+                    setLastName(sanitized);
+                    updateInstructorField("LastName", sanitized);
+                  }}
+                  onKeyDown={handleNameKeyDown}
                 />
               </>
             ) : mode === "new" ? (
-              <>
+              <>  
                 <TextField
                   variant="outlined"
                   size="small"
                   label="First Name"
-                  defaultValue=""
-                  onChange={(e) => {
-                    selectedInstructor.FirstName = e.target.value;
-                    console.log(`FirstName : ${e.target.value}`);
+                  value={firstName}
+                  helperText="Letters, spaces, hyphens, apostrophes only"
+                  inputProps={{
+                    style: { textTransform: "uppercase" },
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeNameValue(e.target.value);
+                    setFirstName(sanitized);
+                    updateInstructorField("FirstName", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeNameValue(pasted);
+                    setFirstName(sanitized);
+                    updateInstructorField("FirstName", sanitized);
+                  }}
+                  onKeyDown={handleNameKeyDown}
                 />
                 <TextField
                   variant="outlined"
                   size="small"
                   label="M.I."
-                  defaultValue=""
-                  onChange={(e) => {
-                    selectedInstructor.MiddleInitial = e.target.value;
-                    console.log(`MiddleInitial : ${e.target.value}`);
+                  value={middleInitial}
+                  helperText="Single initial only"
+                  inputProps={{ maxLength: 1 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">.</InputAdornment>
+                    ),
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeMiddleInitialValue(e.target.value);
+                    setMiddleInitial(sanitized);
+                    updateInstructorField("MiddleInitial", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeMiddleInitialValue(pasted);
+                    setMiddleInitial(sanitized);
+                    updateInstructorField("MiddleInitial", sanitized);
+                  }}
+                  onKeyDown={handleMiddleInitialKeyDown}
                 />
                 <TextField
                   variant="outlined"
                   size="small"
                   label="Last Name"
-                  defaultValue=""
-                  onChange={(e) => {
-                    selectedInstructor.LastName = e.target.value;
-                    console.log(`LastName : ${e.target.value}`);
+                  value={lastName}
+                  helperText="Letters, spaces, hyphens, apostrophes only"
+                  inputProps={{
+                    style: { textTransform: "uppercase" },
                   }}
+                  onChange={(e) => {
+                    const sanitized = sanitizeNameValue(e.target.value);
+                    setLastName(sanitized);
+                    updateInstructorField("LastName", sanitized);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text");
+                    const sanitized = sanitizeNameValue(pasted);
+                    setLastName(sanitized);
+                    updateInstructorField("LastName", sanitized);
+                  }}
+                  onKeyDown={handleNameKeyDown}
                 />
               </>
             ) : (
@@ -941,7 +1285,7 @@ export default function InstructorDataView({
             )}
           </Box>
 
-          {mode === "edit" ? (
+          {mode === "edit" && departments.length > 1 ? (
             <Box maxWidth={200}>
               <FormControl size="small" fullWidth>
                 <InputLabel id="label-id-edit-department">
@@ -953,12 +1297,7 @@ export default function InstructorDataView({
                   label="Move to Department"
                   defaultValue={selectedInstructor?.DepartmentID}
                   onChange={(e) => {
-                    console.log("change department : ", departments);
-                    selectedInstructor.DepartmentID = Number(e.target.value);
-                  }}
-                  onClick={() => {
-                    console.log("change department : ", departments);
-                    console.log("instructor : ", selectedInstructor);
+                    updateInstructorField("DepartmentID", Number(e.target.value));
                   }}
                 >
                   {departments
@@ -977,14 +1316,14 @@ export default function InstructorDataView({
           ) : (
             <Typography align="right" variant="body1" fontStyle={"italic"}>
               {departments.find(
-                (dept) => dept.DepartmentID == selectedInstructor?.DepartmentID,
+                (dept) => dept.DepartmentID === selectedInstructor?.DepartmentID,
               )?.Name || "Department not found"}
             </Typography>
           )}
         </Box>
       </Box>
 
-      <Divider orientation="vertical" flexItem />
+      {/* ===================== INSTRUCTOR AVAILABILITY TIME SLOTS ===================== */}
       {mode === "edit" || mode === "new" ? (
         <Typography
           align="center"
@@ -1053,6 +1392,7 @@ export default function InstructorDataView({
         ) : null}
       </Box>
 
+      {/* ===================== TIMETABLE ===================== */}
       <div
         ref={contentRef}
         style={{
@@ -1209,6 +1549,49 @@ export default function InstructorDataView({
                     );
                   }
 
+                  const has_async_placement =
+                    mode === "view"
+                      ? asyncPlacements.find(
+                          (p) =>
+                            p.DayIdx === day_index &&
+                            p.TimeSlotIdx === time_slot_index,
+                        )
+                      : null;
+
+                  if (has_async_placement) {
+                    return (
+                      <td
+                        key={day_index}
+                        className={`subject-cell ${
+                          isBlackAndWhite ? "color-bw" : ""
+                        }`}
+                        rowSpan={has_async_placement.SubjectTimeSlots}
+                        style={
+                          isBlackAndWhite
+                            ? {}
+                            : {
+                                background:
+                                  "linear-gradient(to bottom right, #fff7d6, #ffe9a3)",
+                                color: "#5a4400",
+                                boxShadow: "inset 0 0 0 0.1em #c8b04a",
+                              }
+                        }
+                      >
+                        <div className="subject-content">
+                          <div className="subject-time-slot-line-1">
+                            *{has_async_placement.SubjectCode}
+                          </div>
+                          <div className="subject-time-slot-line-2">
+                            {has_async_placement.SectionLabel}
+                          </div>
+                          <div className="subject-time-slot-line-3">
+                            Async
+                          </div>
+                        </div>
+                      </td>
+                    );
+                  }
+
                   if (mode === "view") {
                     class_name = "empty-slot";
                   } else if (!is_available_default) {
@@ -1234,7 +1617,17 @@ export default function InstructorDataView({
                     return has_hit_subject_in_row && has_hit_subject_in_col;
                   });
 
-                  if (is_occupied) {
+                  const is_async_occupied =
+                    mode === "view" &&
+                    asyncPlacements.some((p) => {
+                      const in_row =
+                        time_slot_index >= p.TimeSlotIdx &&
+                        time_slot_index < p.TimeSlotIdx + p.SubjectTimeSlots;
+                      const in_col = day_index === p.DayIdx;
+                      return in_row && in_col;
+                    });
+
+                  if (is_occupied || is_async_occupied) {
                     return null;
                   }
 
@@ -1249,26 +1642,13 @@ export default function InstructorDataView({
                           return;
                         }
 
-                        console.log(
-                          `right click: class="${event.target.className}"`,
-                        );
-
-                        const available =
-                          semsResourceTimeSlots?.getAvailability(
-                            day_index,
-                            time_slot_index,
-                          );
-                        console.log(
-                          `day(${day_index}), time_slot(${time_slot_index} = available? ${available})`,
-                        );
-
                         contextMenuState.setShow(true);
                         contextMenuState.setPosition(
                           new Position(event.clientX, event.clientY),
                         );
 
                         const is_selected = selectedTimeSlots.has(
-                          `${day_index}${time_slot_index}`,
+                          `${day_index}:${time_slot_index}`,
                         );
 
                         if (!is_selected) {
@@ -1279,7 +1659,6 @@ export default function InstructorDataView({
                             `${day_index}:${time_slot_index}`,
                           );
                           setSelectedTimeSlots(new_selected_time_slots);
-                          console.log(new_selected_time_slots);
                         }
                       }}
                       onMouseDown={(event) => {
@@ -1287,13 +1666,10 @@ export default function InstructorDataView({
                           return;
                         }
 
-                        console.log(
-                          `drag start: class="${event.target.className}"`,
-                        );
                         setIsDragSelect(true);
 
                         const is_selected = selectedTimeSlots.has(
-                          `${day_index}${time_slot_index}`,
+                          `${day_index}:${time_slot_index}`,
                         );
 
                         if (!is_selected) {
@@ -1304,7 +1680,6 @@ export default function InstructorDataView({
                             `${day_index}:${time_slot_index}`,
                           );
                           setSelectedTimeSlots(new_selected_time_slots);
-                          console.log(new_selected_time_slots);
                         }
                       }}
                       onMouseEnter={(event) => {
@@ -1312,12 +1687,8 @@ export default function InstructorDataView({
                           return;
                         }
 
-                        console.log(
-                          `dragging: class="${event.target.className}"`,
-                        );
-
                         const is_selected = selectedTimeSlots.has(
-                          `${day_index}${time_slot_index}`,
+                          `${day_index}:${time_slot_index}`,
                         );
 
                         if (!is_selected && isDragSelect) {
@@ -1328,7 +1699,6 @@ export default function InstructorDataView({
                             `${day_index}:${time_slot_index}`,
                           );
                           setSelectedTimeSlots(new_selected_time_slots);
-                          console.log(new_selected_time_slots);
                         }
                       }}
                       onMouseUp={(event) => {
@@ -1336,9 +1706,6 @@ export default function InstructorDataView({
                           return;
                         }
 
-                        console.log(
-                          `drag end: class="${event.target.className}"`,
-                        );
                         setIsDragSelect(false);
                       }}
                     >
@@ -1352,6 +1719,163 @@ export default function InstructorDataView({
             ))}
           </tbody>
         </table>
+
+        {mode === "view" &&
+        Number.isInteger(Number.parseInt(semesterIndex, 10)) ? (
+          <Box
+            sx={{
+              paddingInline: 2,
+              paddingBlock: 1.5,
+              marginTop: 1,
+              borderTop: "thin solid #ccc",
+            }}
+          >
+            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+              Asynchronous Load
+            </Typography>
+
+            <Typography
+              variant="caption"
+              fontStyle="italic"
+              color="text.secondary"
+              gutterBottom
+              display="block"
+            >
+              * cells above are asynchronous classes placed on the timetable
+              for display only — they do not affect the actual schedule.
+            </Typography>
+
+            <Box
+              sx={{
+                display: "flex",
+                gap: 3,
+                flexWrap: "wrap",
+                marginBottom: 1,
+              }}
+            >
+              <Typography variant="body2">
+                <strong>Sync Hours:</strong>{" "}
+                {Number(hourTotals.SyncHours || 0).toFixed(2)}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Async Hours:</strong>{" "}
+                {Number(hourTotals.AsyncHours || 0).toFixed(2)}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Total Hours:</strong>{" "}
+                {Number(hourTotals.TotalHours || 0).toFixed(2)}
+              </Typography>
+            </Box>
+
+            {asyncOverflow.length > 0 ? (
+              <Box
+                sx={{
+                  marginBottom: 1,
+                  padding: 1,
+                  background: "#fff4f4",
+                  border: "thin solid #d99",
+                  borderRadius: 1,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  fontWeight="bold"
+                  color="error.main"
+                >
+                  Could not place on timetable (no free contiguous slot):
+                </Typography>
+                {asyncOverflow.map((o) => (
+                  <Typography
+                    key={o.RecordKey}
+                    variant="caption"
+                    display="block"
+                  >
+                    *{o.SubjectCode} — {o.SectionLabel} —{" "}
+                    {Number(o.AsyncHours).toFixed(2)} hr
+                  </Typography>
+                ))}
+              </Box>
+            ) : null}
+
+            {asyncAssignments.length === 0 ? (
+              <Typography
+                variant="body2"
+                fontStyle="italic"
+                color="text.secondary"
+              >
+                No asynchronous assignments for this semester.
+              </Typography>
+            ) : (
+              <table
+                className="time-table"
+                style={{ width: "100%", marginTop: 4 }}
+              >
+                <thead>
+                  <tr>
+                    <th
+                      className="day-header"
+                      style={{
+                        ...(isBlackAndWhite
+                          ? {
+                              background: "white",
+                              color: "black",
+                              border: "thin solid black",
+                            }
+                          : {}),
+                      }}
+                    >
+                      Subject / Section
+                    </th>
+                    <th
+                      className="day-header"
+                      style={{
+                        ...(isBlackAndWhite
+                          ? {
+                              background: "white",
+                              color: "black",
+                              border: "thin solid black",
+                            }
+                          : {}),
+                      }}
+                    >
+                      Async Hours
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {asyncAssignments.map((record, idx) => (
+                    <tr key={`${record.SectionID}-${record.SubjectID}-${idx}`}>
+                      <td
+                        className="time-slot"
+                        style={{
+                          ...(isBlackAndWhite
+                            ? { background: "white", color: "black" }
+                            : {}),
+                        }}
+                      >
+                        *{record.DisplayLabel ||
+                          `Subject ${record.SubjectID} - ${record.SectionID}`}
+                        {record.CourseSection
+                          ? ` — ${record.CourseSection}`
+                          : ""}
+                      </td>
+                      <td
+                        className="time-slot"
+                        style={{
+                          ...(isBlackAndWhite
+                            ? { background: "white", color: "black" }
+                            : {}),
+                        }}
+                      >
+                        {Number(record.AsyncHours || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Box>
+        ) : null}
 
         <Box
           display={"flex"}
@@ -1412,27 +1936,7 @@ export default function InstructorDataView({
 
       {!semesterIndex ? <Box height={5}></Box> : null}
 
-      {mode === "view" ? (
-        <Box
-          gap={1}
-          display={
-            Number.isInteger(Number.parseInt(semesterIndex, 10))
-              ? "flex"
-              : "none"
-          }
-          justifyContent={"center"}
-        >
-          <Button
-            variant="outlined"
-            size="medium"
-            onClick={handleOpenSignatoriesDialog}
-            endIcon={<PrintIcon />}
-          >
-            Print
-          </Button>
-        </Box>
-      ) : null}
-
+      {/* ===================== PRINT DIALOG ===================== */}
       <Dialog
         open={isPrintDialogShow}
         onClose={() => {
@@ -1445,7 +1949,8 @@ export default function InstructorDataView({
 
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Add signatories if needed to include in printing
+            Add signatories if needed.
+            browser print dialog.
           </DialogContentText>
 
           <Box display={"flex"} flexDirection={"column"} gap={2} marginTop={2}>
@@ -1485,14 +1990,15 @@ export default function InstructorDataView({
                     </Box> */}
 
             <Box width={"100%"} display={"flex"} gap={1}>
-              <TextField
+                <TextField
                 fullWidth
                 label="Conforme"
-                autoFocus
                 variant="standard"
-                onChange={(e) => setSignatoryConforme(e.target.value)}
-                defaultValue={signatoryConforme ? signatoryConforme : ""}
-              />
+                value={signatoryConforme || ""}
+                InputProps={{
+                    readOnly: true,
+                }}
+                />
               <TextField
                 label="Position"
                 autoFocus

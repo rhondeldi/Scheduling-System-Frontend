@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+// ===================== IMPORTS =====================
+import { useCallback, useEffect, useState, useRef } from "react";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import PreviewIcon from "@mui/icons-material/Preview";
 
 import {
@@ -19,6 +21,7 @@ import {
   TablePagination,
   Paper,
   CircularProgress,
+  Skeleton,
   Dialog,
   DialogContent,
   DialogContentText,
@@ -29,6 +32,7 @@ import {
   ListItemText,
   Chip,
   IconButton,
+  Tooltip,
 } from "@mui/material";
 
 import {
@@ -40,8 +44,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
-
-import warning from "../assets/warning.png";
+import PrintIcon from "@mui/icons-material/Print";
 
 import "../assets/main.css";
 
@@ -55,6 +58,7 @@ import {
 import { MainHeader } from "../components/Header";
 import RoomSchedule from "./RoomSchedule";
 
+// ===================== HELPERS =====================
 function RoomTypeName(room_type) {
   switch (room_type) {
     case 0:
@@ -66,13 +70,15 @@ function RoomTypeName(room_type) {
   }
 }
 
-function Rooms() {
+// ===================== MAIN COMPONENT =====================
+function Rooms({ adminMode = false, pageName = "rooms" }) {
   const ROOM_TYPES = [
     0, // lecture
     1, // laboratory
     2, // gym
   ];
 
+  // ---- STATE ----
   const [mode, setMode] = useState("");
   const [isDialogFormOpen, setIsDialogFormOpen] = useState(false);
 
@@ -81,71 +87,93 @@ function Rooms() {
   const [isDialogDeleteShow, setIsDialogDeleteShow] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState(null);
 
+  // ---- HANDLERS ----
   const handleRoomDelete = async (room_id) => {
     setIsOperationLoading(true);
-  
+
     try {
       await deleteRemoveRoom(room_id);
       await load_rooms(departmentID, pageSize, page, searchTerm);
-  
+
       setPopupOptions({
         Heading: "Delete Success",
         HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
         Message: "The room was successfully deleted.",
       });
+
+      setIsDialogDeleteShow(false);
+      setRoomToDelete(null);
     } catch (err) {
       setPopupOptions({
         Heading: "Delete Failed",
         HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-        Message: `${err}`,
+        Message: `${err.message || err}`,
       });
+    } finally {
+      setIsOperationLoading(false);
     }
-  
-    setRoomToDelete(null);
-    setIsOperationLoading(false);
-    setIsDialogDeleteShow(false);
   };
 
   const [room, setRoom] = useState({
     Name: null,
     Capacity: null,
     RoomType: null,
+    roomNumber: "",
+    roomLetter: "",
   });
+
+  const parseRoomName = (name) => {
+    if (!name) return { number: "", letter: "" };
+    const match = name.match(/^(\d+)([A-Z])?/);
+    return {
+      number: match ? match[1] : "",
+      letter: match && match[2] ? match[2].toUpperCase() : "",
+    };
+  };
 
   const [roomList, setRoomList] = useState([]);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isPaginating, setIsPaginating] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [totalCount, setTotalCount] = useState(0);
 
-  const [departmentList, setDepartmentList] = useState("");
+  const [departmentList, setDepartmentList] = useState([]);
+
+  // ---- EFFECTS ----
   useEffect(() => {
     const useEffectAsyncs = async () => {
       try {
         setLoading(true);
 
-        const who = await fetchWho();
-        const loggedInDepartmentID = Number(who);
-
-        if (!Number.isInteger(loggedInDepartmentID)) {
-          throw new Error("Unable to resolve logged-in department");
-        }
-
         const all_departments = await fetchAllDepartments();
-        const loggedInDepartment = all_departments.find(
-          (department_iter) =>
-            Number(department_iter.DepartmentID) === loggedInDepartmentID,
-        );
 
-        if (!loggedInDepartment) {
-          throw new Error("Logged-in department data was not found");
+        if (adminMode) {
+          setDepartmentList(all_departments);
+          setLoading(false);
+        } else {
+          const who = await fetchWho();
+          const loggedInDepartmentID = Number(who);
+
+          if (!Number.isInteger(loggedInDepartmentID)) {
+            throw new Error("Unable to resolve logged-in department");
+          }
+
+          const loggedInDepartment = all_departments.find(
+            (department_iter) =>
+              Number(department_iter.DepartmentID) === loggedInDepartmentID,
+          );
+
+          if (!loggedInDepartment) {
+            throw new Error("Logged-in department data was not found");
+          }
+
+          setDepartmentList([loggedInDepartment]);
+          setDepartmentID(loggedInDepartment.DepartmentID);
+          setDepartment(loggedInDepartment);
+          // loading stays true — the rooms useEffect will setLoading(false) after fetching
         }
-
-        setDepartmentList([loggedInDepartment]);
-        setDepartmentID(loggedInDepartment.DepartmentID);
-        setDepartment(loggedInDepartment);
-        setLoading(false);
       } catch (err) {
         setPopupOptions({
           Heading: "Failed to Fetch All Department Data",
@@ -157,11 +185,11 @@ function Rooms() {
     };
 
     useEffectAsyncs();
-  }, []);
+  }, [adminMode]);
+
+  const skipAnimRef = useRef(false);
 
   const load_rooms = useCallback(async (department_id, page_size, new_page, name_match = "") => {
-    setLoading(true);
-
     try {
       const rooms = await fetchDepartmentRooms(
         department_id,
@@ -169,8 +197,32 @@ function Rooms() {
         new_page,
         name_match,
       );
-      setRoomList(rooms.Rooms);
-      setTotalCount(rooms.TotalRooms);
+      console.log("Department:", department_id);
+      console.log("Rooms:", rooms);
+      const mergedRooms =
+        (rooms?.Rooms || [])
+            .filter(
+            (room, index, arr) =>
+                arr.findIndex(
+                (r) => r.RoomID === room.RoomID
+                ) === index
+            )
+            .map((room) => ({
+            ...room,
+
+            IsShared:
+                (room?.SharingDepartments && (
+                  room.SharingDepartments.includes(Number(department_id)) ||
+                  // If a room is shared to GEN (dept id 0), consider it shared when
+                  // viewing other departments so the GEN badge appears.
+                  room.SharingDepartments.includes(0)
+                )) || Number(room.DepartmentID) === 0,
+            }));
+
+        console.log("Processed:", mergedRooms);
+
+        setRoomList(mergedRooms);
+      setTotalCount(rooms?.TotalRooms ?? 0);
     } catch (err) {
       setPopupOptions({
         Heading: "Failed to fetch rooms",
@@ -183,6 +235,7 @@ function Rooms() {
     setSharingDepartments([]);
 
     setLoading(false);
+    setIsPaginating(false);
   }, []);
 
   const [departmentID, setDepartmentID] = useState("");
@@ -199,6 +252,8 @@ function Rooms() {
       return;
     }
 
+    if (!skipAnimRef.current) setLoading(true);
+    skipAnimRef.current = false;
     const debounceTimer = setTimeout(() => {
       load_rooms(departmentID, pageSize, page, searchTerm);
     }, 300);
@@ -206,15 +261,78 @@ function Rooms() {
     return () => clearTimeout(debounceTimer);
   }, [departmentID, load_rooms, page, pageSize, searchTerm]);
 
-  // room schedule view
+  // room schedule view (department mode only)
 
   const [isViewRoomSchedule, setIsViewRoomSchedule] = useState(false);
   const [roomToView, setRoomToView] = useState(null);
+  const [autoOpenRoomPrintDialog, setAutoOpenRoomPrintDialog] = useState(false);
+
+  // duplicate detection (admin mode)
+
+    const [duplicateRoomNames, setDuplicateRoomNames] = useState(new Set());
+
+    useEffect(() => {
+    if (
+        !adminMode ||
+        Number(departmentID) === 0 ||
+        !Number.isInteger(Number(departmentID))
+    ) {
+        setDuplicateRoomNames(new Set());
+        return;
+    }
+
+    const checkDuplicates = async () => {
+        try {
+        const currentRooms = await fetchDepartmentRooms(
+            departmentID,
+            9999,
+            0,
+            ""
+        );
+
+        const currentNames = new Set(
+            (currentRooms.Rooms || []).map(
+            (r) => r.Name?.trim().toLowerCase()
+            )
+        );
+
+        const duplicateNames = new Set();
+
+        for (const room of currentRooms.Rooms || []) {
+            const count =
+            [...currentNames].filter(
+                (n) =>
+                n ===
+                room.Name?.trim().toLowerCase()
+            ).length;
+
+            if (count > 1) {
+            duplicateNames.add(
+                room.Name.trim().toLowerCase()
+            );
+            }
+        }
+
+        setDuplicateRoomNames(
+            duplicateNames
+        );
+
+        } catch {
+        setDuplicateRoomNames(
+            new Set()
+        );
+        }
+    };
+
+    checkDuplicates();
+
+    }, [adminMode, departmentID]);
 
   return (
     <>
-      <MainHeader pageName={"rooms"}>
+      <MainHeader pageName={pageName}>
 
+      {/* ===================== POPUP ===================== */}
       <Popup
         popupOptions={popupOptions}
         closeButtonActionHandler={() => {
@@ -223,32 +341,56 @@ function Rooms() {
       />
 
       {!isViewRoomSchedule ? (
-        <Box>
+      <Box>
+          {adminMode && (
+            <Box sx={{ mb: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 300 }}>
+                <InputLabel id="admin-department-select-label">Select Department</InputLabel>
+                <Select
+                  labelId="admin-department-select-label"
+                  value={departmentID}
+                  label="Select Department"
+                  onChange={(e) => {
+                    const selected = departmentList.find(
+                      (d) => d.DepartmentID === e.target.value,
+                    );
+                    setDepartmentID(e.target.value);
+                    setDepartment(selected || "");
+                    setPage(0);
+                  }}
+                >
+                  {departmentList.map((d) => (
+                    <MenuItem key={d.DepartmentID} value={d.DepartmentID}>
+                      {d.Code} — {d.Name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
-              padding: "0.5em",
+              paddingBlock: "0.6em",
             }}
           >
             <Box sx={{ display: "flex", flexDirection: "row", gap: 2 }}>
 
-              {Number.isInteger(Number.parseInt(departmentID, 10)) ? (
-                <TextField
-                  disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
-                  sx={{ minWidth: 300 }}
-                  size="small"
-                  label="Search room name"
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setPage(0);
-                    setSearchTerm(e.target.value);
-                  }}
-                />
-              ) : null}
+              <TextField
+                disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
+                sx={{ minWidth: 300 }}
+                size="small"
+                label="Search room name"
+                value={searchTerm}
+                onChange={(e) => {
+                  setPage(0);
+                  setSearchTerm(e.target.value);
+                }}
+              />
             </Box>
 
-            {Number.isInteger(Number.parseInt(departmentID, 10)) ? (
+            {adminMode && (
               <Button
                 disabled={!Number.isInteger(Number.parseInt(departmentID, 10))}
                 endIcon={<AddIcon />}
@@ -260,6 +402,8 @@ function Rooms() {
                     Name: null,
                     Capacity: null,
                     RoomType: null,
+                    roomNumber: "",
+                    roomLetter: "",
                   };
 
                   setSharingDepartmentIDs([]);
@@ -272,46 +416,141 @@ function Rooms() {
               >
                 Add New Room to {department.Code}
               </Button>
-            ) : null}
+            )}
           </Box>
 
-          <Box paddingInline={1}>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
+          {/* ===================== TABLE ===================== */}
+          <Box>
+          <TableContainer component={Paper}>
+            <Box
+            sx={{
+                flex: 1,
+                overflowY: "auto",
+                minHeight: 0,
+            }}
+            >
+            <Table stickyHeader size="small" sx={{ tableLayout: "fixed" }}>
+                <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
                   <TableRow sx={{ height: 1 }}>
-                    <TableCell>Room Name</TableCell>
-                    <TableCell>Room Type</TableCell>
-                    <TableCell>Capacity</TableCell>
-                    {departmentID == 0 ? (
-                      <TableCell>Department Sharing</TableCell>
+                    <TableCell sx={{ width: "25%" }}>ROOM NAME</TableCell>
+                    <TableCell sx={{ width: "20%" }}>ROOM TYPE</TableCell>
+                    <TableCell sx={{ width: "20%" }}>SECTION CAPACITY</TableCell>
+                    {departmentID !== "" && Number(departmentID) === 0 ? (
+                      <TableCell sx={{ width: "10%" }}></TableCell>
                     ) : null}
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell sx={{ width: "112px" }} align="right"></TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={departmentID == 0 ? 6 : 5}
-                        align="center"
-                      >
-                        <CircularProgress />
-                      </TableCell>
-                    </TableRow>
-                    ) : roomList.length === 0 ? (
-                        <TableRow>
-                            <TableCell colSpan={6} align="center" sx={{ fontWeight: 'bold', py: 15 }}>
-                                No rooms found.
-                            </TableCell>
+                <TableBody sx={{ opacity: loading ? 0 : 1, transform: loading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
+                  {isPaginating
+                    ? Array.from({ length: pageSize }).map((_, i) => (
+                        <TableRow key={i} sx={{ height: 50 }}>
+                          <TableCell><Skeleton /></TableCell>
+                          <TableCell><Skeleton /></TableCell>
+                          <TableCell><Skeleton /></TableCell>
+                          {departmentID !== "" && Number(departmentID) === 0 ? <TableCell><Skeleton /></TableCell> : null}
+                          <TableCell align="right">
+                            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: "0.5em" }}>
+                              <Skeleton variant="circular" width={32} height={32} />
+                              <Skeleton variant="circular" width={32} height={32} />
+                              <Skeleton variant="circular" width={32} height={32} />
+                            </Box>
+                          </TableCell>
                         </TableRow>
+                      ))
+                    : !Number.isInteger(Number(departmentID)) ? (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                          Please select a department first
+                        </TableCell>
+                      </TableRow>
+                    ) : roomList.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={departmentID !== "" && Number(departmentID) === 0 ? 5 : 4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                          No rooms found
+                        </TableCell>
+                      </TableRow>
                   ) : (
-                    roomList?.map((room, index) => (
+                    roomList?.map((room, index) => {
+                        console.log("ROOM DATA:", room);
+                      
+                        return (
+                        
                       <TableRow key={room.RoomID}>
-                        <TableCell sx={{ fontWeight: "bold" }}>{room.Name}</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                        <Box
+                            sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            flexWrap: "wrap",
+                            }}
+                        >
+
+                            {room.Name}
+
+                            {/* Shared Room Label (GEN badge shown when room is from GEN or shared to GEN) */}
+                            {(
+                              Number(room?.DepartmentID) === 0 ||
+                              (room?.SharingDepartments && room.SharingDepartments.some((id) => Number(id) === 0)) ||
+                              Boolean(room?.IsShared)
+                            ) && (
+                              <Tooltip
+                                title={
+                                  room?.SharingDepartments?.length
+                                    ? `Shared to ${room.SharingDepartments
+                                        .map((id) =>
+                                          departmentList.find(
+                                            (d) => Number(d.DepartmentID) === Number(id)
+                                          )?.Code || id
+                                        )
+                                        .filter(Boolean)
+                                        .join(", ")}`
+                                    : Number(room?.DepartmentID) === 0
+                                      ? "GEN room"
+                                      : "Shared resource"
+                                }
+                              >
+                                <Chip
+                                  label="GEN"
+                                  size="small"
+                                  variant="outlined"
+                                  clickable={false}
+                                  sx={{
+                                    ml: 0.5,
+                                    height: 20,
+                                    color: "success.main",
+                                    borderColor: "success.main",
+                                    backgroundColor: "transparent",
+                                    "& .MuiChip-label": {
+                                      px: 1,
+                                      fontSize: "0.68rem",
+                                      fontWeight: 700,
+                                    },
+                                  }}
+                                />
+                              </Tooltip>
+                            )}
+
+                            {adminMode &&
+                            duplicateRoomNames.has(
+                                room.Name
+                                .toLowerCase()
+                                .trim()
+                            ) && (
+                            <Tooltip title="Duplicate room name">
+                                <WarningAmberIcon
+                                color="warning"
+                                fontSize="small"
+                                />
+                            </Tooltip>
+                            )}
+
+                        </Box>
+                        </TableCell>
                         <TableCell sx={{ fontStyle: "italic" }}>{RoomTypeName(room.RoomType)}</TableCell>
                         <TableCell>{room.Capacity}</TableCell>
-                        {departmentID == 0 ? (
+                        {departmentID !== "" && Number(departmentID) === 0 ? (
                           <TableCell>
                             {room?.SharingDepartments
                               ? `${room?.SharingDepartments?.length}x`
@@ -320,17 +559,36 @@ function Rooms() {
                         ) : null}
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
+                            {!adminMode && (
+                              <>
+                                <IconButton
+                                  title="View Schedule"
+                                  color="view"
+                                  disabled={loading}
+                                  onClick={() => {
+                                    setAutoOpenRoomPrintDialog(false);
+                                    setRoomToView(room);
+                                    setIsViewRoomSchedule(true);
+                                  }}
+                                >
+                                  <PreviewIcon />
+                                </IconButton>
+                                <IconButton
+                                  title="Print Schedule"
+                                  color="primary"
+                                  disabled={loading}
+                                  onClick={() => {
+                                    setAutoOpenRoomPrintDialog(true);
+                                    setRoomToView(room);
+                                    setIsViewRoomSchedule(true);
+                                  }}
+                                >
+                                  <PrintIcon />
+                                </IconButton>
+                              </>
+                            )}
                             <IconButton
-                              color="view"
-                              disabled={loading}
-                              onClick={() => {
-                                setRoomToView(room);
-                                setIsViewRoomSchedule(true);
-                              }}
-                            >
-                              <PreviewIcon />
-                            </IconButton>
-                            <IconButton
+                              title="Edit"
                               color="edit"
                               disabled={loading}
                               onClick={() => {
@@ -354,7 +612,8 @@ function Rooms() {
                                   setSharingDepartments([]);
                                 }
 
-                                setRoom(room);
+                                const { number, letter } = parseRoomName(room.Name);
+                                setRoom({ ...room, roomNumber: number, roomLetter: letter });
                                 setMode("edit");
                                 setIsDialogFormOpen(true);
                               }}
@@ -362,6 +621,7 @@ function Rooms() {
                               <EditIcon />
                             </IconButton>
                             <IconButton
+                              title="Delete"
                               color="delete"
                               disabled={loading}
                               onClick={async () => {
@@ -374,28 +634,60 @@ function Rooms() {
                           </Box>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
+                    );
+                    })
+                    )
+                  }
                 </TableBody>
               </Table>
+              </Box>
 
               <TablePagination
+                sx={{
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "#f8f9fa",
+                  "& .MuiTablePagination-displayedRows": { fontWeight: 600 },
+                  "& .MuiTablePagination-select": { fontWeight: 500 },
+                  "& .MuiIconButton-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    mx: 0.25,
+                    "&:hover:not(.Mui-disabled)": {
+                      bgcolor: "primary.main",
+                      color: "white",
+                      borderColor: "primary.main",
+                    },
+                  },
+                  "& .MuiInputBase-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    px: 1,
+                    "&:hover": { borderColor: "text.secondary" },
+                  },
+                }}
                 component="div"
                 count={totalCount}
                 rowsPerPage={pageSize}
                 page={page}
                 rowsPerPageOptions={[5, 10, 25]}
                 onPageChange={(_, new_page) => {
+                  skipAnimRef.current = true;
+                  setIsPaginating(true);
                   setPage(new_page);
                 }}
                 onRowsPerPageChange={(event) => {
+                  skipAnimRef.current = true;
+                  setIsPaginating(true);
                   setPageSize(Number.parseInt(event.target.value, 10));
                   setPage(0);
                 }}
               />
             </TableContainer>
           </Box>
-        </Box>
+      </Box>
       ) : (
         <RoomSchedule
           roomToView={roomToView}
@@ -404,55 +696,54 @@ function Rooms() {
           selectedDepartment={department}
           popupOptions={popupOptions}
           setPopupOptions={setPopupOptions}
+          autoOpenPrintDialog={autoOpenRoomPrintDialog}
+          onAutoOpenPrintDialogHandled={() => setAutoOpenRoomPrintDialog(false)}
         />
       )}
 
-      {/* delete dialog */}
+      {/* ===================== DELETE DIALOG ===================== */}
     <Dialog
         open={isDialogDeleteShow}
         onClose={() => {
           setIsDialogDeleteShow(false);
           setRoomToDelete(null);
         }}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
       >
-        <DialogTitle sx={{backgroundColor: '#C62828',}}>Delete Room</DialogTitle>
-        <DialogContent sx={{ textAlign: "center", pt: 3 }}>
-          <img
-            src={warning}
-            alt="Warning"
-            style={{
-              width: 80,
-              height: 80,
-              marginBottom: 8,
-            }}
-          />
-          <DialogContentText>
-            {`This action cannot be undone. All data associated with ${roomToDelete?.Name || "this room"} will be lost.`}
+        <DialogTitle id="alert-dialog-title" sx={{ backgroundColor: "error.dark" }}>Delete Room</DialogTitle>
+
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description" sx={{ color: "text.primary", mb: 2 }}>
+            This action cannot be undone.
           </DialogContentText>
+
+          <Box
+            sx={{
+              px: 1,
+              py: 1.5,
+              borderRadius: 1.5,
+              backgroundColor: "rgba(180, 35, 24, 0.06)",
+              border: "1px solid",
+              borderColor: "error.light",
+            }}
+          >
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: 700, color: "error.dark" }}
+            >
+              {`${roomToDelete?.Name ?? ""}`}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              This room record will be permanently removed.
+            </Typography>
+          </Box>
         </DialogContent>
 
-        <DialogActions
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 1.5,
-            pb: 3,
-          }}
-        >
+        <DialogActions sx={{ justifyContent: "flex-end" }}>
           <Button
-            color="error"
+            color="secondary"
             variant="contained"
-            disabled={isOperationLoading}
-            onClick={() => handleRoomDelete(roomToDelete?.RoomID)}
-            sx={{ width: "50%" }}
-          >
-            {isOperationLoading ? <CircularProgress size={20} /> : "Confirm"}
-          </Button>
-          <Button
-            variant="outlined"
-            disabled={isOperationLoading}
-            sx={{ width: "50%" }}
             onClick={() => {
               setIsDialogDeleteShow(false);
               setRoomToDelete(null);
@@ -460,12 +751,23 @@ function Rooms() {
           >
             Cancel
           </Button>
+          <Button
+            color="error"
+            variant="outlined"
+            onClick={() => {
+              handleRoomDelete(roomToDelete?.RoomID);
+            }}
+          >
+            Delete
+          </Button>
         </DialogActions>
       </Dialog>
 
-      {/* add/edit room dialog */}
+      {/* ===================== FORM DIALOG ===================== */}
       <Dialog
         open={isDialogFormOpen}
+        maxWidth="sm"
+        fullWidth
         onClose={() => {
           setIsDialogFormOpen(false);
         }}
@@ -477,16 +779,27 @@ function Rooms() {
               const formData = new FormData(event.currentTarget);
               const formJson = Object.fromEntries(formData.entries());
 
+              // Combine room number and letter into Name
+              formJson.Name = (room.roomNumber || "") + (room.roomLetter || "");
+              delete formJson.RoomNumber;
+              delete formJson.RoomLetter;
+
               if (mode === "new") {
                 formJson.DepartmentID = departmentID;
               } else {
                 formJson.DepartmentID = Number(formJson.DepartmentID);
               }
 
-              if (departmentID == 0) {
-                formJson.SharingDepartments = sharingDepartmentIDs;
+              if (departmentID !== "" && Number(departmentID) === 0) {
+                formJson.SharingDepartments = (sharingDepartmentIDs || []).map((id) => Number(id));
               } else {
-                formJson.SharingDepartments = [];
+                // If we're editing while not viewing GEN, preserve existing sharing
+                // instead of clearing it unintentionally.
+                if (mode === "edit") {
+                  formJson.SharingDepartments = room?.SharingDepartments?.map((id) => Number(id)) || [];
+                } else {
+                  formJson.SharingDepartments = [];
+                }
               }
 
               formJson.Capacity = Number(formJson.Capacity);
@@ -542,196 +855,307 @@ function Rooms() {
           },
         }}
       >
-        <DialogTitle sx={{ backgroundColor: '#2e6417' }}>
+        <DialogTitle sx={{ backgroundColor: 'primary.main' }}>
           {mode === "new"
             ? `Add New Room to ${department.Code}`
             : mode === "edit"
               ? "Edit Room"
               : "Temp Title"}
         </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {mode === "new"
-              ? "Enter the room details and save it to add a new room."
-              : mode === "edit"
-                ? "Edit the current room information and apply your changes"
-                : "This is a temporary development and debugging content only"}
-          </DialogContentText>
-          <TextField
-            autoFocus
-            required
-            margin="dense"
-            id="Name"
-            name="Name"
-            label="Name"
-            type="text"
-            fullWidth
-            variant="standard"
-            defaultValue={room?.Name ? room?.Name : ""}
-          />
+        <DialogContent sx={{ pt: 3 }}>
+            <DialogContentText sx={{ mb: 3 }}>
+                {mode === "new"
+                ? "Enter the room details below."
+                : "Update the room information."}
+            </DialogContentText>
 
-          <TextField
-            autoFocus
-            required
-            margin="dense"
-            id="Capacity"
-            name="Capacity"
-            label="Capacity"
-            type="number"
-            fullWidth
-            variant="standard"
-            defaultValue={room?.Capacity ? room?.Capacity : ""}
-          />
-
-          <FormControl fullWidth margin="dense">
-            <InputLabel id="label-RoomType">Room Type</InputLabel>
-            <Select
-              onFocus={false}
-              required
-              variant="standard"
-              name="RoomType"
-              label="RoomType"
-              id="RoomType"
-              labelId="label-RoomType"
-              value={Number.isInteger(room?.RoomType) ? room?.RoomType : ""}
-              onChange={(e) => {
-                const new_room = structuredClone(room);
-                new_room.RoomType = e.target.value;
-                setRoom(new_room);
-              }}
-            >
-              {ROOM_TYPES
-                ? ROOM_TYPES.map((room_type, index) => (
-                    <MenuItem
-                      key={index}
-                      value={room_type}
-                    >{`${RoomTypeName(room_type)}`}</MenuItem>
-                  ))
-                : null}
-            </Select>
-          </FormControl>
-
-          {mode === "edit" ? (
-            <FormControl fullWidth margin="dense">
-              <InputLabel id="label-id-edit-department">
-                Move to Department
-              </InputLabel>
-              <Select
-                onFocus={false}
-                required
-                variant="standard"
-                name="DepartmentID"
-                label="DepartmentID"
-                id="id-edit-department"
-                labelId="label-id-edit-department"
-                value={
-                  Number.isInteger(room?.DepartmentID) ? room?.DepartmentID : ""
-                }
-                onChange={(e) => {
-                  const new_room = structuredClone(room);
-                  new_room.DepartmentID = e.target.value;
-                  setRoom(new_room);
+            <Box
+                sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 2.5,
+                mt: 1,
+                width: "100%",
                 }}
-              >
-                {departmentList
-                  ? departmentList.map((department, index) => {
-                      return (
-                        <MenuItem
-                          key={index}
-                          value={department.DepartmentID}
-                        >{`${department.Code} - ${department.Name}`}</MenuItem>
-                      );
-                    })
-                  : null}
-              </Select>
-            </FormControl>
-          ) : null}
+            >
 
-          {departmentID == 0 && departmentList ? (
-            <>
-              <FormControl sx={{ m: 1 }} fullWidth>
-                <InputLabel id="multiple-department-checkbox-label">
-                  Sharing Departments
-                </InputLabel>
-                <Select
-                  labelId="multiple-department-checkbox-label"
-                  id="multiple-department-checkbox"
-                  multiple
-                  name="SharingDepartments"
-                  value={sharingDepartmentIDs}
-                  onChange={(event) => {
-                    const {
-                      target: { value },
-                    } = event;
-
-                    setSharingDepartmentIDs(
-                      typeof value === "string" ? value.split(",") : value,
-                    );
-
-                    const current_sharing_departments = value.map((id) => {
-                      return departmentList.find((find_dept) => {
-                        return id == find_dept.DepartmentID;
-                      });
-                    });
-
-                    setSharingDepartments(current_sharing_departments);
-
+                {/* Room Number and Letter */}
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "3fr 1fr",
+                    gap: 2,
                   }}
-                  input={<OutlinedInput label="Sharing Departments" />}
-                  renderValue={(selected) =>
-                    selected?.length === 0
-                      ? "Shared to All"
-                      : selected.join(", ")
-                  }
                 >
-                  {departmentList.map((department) => (
-                    <MenuItem
-                      key={department.DepartmentID}
-                      value={Number.parseInt(department.DepartmentID, 10)}
+                  <TextField
+                    required
+                    fullWidth
+                    name="RoomNumber"
+                    label="Room Number"
+                    variant="outlined"
+                    value={room?.roomNumber ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 3);
+                      setRoom({ ...room, roomNumber: val });
+                    }}
+                    placeholder="Ex. 357"
+                    inputProps={{ maxLength: 2, inputMode: "numeric" }}
+                    InputProps={{
+                      sx: {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                  <TextField
+                    fullWidth
+                    name="RoomLetter"
+                    label="Letter (optional)"
+                    variant="outlined"
+                    value={room?.roomLetter ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 1);
+                      setRoom({ ...room, roomLetter: val });
+                    }}
+                    placeholder="Ex. A"
+                    inputProps={{ maxLength: 2, inputMode: "text" }}
+                    InputProps={{
+                      sx: {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                </Box>
+
+                {/* Capacity + Type */}
+                <Box
+                sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 2,
+                }}
+                >
+
+                <TextField
+                    required
+                    name="Capacity"
+                    label="Section Capacity"
+                    type="number"
+                    variant="outlined"
+                    defaultValue={room?.Capacity ?? ""}
+                    InputProps={{
+                    sx: {
+                        borderRadius: 2,
+                    },
+                    }}
+                />
+
+                <FormControl fullWidth>
+                    <InputLabel>Room Type</InputLabel>
+
+                    <Select
+                    name="RoomType"
+                    value={
+                        Number.isInteger(room?.RoomType)
+                        ? room.RoomType
+                        : ""
+                    }
+                    label="Room Type"
+                    variant="outlined"
+                    onChange={(e) => {
+                        setRoom({
+                        ...room,
+                        RoomType: e.target.value,
+                        });
+                    }}
+                    sx={{
+                        borderRadius: 2,
+                    }}
                     >
-                      <Checkbox
-                        checked={sharingDepartmentIDs.includes(
-                          Number.parseInt(department.DepartmentID, 10),
-                        )}
-                      />
-                      <ListItemText primary={department.Name} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                    {ROOM_TYPES.map((type) => (
+                        <MenuItem
+                        key={type}
+                        value={type}
+                        >
+                        {RoomTypeName(type)}
+                        </MenuItem>
+                    ))}
+                    </Select>
+                </FormControl>
 
-              <Box display={"flex"} flexWrap={"wrap"} gap={1} padding={"0.3em"}>
-                {sharingDepartments?.length > 0 ? (
-                  sharingDepartments.map((department) => (
-                    <Chip
-                      key={`chip-key-${department.DepartmentID}`}
-                      label={`${department.DepartmentID} | ${department.Name}`}
-                      onDelete={() => {
+                </Box>
+
+                {/* Move department */}
+                {mode === "edit" && adminMode && (
+                <FormControl fullWidth>
+
+                    <InputLabel>
+                    Move to Department
+                    </InputLabel>
+
+                    <Select
+                    name="DepartmentID"
+                    label="Move to Department"
+                    value={
+                        Number.isInteger(room?.DepartmentID)
+                        ? room.DepartmentID
+                        : ""
+                    }
+                    variant="outlined"
+                    onChange={(e) =>
+                        setRoom({
+                        ...room,
+                        DepartmentID: e.target.value,
+                        })
+                    }
+                    sx={{
+                        borderRadius: 2,
+                    }}
+                    >
+                    {departmentList.map((dept) => (
+                        <MenuItem
+                        key={dept.DepartmentID}
+                        value={dept.DepartmentID}
+                        >
+                        {dept.Code} — {dept.Name}
+                        </MenuItem>
+                    ))}
+                    </Select>
+
+                </FormControl>
+                )}
+
+                {/* Sharing */}
+                {departmentID !== "" &&
+                Number(departmentID) === 0 && (
+                <Box
+                    sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 3,
+                    p: 2,
+                    }}
+                >
+
+                    <Typography
+                    variant="subtitle2"
+                    sx={{
+                        mb: 1.5,
+                        fontWeight: 700,
+                    }}
+                    >
+                    Sharing Departments
+                    </Typography>
+
+                    <FormControl fullWidth>
+
+                    <Select
+                        multiple
+                        value={sharingDepartmentIDs}
+                        displayEmpty
+                        onChange={(event) => {
+                        const value = event.target.value;
+
+                        const arr = typeof value === "string" ? value.split(",") : value;
+
+                        const nums = arr.map((id) => Number(id));
+
+                        setSharingDepartmentIDs(nums);
+
                         setSharingDepartments(
-                          sharingDepartments.filter(
-                            (iter_dept) =>
-                              iter_dept?.DepartmentID !=
-                              department?.DepartmentID,
-                          ),
-                        );
-
-                        setSharingDepartmentIDs(
-                          sharingDepartmentIDs.filter(
-                            (id) => id != department?.DepartmentID,
-                          ),
+                          nums.map((id) => departmentList.find((d) => Number(d.DepartmentID) === id))
                         );
                       }}
-                    />
-                  ))
-                ) : (
-                  <Typography>Shared By All Departments</Typography>
+                        renderValue={(selected) => (
+                            <Typography
+                              sx={{
+                                color:
+                                  selected.length === 0
+                                    ? "text.secondary"
+                                    : "text.primary",
+                              }}
+                            >
+                              {selected.length
+                                ? `${selected.length} selected`
+                                : "Select a department"}
+                            </Typography>
+                          )}
+                    >
+                        {departmentList
+                        .filter(
+                            (department) =>
+                            Number(department.DepartmentID) !== 0
+                        )
+                        .map((department) => (
+                            <MenuItem
+                            key={department.DepartmentID}
+                            value={department.DepartmentID}
+                            >
+                            <Checkbox
+                                checked={sharingDepartmentIDs.includes(
+                                department.DepartmentID
+                                )}
+                            />
+
+                            <ListItemText
+                                primary={
+                                department.Name
+                                }
+                            />
+                            </MenuItem>
+                        )
+                        )}
+                    </Select>
+
+                    </FormControl>
+
+                    {!!sharingDepartments.length && (
+                    <Box
+                        sx={{
+                        mt: 2,
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 1,
+                        }}
+                    >
+                        {sharingDepartments.map(
+                        (department) => (
+                            <Chip
+                            key={
+                                department.DepartmentID
+                            }
+                            label={
+                                department.Name
+                            }
+                            onDelete={() => {
+                                setSharingDepartments(
+                                sharingDepartments.filter(
+                                    (d) =>
+                                    d.DepartmentID !==
+                                    department.DepartmentID
+                                )
+                                );
+
+                                setSharingDepartmentIDs(
+                                sharingDepartmentIDs.filter(
+                                    (id) =>
+                                    id !==
+                                    department.DepartmentID
+                                )
+                                );
+                            }}
+                            />
+                        )
+                        )}
+                    </Box>
+                    )}
+
+                </Box>
                 )}
-              </Box>
-            </>
-          ) : null}
-        </DialogContent>
+
+            </Box>
+            </DialogContent>
         <DialogActions>
-          <Button variant="outlined" type="submit">
+          <Button variant="contained" type="submit">
             {mode === "new"
               ? "Save"
               : mode === "edit"

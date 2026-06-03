@@ -1,4 +1,5 @@
-import { useState } from "react";
+// ===================== IMPORTS =====================
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -7,6 +8,11 @@ import {
   Button,
   Divider,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 
 import MenuIcon from "@mui/icons-material/Menu";
@@ -18,16 +24,16 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
 import PeopleIcon from "@mui/icons-material/People";
 import LogoutIcon from "@mui/icons-material/Logout";
+import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 
 import { Popup } from "../components/Loading";
-import {
-  getAdminAllowedPages,
-  logoutAdmin,
-} from "../utils/adminAuth.js";
-
+import { clearAdminSessionHint, getAdminAllowedPages, logoutAdmin } from "../utils/adminAuth.js";
 import { logoutDepartment } from "../js/departments.js";
+import { AUTH_LOGOUT_EVENT_KEY, broadcastLogout, clearAuthData } from "../utils/authStorage.js";
 
+// ===================== CONSTANTS =====================
 const departmentPages = ["schedule", "rooms", "instructors"];
+const accountSettingsPage = "account-settings";
 
 const getPageDisplayInfo = (page) => {
   const pageInfo = {
@@ -37,32 +43,120 @@ const getPageDisplayInfo = (page) => {
     schedule: { label: "Schedule", icon: CalendarTodayIcon },
     rooms: { label: "Rooms", icon: MeetingRoomIcon },
     instructors: { label: "Instructors", icon: PeopleIcon },
+    "admin-rooms": { label: "Rooms", icon: MeetingRoomIcon },
+    "admin-instructors": { label: "Instructors", icon: PeopleIcon },
+    [accountSettingsPage]: { label: "Account Settings", icon: ManageAccountsIcon },
   };
 
   return pageInfo[page] || { label: page, icon: null };
 };
 
-export function MainHeader({ pageName, children }) {
+// ===================== MAIN COMPONENT =====================
+export function MainHeader({ pageName, children, navigationDisabled = false, accountType }) {
   const navigate = useNavigate();
 
+  // ---- STATE ----
   const [popupOptions, setPopupOptions] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
-
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem("sidebarCollapsed") === "true";
   });
 
+  // ---- DERIVED ----
+  const adminPages = getAdminAllowedPages();
+  const isDepartmentPage = accountType === "department" || departmentPages.includes(pageName);
+  const departmentName = isDepartmentPage
+    ? localStorage.getItem("departmentName")
+    : null;
+  const pages = isDepartmentPage ? departmentPages : adminPages;
+  const accountSettingsInfo = getPageDisplayInfo(accountSettingsPage);
+  const { label: pageLabel } = getPageDisplayInfo(pageName);
+
+  const getAccountType = () => (isDepartmentPage ? "department" : "admin");
+
+  const renderSidebarButton = ({ page, label, Icon, isActive, onClick, disabled = false }) => (
+    <Button
+      key={page}
+      disabled={navigationDisabled || disabled}
+      onClick={onClick}
+      sx={{
+        width: "100%",
+        minHeight: 50,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        p: 1.5,
+        borderRadius: 2,
+        textTransform: "none",
+
+        color: isActive ? "primary.dark" : "white",
+        backgroundColor: isActive ? "secondary.light" : "transparent",
+
+        "&:hover": {
+          backgroundColor: isActive
+            ? "secondary.light"
+            : "#ffffff11",
+        },
+        "&.Mui-disabled": {
+          color: "rgba(255,255,255,0.48)",
+          backgroundColor: isActive ? "rgba(237,247,241,0.16)" : "transparent",
+        },
+      }}
+    >
+      <Box
+        sx={{
+          width: 40,
+          minWidth: 40,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <Icon />
+      </Box>
+
+      <Box
+        sx={{
+          opacity: collapsed ? 0 : 1,
+          transform: collapsed ? "translateX(-10px)" : "translateX(0px)",
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+          transition: "opacity 0.25s ease, transform 0.25s ease",
+          pointerEvents: collapsed ? "none" : "auto",
+        }}
+      >
+        {label}
+      </Box>
+    </Button>
+  );
+
+  // ---- EFFECTS ----
+  useEffect(() => {
+    const handleCrossTabLogout = (event) => {
+      if (event.key !== AUTH_LOGOUT_EVENT_KEY || !event.newValue) return;
+
+      clearAuthData();
+      clearAdminSessionHint();
+      navigate("/login", { replace: true });
+    };
+
+    window.addEventListener("storage", handleCrossTabLogout);
+
+    return () => {
+      window.removeEventListener("storage", handleCrossTabLogout);
+    };
+  }, [navigate]);
+
+  // ---- HANDLERS ----
   const toggleSidebar = () => {
+    if (navigationDisabled) return;
+
     const newState = !collapsed;
     setCollapsed(newState);
     localStorage.setItem("sidebarCollapsed", newState);
   };
-
-  const departmentName = localStorage.getItem("departmentName");
-  const adminPages = getAdminAllowedPages();
-
-  const isDepartmentPage = departmentPages.includes(pageName);
-  const pages = isDepartmentPage ? departmentPages : adminPages;
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -70,11 +164,14 @@ export function MainHeader({ pageName, children }) {
     try {
       if (isDepartmentPage) {
         await logoutDepartment();
+        clearAuthData();
       } else {
         await logoutAdmin();
+        clearAuthData();
       }
-      
+
       localStorage.removeItem("sidebarCollapsed");
+      broadcastLogout();
 
       setTimeout(() => {
         navigate("/login", { replace: true });
@@ -97,14 +194,64 @@ export function MainHeader({ pageName, children }) {
         closeButtonActionHandler={() => setPopupOptions(null)}
       />
 
-      <Box display="flex" minHeight="100vh">
+      {/* ===================== LOGOUT DIALOG ===================== */}
+      <Dialog open={logoutConfirmOpen} onClose={() => setLogoutConfirmOpen(false)}>
+        <DialogTitle sx={{ backgroundColor: "primary.dark" }}>
+          Confirm Logout
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: "text.primary", mb: 2 }}>
+            Are you sure you want to logout? You will need to sign in again.
+          </DialogContentText>
+          <Box
+            sx={{
+              px: 2,
+              py: 1.5,
+              borderRadius: 1.5,
+              backgroundColor: "rgba(0, 87, 63, 0.06)",
+              border: "1px solid",
+              borderColor: "primary.light",
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "primary.dark" }}>
+              End current session
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Unsaved work on the current page may be lost after signing out.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "flex-end" }}>
+          <Button
+            color="secondary"
+            variant="outlined"
+            onClick={() => setLogoutConfirmOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              setLogoutConfirmOpen(false);
+              handleLogout();
+            }}
+          >
+            Logout
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-        {/* SIDEBAR */}
+      {/* ===================== LAYOUT ===================== */}
+      <Box display="flex" height="100vh" overflow="hidden">
+
+        {/* ===================== SIDEBAR ===================== */}
         <Box
           sx={{
-            width: collapsed ? 80 : 300,
-            transition: "all 0.3s ease",
-            backgroundColor: "#14400e",
+            width: collapsed ? 110 : 340,
+            transition: "width 0.3s ease-in-out",
+            overflow: "hidden",
+            backgroundColor: "primary.dark",
             color: "white",
             display: "flex",
             flexDirection: "column",
@@ -112,132 +259,154 @@ export function MainHeader({ pageName, children }) {
             padding: 2,
           }}
         >
-          {/* TOP */}
+
+          {/* ===================== TOP ===================== */}
           <Box>
 
             {/* HEADER */}
             <Box
               display="flex"
               alignItems="center"
-              justifyContent={collapsed ? "center" : "space-between"}
-            >
-              {!collapsed && (
-                <Box>
-                  <Typography variant="h6" fontWeight="bold">
-                    Cavite State University
-                  </Typography>
-                  <Typography variant="body2">
-                    Silang Campus
-                  </Typography>
-                </Box>
-              )}
-
-              <IconButton
-                onClick={toggleSidebar}
-                sx={{ color: "white" }}
-              >
-                {collapsed ? <MenuIcon /> : <MenuOpenIcon />}
-              </IconButton>
-            </Box>
-
-            {!collapsed && (
-              <Divider sx={{ my: 3, bgcolor: "#d5d5d5" }} />
-            )}
-
-            {/* NAV */}
-            <Box
-              mt={collapsed ? 2 : 4}
-              display="flex"
-              flexDirection="column"
+              sx={{ margin: "10px 10px 10px 20px" }}
+              justifyContent="flex-start"
               gap={1}
             >
+              <Box
+                sx={{
+                  width: 40,
+                  minWidth: 40,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <IconButton
+                  onClick={toggleSidebar}
+                  disabled={navigationDisabled}
+                  sx={{
+                    color: "white",
+                    padding: 0,
+                    "&.Mui-disabled": {
+                      color: "rgba(255,255,255,0.48)",
+                    },
+                  }}
+                >
+                  {collapsed ? <MenuIcon /> : <MenuOpenIcon />}
+                </IconButton>
+              </Box>
+
+              <Box
+                sx={{
+                  width: collapsed ? 0 : 220,
+                  opacity: collapsed ? 0 : 1,
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  transition: "width 0.3s ease-in-out, opacity 0.2s ease",
+                }}
+              >
+                <Typography variant="h6" fontWeight="bold">
+                  Cavite State University
+                </Typography>
+                <Typography variant="subtitle2">
+                  Silang Campus
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 2, bgcolor: "rgba(220, 239, 229, 0.35)" }} />
+
+            {/* ===================== NAV ITEMS ===================== */}
+            <Box mt={collapsed ? 2 : 4} display="flex" flexDirection="column" gap={1} margin={1}>
               {pages.map((page) => {
                 const { label, icon: Icon } = getPageDisplayInfo(page);
                 const isActive = pageName === page;
 
-                return (
-                  <Button
-                    key={page}
-                    onClick={() => navigate(`/${page}`)}
-                    startIcon={<Icon />}
-                    sx={{
-                      width: "100%",
-                      justifyContent: collapsed
-                        ? "center"
-                        : "flex-start",
-                      color: isActive ? "#0f660d" : "white",
-                      backgroundColor: isActive
-                        ? "#f9fff9"
-                        : "transparent",
-                      textTransform: "none",
-                      fontSize: "0.9rem",
-                      padding: collapsed
-                        ? "16px 0"
-                        : "16px",
-                      borderRadius: 2,
-                      minWidth: 0,
-
-                      "& .MuiButton-startIcon": {
-                        margin: collapsed ? 0 : undefined,
-                      },
-
-                      "&:hover": {
-                        backgroundColor: isActive
-                          ? "#f9fff9"
-                          : "#ffffff11",
-                      },
-                    }}
-                  >
-                    {!collapsed && label}
-                  </Button>
-                );
+                return renderSidebarButton({
+                  page,
+                  label,
+                  Icon,
+                  isActive,
+                  onClick: () => navigate(`/${page}`),
+                });
               })}
             </Box>
           </Box>
 
-          {/* LOGOUT */}
-          <Button
-            onClick={handleLogout}
-            disabled={loggingOut}
-            startIcon={<LogoutIcon />}
-            sx={{
-              color: "white",
-              borderTop:
-                "1px solid rgba(255,255,255,0.35)",
-              justifyContent: collapsed
-                ? "center"
-                : "flex-start",
-              borderRadius: 0,
-              pt: 2,
-              minWidth: 0,
-              width: "100%",
-            }}
-          >
-            {!collapsed &&
-              (loggingOut
-                ? "Logging out..."
-                : "Logout")}
-          </Button>
+          {/* ===================== ACCOUNT ACTIONS ===================== */}
+          <Box sx={{ mx: 1, display: "flex", flexDirection: "column", gap: 1 }}>
+            <Divider sx={{ mb: 0.5, bgcolor: "rgba(220, 239, 229, 0.35)" }} />
+
+            {renderSidebarButton({
+              page: accountSettingsPage,
+              label: accountSettingsInfo.label,
+              Icon: accountSettingsInfo.icon,
+              isActive: pageName === accountSettingsPage,
+              onClick: () =>
+                navigate(`/${accountSettingsPage}`, {
+                  state: { accountType: getAccountType() },
+                }),
+            })}
+
+            {renderSidebarButton({
+              page: "logout",
+              label: loggingOut ? "Logging out..." : "Logout",
+              Icon: LogoutIcon,
+              isActive: false,
+              disabled: loggingOut,
+              onClick: () => setLogoutConfirmOpen(true),
+            })}
+          </Box>
         </Box>
 
-        {/* CONTENT */}
-        <Box flex={1} sx={{ backgroundColor: "#f5f5f5", padding: 2 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Divider
-                orientation="vertical"
-                flexItem sx={{ height: 40,
-                borderRightWidth: 5,
-                borderColor: "#000",
-                borderRadius: 50,
-            }}
-            />
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-                {departmentName ||
-                "Administration Department"}
-            </Typography>
+        {/* ===================== MAIN CONTENT ===================== */}
+        <Box flex={1} sx={{ backgroundColor: "background.default", overflow: "auto" }}>
+
+          {/* CONTENT */}
+          <Box sx={{ px: 3, py: 2, flex: 1, overflow: "auto" }}>
+
+            {/* ===================== TITLE ===================== */}
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, mb: 1, minHeight: 58}}>
+
+              {/* DIVIDER BAR */}
+              <Box sx={{
+                width: 5,
+                minWidth: 5,
+                height: collapsed ? 55 : 34,
+                bgcolor: "primary.main",
+                borderRadius: "50px",
+                flexShrink: 0,
+                transition: "height 0.3s ease",
+              }} />
+
+              {/* TITLE TEXT */}
+              <Box sx={{ position: "relative" }}>
+                <Typography variant="h5" fontWeight={700}>
+                  {departmentName || (isDepartmentPage ? "Department" : "Administration Department")}
+                </Typography>
+
+                {/* SUBTITLE (visible when sidebar is collapsed) */}
+                <Box sx={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  mt: 0.4,
+                  overflow: "hidden",
+                  maxHeight: collapsed ? "30px" : "0px",
+                  opacity: collapsed ? 1 : 0,
+                  transition: "max-height 0.3s ease, opacity 0.25s ease",
+                }}>
+                  <Typography variant="body2" sx={{ color: "text.secondary", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: "0.8rem", fontWeight: "bold" }}>
+                    {pageLabel}
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
+
+            {/* ===================== PAGE ===================== */}
             {children}
           </Box>
+        </Box>
       </Box>
     </>
   );

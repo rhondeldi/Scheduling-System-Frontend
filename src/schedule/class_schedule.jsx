@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { StrictMode, useState, useEffect, useRef } from "react";
 
 import {
@@ -42,11 +43,20 @@ import {
   DialogContentText,
   DialogTitle,
   LinearProgress,
+  Menu,
+  MenuItem,
   TextField,
   Typography,
 } from "@mui/material";
 import PrintIcon from "@mui/icons-material/Print";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
+import ClearIcon from "@mui/icons-material/Clear";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
+// ===================== CONSTANTS =====================
 const SECTION_CHARACTERS =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz";
 
@@ -65,6 +75,8 @@ import { PrintHeader } from "../components/PrintHeader";
 const NUMBER_OF_GENERATIONS = 32;
 
 const SEMESTER_NAMES = ["1st Semester", "2nd Semester", "Mid-year"];
+
+// ===================== HELPER FUNCTIONS =====================
 
 function LinearProgressWithLabel(props) {
   return (
@@ -109,26 +121,27 @@ function getScheduleGenerationStatusColor(status) {
     case "on queue":
       return "orange";
     case "not started":
-      return "black";
+      return "gray";
   }
 }
 
+// ===================== MAIN COMPONENT =====================
 function TimeTable() {
   const focusRef = useRef(null);
 
   const scrollToTable = () => focusRef.current.scrollIntoView();
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                     LOAD GUARD COMPONENT STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- LOAD GUARD COMPONENT STATES ----
 
   const [schedGenStatus, setSchedGenStatus] = useState(null);
   const [IsLoading, setIsLoading] = useState(false);
   const [popupOptions, setPopupOptions] = useState(null);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       TIME TABLE GRID STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  const isGenerating =
+    schedGenStatus?.Status === "in progress" ||
+    schedGenStatus?.Status === "on queue";
+
+  // ---- TIME TABLE GRID STATES ----
 
   const DAYS = [
     "Monday",
@@ -142,9 +155,7 @@ function TimeTable() {
   const [timeSlotMinuteInterval, setTimeSlotMinuteInterval] = useState(30);
   const [dailyTimeSlots, setDailyTimeSlots] = useState(24);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       STATES FOR FETCHED DATA
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- STATES FOR FETCHED DATA ----
 
   const [allDepartments, setAllDepartment] = useState([]); // fetch on page load
   const [departmentCurriculumsData, setDepartmentCurriculumsData] = useState(
@@ -155,9 +166,7 @@ function TimeTable() {
   const [pickedUpSubject, setPickedUpSubject] = useState(null);
   const [pickedUpColor, setPickedUpColor] = useState(null);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       DROPDOWN SELECTION STATES
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- DROPDOWN SELECTION STATES ----
 
   const [departmentID, setDepartmentID] = useState("");
   const [semesterIndex, setSemesterIndex] = useState("");
@@ -165,9 +174,7 @@ function TimeTable() {
   const [yearLevelIndex, setYearLevelIndex] = useState("");
   const [sectionIndex, setSectionIndex] = useState("");
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       PAGE LOAD PROCESS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- PAGE LOAD PROCESS ----
 
   const [resourceEstimates, setResourceEstimates] = useState("");
 
@@ -210,7 +217,6 @@ function TimeTable() {
 
       setAllDepartment([loggedInDepartment]);
       setDepartmentID(loggedInDepartment.DepartmentID);
-      console.log("fetched logged in department: ", loggedInDepartment);
 
       setIsLoading(false);
     } catch (err) {
@@ -224,12 +230,9 @@ function TimeTable() {
     }
   }
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                       DROPDOWN HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- DROPDOWN HANDLERS ----
 
   const handleDepartmentChange = async (event) => {
-    console.log(`selected departmentID: ${event.target.value}`);
     setDepartmentID(event.target.value);
     setSemesterIndex("");
     setCurriculumIndex("");
@@ -258,7 +261,6 @@ function TimeTable() {
   };
 
   const handleSemesterChange = async (event) => {
-    console.log(`selected semesterIndex: ${event.target.value}`);
     setSemesterIndex(event.target.value);
     setCurriculumIndex("");
     setYearLevelIndex("");
@@ -305,7 +307,6 @@ function TimeTable() {
   };
 
   const handleCurriculumChange = (event) => {
-    console.log(`selected curriculumIndex: ${event.target.value}`);
     setCurriculumIndex(event.target.value);
     setYearLevelIndex("");
     setSectionIndex("");
@@ -321,7 +322,6 @@ function TimeTable() {
   };
 
   const handleYearLevelChange = (event) => {
-    console.log(`selected yearLevelIndex: ${event.target.value}`);
     setYearLevelIndex(event.target.value);
     setSectionIndex("");
     setClassAssignedSubjects([]);
@@ -418,7 +418,6 @@ function TimeTable() {
 
       // Update state to trigger re-render with new data
       setClassAssignedSubjects(classScheduledSubjects);
-      console.log("fetched subjects: ", classScheduledSubjects);
 
       // Assign colors to subjects for display
       const subjectColors = {};
@@ -505,9 +504,7 @@ function TimeTable() {
     setIsLoading(false);
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                             DROPDOWN HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- SCHEDULE GENERATION HANDLERS ----
 
   const generateDepartmentSchedules = async () => {
     setIsLoading(true);
@@ -571,9 +568,7 @@ function TimeTable() {
 
   const [subjectColors, setSubjectColors] = useState({});
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                              COMPONENT UI CODE
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- SUBJECT DRAG-AND-DROP HANDLERS ----
 
   const [availableSubjectTimeSlotMove, setAvailableSubjectTimeSlotMove] =
     useState(null);
@@ -592,10 +587,6 @@ function TimeTable() {
           sectionIndex,
         );
 
-      console.log(
-        "subject_move_time_slot_availability : ",
-        subject_move_time_slot_availability,
-      );
       setAvailableSubjectTimeSlotMove(subject_move_time_slot_availability);
     } catch (err) {
       setPopupOptions({
@@ -633,13 +624,8 @@ function TimeTable() {
     const max_height = Math.max(...heights);
     setCellHeight(max_height * 0.875);
 
-    console.log("max height : ", max_height);
-
     setClassAssignedSubjects(new_assigned_subjects);
     setPickedUpSubject(current_picked_up_subject);
-
-    console.log("picked up subject: ", current_picked_up_subject);
-    console.log("new assigned subject: ", new_assigned_subjects);
 
     setIsLoading(false);
   };
@@ -663,7 +649,6 @@ function TimeTable() {
     setIsLoading(true);
 
     if (!pickedUpSubject) {
-      console.log("nothing to move");
       setIsLoading(false);
       return;
     }
@@ -757,12 +742,13 @@ function TimeTable() {
 
   const [cellHeight, setCellHeight] = useState(0);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  //                      PRINTING STATES, REFS AND HANDLERS
-  /////////////////////////////////////////////////////////////////////////////////
+  // ---- PRINTING STATES, REFS AND HANDLERS ----
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [isBlackAndWhite, setIsBlackAndWhite] = useState(false);
+  const [printScope, setPrintScope] = useState("section");
+  const [batchPrintSchedules, setBatchPrintSchedules] = useState([]);
+  const [printMenuAnchor, setPrintMenuAnchor] = useState(null);
   const contentRef = useRef(null);
 
   const promiseResolveRef = useRef(null);
@@ -775,7 +761,10 @@ function TimeTable() {
 
   const reactToPrintFn = useReactToPrint({
     contentRef,
-    documentTitle: `${departmentCurriculumsData[curriculumIndex]?.CurriculumName} - ${SEMESTER_NAMES[semesterIndex]} ${new Date().getFullYear()} - Section ${SECTION_CHARACTERS[sectionIndex]}`,
+    documentTitle:
+    `${departmentCurriculumsData[curriculumIndex]?.CurriculumCode || "Schedule"}-${
+    SEMESTER_NAMES[semesterIndex]
+    }`,
     onBeforePrint: () => {
       saveAddedOptionalPrintingValues();
       return new Promise((resolve) => {
@@ -786,12 +775,16 @@ function TimeTable() {
     onAfterPrint: () => {
       promiseResolveRef.current = null;
       setIsPrinting(false);
+      setBatchPrintSchedules([]);
     },
   });
 
   const reactToPrintBlackAndWhiteFn = useReactToPrint({
     contentRef,
-    documentTitle: `${departmentCurriculumsData[curriculumIndex]?.CurriculumName} - ${SEMESTER_NAMES[semesterIndex]} ${new Date().getFullYear()} - Section ${SECTION_CHARACTERS[sectionIndex]}`,
+    documentTitle:
+    `${departmentCurriculumsData[curriculumIndex]?.CurriculumCode || "Schedule"}-${
+    SEMESTER_NAMES[semesterIndex]
+    }`,
     onBeforePrint: () => {
       saveAddedOptionalPrintingValues();
       return new Promise((resolve) => {
@@ -804,6 +797,7 @@ function TimeTable() {
       promiseResolveRef.current = null;
       setIsPrinting(false);
       setIsBlackAndWhite(false);
+      setBatchPrintSchedules([]);
     },
   });
 
@@ -820,7 +814,7 @@ function TimeTable() {
 
   const [isPrintDialogShow, setIsPrintDialogShow] = useState(false);
 
-  const handleOpenSignatoriesDialog = () => {
+  const handleOpenSignatoriesDialog = (scope = "section") => {
     const academic_year = localStorage.getItem("academic-year");
     const adviser_fullname = localStorage.getItem("adviser-full-name");
 
@@ -843,6 +837,9 @@ function TimeTable() {
     setSignatoryCheckedAndReviewedBy(signatory_checked_and_reviewed_by);
     setPositionCheckedAndReviewedBy(position_checked_and_reviewed_by);
 
+    setPrintScope(scope);
+    setBatchPrintSchedules([]);
+    setPrintMenuAnchor(null);
     setIsPrintDialogShow(true);
   };
 
@@ -863,12 +860,211 @@ function TimeTable() {
     );
   };
 
-  /////////////////////////////////////////////////////////////////////////////////
+  const isScheduleReady =
+  semesterIndex !== "" &&
+  curriculumIndex !== "" &&
+  yearLevelIndex !== "" &&
+  sectionIndex !== "";
+
+  const getSubjectColors = (subjects = []) => {
+    const colors = {};
+    let subjectCount = 0;
+
+    subjects.forEach((subject) => {
+      if (!colors[subject.SubjectCode]) {
+        subjectCount++;
+        colors[subject.SubjectCode] = `color-${subjectCount}`;
+      }
+    });
+
+    return colors;
+  };
+
+  const makePrintItems = async (scope) => {
+    if (scope === "section") {
+      return [];
+    }
+
+    const curriculum = departmentCurriculumsData[curriculumIndex];
+    if (!curriculum) return [];
+
+    const selectedYearIndexes =
+      scope === "year"
+        ? [Number(yearLevelIndex)]
+        : curriculum.YearLevels.map((_, index) => index);
+
+    const items = [];
+
+    for (const yearIdx of selectedYearIndexes) {
+      const yearLevel = curriculum.YearLevels[yearIdx];
+      if (!yearLevel) continue;
+
+      for (let secIdx = 0; secIdx < Number(yearLevel.Sections || 0); secIdx++) {
+        const subjects = await fetchClassJsonSchedule(
+          departmentID,
+          semesterIndex,
+          curriculum.CurriculumID,
+          yearIdx,
+          secIdx,
+        );
+
+        items.push({
+          subjects,
+          subjectColors: getSubjectColors(subjects),
+          curriculumIndex: Number(curriculumIndex),
+          yearLevelIndex: yearIdx,
+          sectionIndex: secIdx,
+        });
+      }
+    }
+
+    return items;
+  };
+
+  const runPrint = async (blackAndWhite = false) => {
+    try {
+      setIsLoading(true);
+      const items = await makePrintItems(printScope);
+      setBatchPrintSchedules(items);
+      setIsLoading(false);
+
+      setTimeout(() => {
+        if (blackAndWhite) {
+          reactToPrintBlackAndWhiteFn();
+        } else {
+          reactToPrintFn();
+        }
+      }, 0);
+    } catch (err) {
+      setIsLoading(false);
+      setPopupOptions({
+        Heading: "Print Preparation Failed",
+        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
+        Message: `${err}`,
+      });
+    }
+  };
+
+  const renderSchedulePrintPage = ({
+    subjects,
+    colors,
+    curriculumIdx,
+    yearIdx,
+    secIdx,
+    pageBreak = false,
+  }) => (
+    <div
+      key={`${curriculumIdx}-${yearIdx}-${secIdx}`}
+      style={{
+        breakAfter: pageBreak ? "page" : "auto",
+        pageBreakAfter: pageBreak ? "always" : "auto",
+      }}
+    >
+      {isPrinting ? (
+        <>
+          <PrintHeader isBlackAndWhite={isBlackAndWhite} />
+
+          <Box display={"flex"} flexDirection={"column"} justifyContent={"center"} padding={1} gap={0} marginTop={1}>
+            <Typography lineHeight={1} variant="body1" flexWrap={true} textAlign={"center"}>
+              {allDepartments.find((d) => d.DepartmentID == departmentID)?.Name?.toUpperCase()}
+            </Typography>
+            <Typography lineHeight={1} variant="body1" flexWrap={true} fontWeight={"bold"} textAlign={"center"}>
+              Student's Schedule
+            </Typography>
+            <Typography lineHeight={1} variant="body1" textAlign={"center"}>
+              {`${SEMESTER_NAMES[semesterIndex]}${academicYear ? ", " + academicYear : ""}`}
+            </Typography>
+          </Box>
+
+          <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
+            <Typography variant="body1">{`Program: ${departmentCurriculumsData[curriculumIdx]?.CurriculumName}`}</Typography>
+            <Typography variant="body1">{`Year: ${departmentCurriculumsData[curriculumIdx]?.YearLevels[yearIdx]?.Name}`}</Typography>
+          </Box>
+
+          <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"} marginBottom={1}>
+            {adviserFullName ? <Typography variant="body1">{`Adviser: ${adviserFullName}`}</Typography> : null}
+            <Typography variant="body1">{`Section: ${SECTION_CHARACTERS[secIdx]}`}</Typography>
+          </Box>
+        </>
+      ) : null}
+
+      <table className="time-table" style={{ display: "revert" }}>
+        <thead>
+          <tr>
+            <th className="time-slot-header" style={isBlackAndWhite ? { background: "white", color: "black", border: "thin solid black" } : {}}>
+              Time Slot
+            </th>
+            {DAYS.map((day) => (
+              <th key={day} className="day-header" style={isBlackAndWhite ? { background: "white", color: "black", border: "thin solid black" } : {}}>
+                {day}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {generateTimeSlotRowLabels(startHour, timeSlotMinuteInterval, dailyTimeSlots).map((timeSlotLabel, rowIdx) => (
+            <tr key={rowIdx}>
+              <td style={isBlackAndWhite ? { background: "white", color: "black" } : {}} className="time-slot">
+                {timeSlotLabel}
+              </td>
+              {DAYS.map((_, dayIdx) => {
+                const assignedSubject = subjects.find((subj) => subj.DayIdx === dayIdx && subj.TimeSlotIdx === rowIdx);
+
+                if (assignedSubject) {
+                  return (
+                    <td
+                      key={dayIdx}
+                      className={`subject-cell ${!isBlackAndWhite ? colors[assignedSubject.SubjectCode] : "color-bw"}`}
+                      rowSpan={assignedSubject.SubjectTimeSlots}
+                    >
+                      <div className="subject-content">
+                        <div className="subject-name">{assignedSubject.SubjectCode}</div>
+                        <div className="instructor">{assignedSubject.InstructorLastName}</div>
+                        <div className="room">{assignedSubject.RoomName}</div>
+                      </div>
+                    </td>
+                  );
+                }
+
+                const isOccupied = subjects.some((subject) => {
+                  const rowHit = rowIdx >= subject.TimeSlotIdx && rowIdx < subject.TimeSlotIdx + subject.SubjectTimeSlots;
+                  const colHit = dayIdx == subject.DayIdx;
+                  return rowHit && colHit;
+                });
+
+                return isOccupied ? null : <td key={dayIdx} className="empty-slot"></td>;
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <Box display={"flex"} flexDirection={"row"} width={"100%"} justifyContent={"space-between"} paddingInline={5} paddingTop={3}>
+        {signatoryPreparedBy ? (
+          <Box display={"flex"} flexDirection={"column"}>
+            <Typography variant="caption" marginBottom={3}>Prepared by:</Typography>
+            <Typography variant="body1">{signatoryPreparedBy}</Typography>
+            <Typography variant="caption">{positionPreparedBy}</Typography>
+          </Box>
+        ) : null}
+
+        {signatoryCheckedAndReviewedBy ? (
+          <Box display={"flex"} flexDirection={"column"}>
+            <Typography variant="caption" marginBottom={3}>Checked and Reviewed by:</Typography>
+            <Typography variant="body1"> {signatoryCheckedAndReviewedBy}</Typography>
+            <Typography variant="caption">{positionCheckedAndReviewedBy}</Typography>
+          </Box>
+        ) : null}
+      </Box>
+    </div>
+  );
+
+  // ---- RENDER ----
 
   return (
     <>
       <MainHeader pageName={"schedule"}>
-      {/*================================= Loading Component =================================*/}
+      {/* ===================== LOADING / POPUP ===================== */}
 
       <Popup
         popupOptions={popupOptions}
@@ -880,23 +1076,29 @@ function TimeTable() {
       <Loading IsLoading={IsLoading} />
 
       <div className="table-container">
-        {/*================================= Dropdown Container =================================*/}
+        {/* ===================== DROPDOWN CONTAINER ===================== */}
 
         <div
           className="dropdown-container"
           style={{ display: "flex", flexDirection: "column" }}
           ref={focusRef}
         >
-          <div
-            id="left-dropdown-container"
-            style={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "space-evenly",
-              padding: "0.2em",
-              gap: "0.5em",
+          <Box
+            sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                xs: "1fr",
+                sm: "1fr 1fr",
+                md: "repeat(4, 1fr)",
+                },
+                gap: 2,
+                mb: 3,
+                p: 2,
+                borderRadius: 4,
+                background: "#fff",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
             }}
-          >
+            >
 
             <select
               className="dropdown"
@@ -977,10 +1179,10 @@ function TimeTable() {
                   )
                 : null}
             </select>
-          </div>
+          </Box>
         </div>
 
-        {/*================================= TimeTable Table =================================*/}
+        {/* ===================== TIMETABLE TABLE ===================== */}
 
         {pickedUpSubject ? (
           <div
@@ -1008,16 +1210,31 @@ function TimeTable() {
           </div>
         ) : null}
 
+        {/* ===================== PRINT CONTENT WRAPPER ===================== */}
         <div
           ref={contentRef}
           style={{
             padding:
-              isPrinting && Number.isInteger(Number.parseInt(sectionIndex, 10))
-                ? "1em"
+              isPrinting && (Number.isInteger(Number.parseInt(sectionIndex, 10)) || batchPrintSchedules.length > 0)
+                ? "1in"
                 : "0px",
           }}
         >
-          {isPrinting && Number.isInteger(Number.parseInt(sectionIndex, 10)) ? (
+          {isPrinting && batchPrintSchedules.length > 0
+            ? batchPrintSchedules.map((item, index) =>
+                renderSchedulePrintPage({
+                  subjects: item.subjects,
+                  colors: item.subjectColors,
+                  curriculumIdx: item.curriculumIndex,
+                  yearIdx: item.yearLevelIndex,
+                  secIdx: item.sectionIndex,
+                  pageBreak: index < batchPrintSchedules.length - 1,
+                }),
+              )
+            : null}
+
+          {/* ===================== PRINT HEADER ===================== */}
+          {isPrinting && batchPrintSchedules.length === 0 && Number.isInteger(Number.parseInt(sectionIndex, 10)) ? (
             <>
               <PrintHeader isBlackAndWhite={isBlackAndWhite} />
 
@@ -1082,7 +1299,14 @@ function TimeTable() {
 
           <table
             className="time-table"
-            style={{ display: sectionIndex ? "revert" : "none" }}
+            style={{
+              display:
+                batchPrintSchedules.length > 0
+                  ? "none"
+                  : sectionIndex
+                    ? "revert"
+                    : "none",
+            }}
           >
             <thead>
               <tr>
@@ -1217,6 +1441,7 @@ function TimeTable() {
             justifyContent={"space-between"}
             paddingInline={5}
             paddingTop={3}
+            sx={{ display: batchPrintSchedules.length > 0 ? "none" : "flex" }}
           >
             {signatoryPreparedBy ? (
               <Box display={"flex"} flexDirection={"column"}>
@@ -1247,25 +1472,7 @@ function TimeTable() {
 
         {!sectionIndex ? <Box height={200}></Box> : null}
 
-        <Box
-          gap={1}
-          display={
-            Number.isInteger(Number.parseInt(semesterIndex, 10))
-              ? "flex"
-              : "none"
-          }
-          justifyContent={"center"}
-        >
-          <Button
-            variant="outlined"
-            size="medium"
-            onClick={handleOpenSignatoriesDialog}
-            endIcon={<PrintIcon />}
-          >
-            Print
-          </Button>
-        </Box>
-
+        {/* ===================== PRINT DIALOG ===================== */}
         <Dialog
           open={isPrintDialogShow}
           onClose={() => {
@@ -1278,7 +1485,7 @@ function TimeTable() {
 
           <DialogContent>
             <DialogContentText id="alert-dialog-description">
-              Add signatories and other info if needed to include in printing
+                Add signatories and other info if needed to include in printing.
             </DialogContentText>
 
             <Box
@@ -1363,7 +1570,11 @@ function TimeTable() {
             <Button
               variant="outlined"
               size="medium"
-              onClick={reactToPrintFn}
+              onClick={() =>
+                {
+                  setIsPrintDialogShow(false);
+                  runPrint(false);
+                }}
               endIcon={<PrintIcon />}
             >
               Print Colored
@@ -1371,7 +1582,11 @@ function TimeTable() {
             <Button
               variant="outlined"
               size="medium"
-              onClick={reactToPrintBlackAndWhiteFn}
+              onClick={() =>
+              {
+                setIsPrintDialogShow(false);
+                runPrint(true);
+              }}
               endIcon={<PrintIcon />}
             >
               Print Black & White
@@ -1391,135 +1606,408 @@ function TimeTable() {
             </Button>
           </DialogActions>
         </Dialog>
-
+        
+        {/* ===================== ACTION BUTTONS ===================== */}
         <Box
-          padding={1}
-          gap={1}
-          display={"flex"}
-          justifyContent={"space-evenly"}
+        sx={{
+            display: "flex",
+            gap: 2,
+            mt: 3,
+            alignItems: "stretch",
+
+            flexDirection: {
+            xs: "column",
+            lg: "row",
+            },
+        }}
         >
-          <Button
-            size="small"
+        {/* ===================== LEFT SIDE ===================== */}
+        <Box
+            sx={{
+            flex: 1.2,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 2,
+            p: 2,
+            borderRadius: 4,
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+            alignContent: "flex-start",
+            minHeight: 180,
+            }}
+        >
+            <Button
+            size="medium"
             fullWidth
             onClick={generateDepartmentSchedules}
-            disabled={!semesterIndex || pickedUpSubject}
+            disabled={!semesterIndex || pickedUpSubject || isGenerating}
             variant="contained"
             color="success"
-          >
-            Generate Department Semester Schedules
-          </Button>
+            startIcon={<PlayArrowIcon />}
+            sx={{
+                borderRadius: 3,
+                py: 1.2,
+                fontWeight: 600,
+                textTransform: "none",
+                boxShadow: "none",
+            }}
+            >
+            {isGenerating ? "Generating..." : "Generate Semester Schedule"}
+            </Button>
 
-          <Button
-            size="small"
+            <Button
+            size="medium"
             fullWidth
             onClick={handleValidateSchedules}
-            disabled={!semesterIndex || pickedUpSubject}
-            variant="contained"
+            disabled={!semesterIndex || pickedUpSubject || isGenerating}
+            variant="outlined"
             color="warning"
-          >
-            Validate Schedules
-          </Button>
+            startIcon={<CheckCircleIcon />}
+            sx={{
+                borderRadius: 3,
+                py: 1.2,
+                fontWeight: 600,
+                textTransform: "none",
+            }}
+            >
+            Validate Schedule
+            </Button>
 
-          <Button
-            size="small"
+            <Button
+            size="medium"
             fullWidth
             onClick={handleClearDepartmentSchedule}
-            disabled={!semesterIndex || pickedUpSubject}
-            variant="contained"
-            color="error"
-          >
-            Clear Department Semester Schedules
-          </Button>
-
-          <Button
-            size="small"
-            fullWidth
-            onClick={handleClearClassSchedule}
-            disabled={!sectionIndex || pickedUpSubject}
+            disabled={!semesterIndex || pickedUpSubject || isGenerating}
             variant="outlined"
             color="error"
-          >
-            Clear Section Semester Schedule
-          </Button>
-
-          {pickedUpSubject ? (
-            <Button
-              size="small"
-              fullWidth
-              onClick={handleCancelPickupSubject}
-              disabled={!pickedUpSubject}
-              variant="contained"
-              color="primary"
+            startIcon={<DeleteSweepIcon />}
+            sx={{
+                borderRadius: 3,
+                py: 1.2,
+                fontWeight: 600,
+                textTransform: "none",
+            }}
             >
-              Cancel Move
+            Clear Department
             </Button>
-          ) : null}
-        </Box>
-      </div>
 
-      {schedGenStatus ? (
-        <>
-          <Box padding={2}>
-            <Typography
-              variant="h6"
-              style={{
-                color: getScheduleGenerationStatusColor(schedGenStatus.Status),
+            <Button
+            size="medium"
+            fullWidth
+            onClick={handleClearClassSchedule}
+            disabled={!sectionIndex || pickedUpSubject || isGenerating}
+            variant="outlined"
+            color="error"
+            startIcon={<ClearIcon />}
+            sx={{
+                borderRadius: 3,
+                py: 1.2,
+                fontWeight: 600,
+                textTransform: "none",
+            }}
+            >
+            Clear Section
+            </Button>
+
+            {pickedUpSubject && (
+            <Button
+                size="medium"
+                fullWidth
+                onClick={handleCancelPickupSubject}
+                disabled={isGenerating}
+                variant="contained"
+                color="primary"
+                startIcon={<ClearIcon />}
+                sx={{
+                borderRadius: 3,
+                py: 1.2,
+                fontWeight: 600,
+                textTransform: "none",
+                boxShadow: "none",
+                }}
+            >
+                Cancel Move
+            </Button>
+            )}
+        </Box>
+
+        {/* ===================== RIGHT SIDE ===================== */}
+        <Box
+        sx={{
+            flex: 1,
+            p: 2.5,
+            borderRadius: 4,
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+
+            minHeight: 180,
+
+            opacity: isScheduleReady ? 1 : 0.6,
+            pointerEvents: isScheduleReady ? "auto" : "none",
+
+            transition: "0.2s ease",
+        }}
+        >
+        {/* EMPTY STATE */}
+        {!isScheduleReady || !schedGenStatus ? (
+            <Box
+            sx={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
                 textAlign: "center",
-              }}
+                gap: 1,
+            }}
             >
-              {schedGenStatus.Status}
-            </Typography>
+            <InfoOutlinedIcon
+                sx={{
+                fontSize: 40,
+                color: "#9ca3af",
+                }}
+            />
+
             <Typography
-              variant="body2"
-              style={{ color: "black", textAlign: "center" }}
+                sx={{
+                fontWeight: 600,
+                color: "#374151",
+                }}
             >
-              {schedGenStatus.Message}
+                No Schedule Status
             </Typography>
 
-            {sectionIndex ? (
-              <LinearProgressWithLabel
-                value={
-                  Number.isNaN(
-                    Number.parseInt(
-                      extractGenerationNumber(schedGenStatus.Message),
-                      10,
-                    ),
-                  )
+            <Typography
+                sx={{
+                fontSize: "0.9rem",
+                color: "#6b7280",
+                maxWidth: 260,
+                }}
+            >
+                Select semester and generate a schedule to
+                view generation progress and actions.
+            </Typography>
+            </Box>
+        ) : (
+            <>
+            {/* STATUS + PERCENT */}
+            <Box
+                sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+                }}
+            >
+                <Box
+                sx={{
+                    px: 1.5,
+                    py: 0.5,
+                    borderRadius: 10,
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+
+                    background:
+                    schedGenStatus.Status === "success"
+                        ? "#dcfce7"
+                        : schedGenStatus.Status === "failed"
+                        ? "#fee2e2"
+                        : schedGenStatus.Status === "in progress"
+                            ? "#dbeafe"
+                            : "#fef3c7",
+
+                    color:
+                    schedGenStatus.Status === "success"
+                        ? "#166534"
+                        : schedGenStatus.Status === "failed"
+                        ? "#991b1b"
+                        : schedGenStatus.Status === "in progress"
+                            ? "#1d4ed8"
+                            : "#92400e",
+                }}
+                >
+                {schedGenStatus.Status}
+                </Box>
+
+                <Typography
+                sx={{
+                    fontSize: "1.2rem",
+                    fontWeight: 700,
+                    color: "#111827",
+                }}
+                >
+                {(() => {
+                    const gen = parseInt(
+                    extractGenerationNumber(schedGenStatus.Message),
+                    10
+                    );
+
+                    const progress = Number.isNaN(gen)
                     ? 0
-                    : (Number.parseInt(
+                    : Math.min(
+                        (gen / NUMBER_OF_GENERATIONS) * 100,
+                        100
+                        );
+
+                    return `${Math.round(progress)}%`;
+                })()}
+                </Typography>
+            </Box>
+
+            {/* PROGRESS BAR */}
+            <Box
+                sx={{
+                width: "100%",
+                height: 10,
+                borderRadius: 999,
+                overflow: "hidden",
+                background: "#f3f4f6",
+                mb: 2,
+                }}
+            >
+                <Box
+                sx={{
+                    height: "100%",
+                    transition: "0.3s ease",
+                    width: `${(() => {
+                    const gen = parseInt(
                         extractGenerationNumber(schedGenStatus.Message),
-                        10,
-                      ) /
-                        NUMBER_OF_GENERATIONS) *
-                      100
-                }
-              />
-            ) : null}
-          </Box>
-        </>
-      ) : null}
+                        10
+                    );
 
-      {resourceEstimates ? (
-        <Box padding={2}>
-          <Typography
-            variant="body1"
-            style={{ color: "black", textAlign: "center" }}
-          >
-            {resourceEstimates}
-          </Typography>
+                    return Number.isNaN(gen)
+                        ? 0
+                        : Math.min(
+                            (gen / NUMBER_OF_GENERATIONS) * 100,
+                            100
+                        );
+                    })()}%`,
+
+                    background:
+                    schedGenStatus.Status === "success"
+                        ? "#22c55e"
+                        : schedGenStatus.Status === "failed"
+                        ? "#ef4444"
+                        : "#3b82f6",
+                }}
+                />
+            </Box>
+
+            {/* MESSAGE */}
+            <Box
+                sx={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 1,
+                mt: 1,
+                p: 1.5,
+                borderRadius: 3,
+                background: "#f9fafb",
+                border: "1px solid #f1f5f9",
+                }}
+            >
+                <InfoOutlinedIcon
+                sx={{
+                    fontSize: 18,
+                    color: "#6b7280",
+                    mt: "2px",
+                }}
+                />
+
+                <Typography
+                sx={{
+                    fontSize: "0.88rem",
+                    color: "#4b5563",
+                    lineHeight: 1.5,
+                }}
+                >
+                {schedGenStatus.Message}
+                </Typography>
+            </Box>
+
+            {/* ACTION BUTTONS */}
+            <Box
+                sx={{
+                display: "flex",
+                gap: 1.5,
+                mt: 2,
+                flexWrap: "wrap",
+                }}
+            >
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={(event) => setPrintMenuAnchor(event.currentTarget)}
+                  disabled={isGenerating}
+                  endIcon={<PrintIcon />}
+                  sx={{
+                    borderRadius: 3,
+                    textTransform: "none",
+                    fontWeight: 600,
+                    flex: 1,
+                    minWidth: 160,
+                  }}
+                >
+                  Print Schedule
+                </Button>
+                <Menu
+                  anchorEl={printMenuAnchor}
+                  open={Boolean(printMenuAnchor)}
+                  onClose={() => setPrintMenuAnchor(null)}
+                >
+                  <MenuItem
+                    disabled={sectionIndex === ""}
+                    onClick={() => handleOpenSignatoriesDialog("section")}
+                  >
+                    <PrintIcon fontSize="small" sx={{ mr: 1 }} />
+                    Print Current Section
+                  </MenuItem>  
+                  <MenuItem
+                    disabled={yearLevelIndex === ""}
+                    onClick={() => handleOpenSignatoriesDialog("year")}
+                  >
+                    <PrintIcon fontSize="small" sx={{ mr: 1 }} />
+                    Print Selected Year
+                  </MenuItem>
+                  <MenuItem
+                    disabled={curriculumIndex === ""}
+                    onClick={() => handleOpenSignatoriesDialog("semester")}
+                  >
+                    <PrintIcon fontSize="small" sx={{ mr: 1 }} />
+                    Print Whole Semester
+                  </MenuItem>
+                </Menu>
+
+                <Button
+                variant="contained"
+                size="small"
+                endIcon={<OpenInNewIcon />}
+                onClick={() => window.open("/view_schedule/", "_blank")}
+                disabled={isGenerating}
+                sx={{
+                    borderRadius: 3,
+                    textTransform: "none",
+                    fontWeight: 600,
+                    boxShadow: "none",
+                    flex: 1,
+                    minWidth: 180,
+                }}
+                >
+                Public View
+                </Button>
+            </Box>
+            </>
+        )}
         </Box>
-      ) : null}
-
-      <Box
-        display={"flex"}
-        justifyContent={"center"}
-        alignItems={"center"}
-        padding={5}
-      >
-        <a href="/view_schedule/">
-          link for publicly accessible schedule page view
-        </a>
-      </Box>
+        </Box>
+        </div>
     </MainHeader>
     </>
   );

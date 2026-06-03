@@ -1,3 +1,4 @@
+// ===================== IMPORTS =====================
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControl, InputLabel, List, MenuItem, Select, TextField, Typography } from "@mui/material";
 import { useState, useEffect, useRef } from "react";
 import { Loading, POPUP_ERROR_COLOR } from "../components/Loading";
@@ -15,18 +16,24 @@ import "../schedule/TimeTableDropdowns.css";
 import "../assets/SubjectColors.css";
 import { PrintHeader } from "../components/PrintHeader";
 
+// ===================== CONSTANTS =====================
 const SEMESTER_NAMES = [
     "1st Semester",
     "2nd Semester",
     "Mid-year",
 ]
 
+// ===================== MAIN COMPONENT =====================
 export default function RoomSchedule({
     roomToView, setRoomToView, setIsViewRoomSchedule,
     selectedDepartment,
     popupOptions, setPopupOptions,
+    autoOpenPrintDialog = false,
+    onAutoOpenPrintDialogHandled = () => {},
 }) {
     const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+    // ---- STATE ----
     const [startHour, setStartHour] = useState(7);
     const [timeSlotMinuteInterval, setTimeSlotMinuteInterval] = useState(30);
     const [dailyTimeSlots, setDailyTimeSlots] = useState(24);
@@ -38,6 +45,7 @@ export default function RoomSchedule({
 
     const [semesterIndex, setSemesterIndex] = useState("");
 
+    // ---- EFFECTS ----
     useEffect(() => {
         const starting_hour = 7;
         const time_slot_per_hour = 2;
@@ -71,6 +79,7 @@ export default function RoomSchedule({
 
     }, []);
 
+    // ---- HANDLERS ----
     const handleSemesterChange = async (e) => {
         setSemesterIndex(e.target.value)
 
@@ -106,10 +115,7 @@ export default function RoomSchedule({
         setIsViewRoomSchedule(null)
     }
 
-    /////////////////////////////////////////////////////////////////////////////////
-    //                      PRINTING STATES, REFS AND HANDLERS
-    /////////////////////////////////////////////////////////////////////////////////
-
+    // ---- PRINTING ----
     const [isPrinting, setIsPrinting] = useState(false);
     const [isBlackAndWhite, setIsBlackAndWhite] = useState(false)
     const contentRef = useRef(null);
@@ -187,6 +193,13 @@ export default function RoomSchedule({
         setIsPrintDialogShow(true)
     }
 
+    useEffect(() => {
+        if (!autoOpenPrintDialog || !Number.isInteger(Number.parseInt(semesterIndex, 10))) return;
+
+        handleOpenSignatoriesDialog();
+        onAutoOpenPrintDialogHandled();
+    }, [autoOpenPrintDialog, semesterIndex]);
+
     const saveAddedOptionalPrintingValues = () => {
         localStorage.setItem('academic-year', academicYear)
 
@@ -197,13 +210,12 @@ export default function RoomSchedule({
         localStorage.setItem('position-check-and-reviewed-by', positionCheckedAndReviewedBy)
     }
 
-    /////////////////////////////////////////////////////////////////////////////////
-
     return (<>
         <Loading
             IsLoading={IsLoading}
         />
 
+        {/* ===================== CONTROLS ===================== */}
         <Box padding={1} display={'flex'} justifyContent={'space-between'}>
             <Box display={'flex'} gap={5} alignItems={'center'}>
                 <FormControl sx={{ minWidth: 115 }} size="small">
@@ -232,6 +244,7 @@ export default function RoomSchedule({
             </Box>
         </Box>
 
+        {/* ===================== TIMETABLE ===================== */}
         <div ref={contentRef} style={{ padding: (isPrinting && Number.isInteger(Number.parseInt(semesterIndex, 10))) ? '1em' : '0px' }}>
 
             {(isPrinting && Number.isInteger(Number.parseInt(semesterIndex, 10))) ? (<>
@@ -337,10 +350,12 @@ export default function RoomSchedule({
 
         <div style={{ height: '0.8em' }} />
 
+        {/* ===================== PRINT BUTTON ===================== */}
         <Box gap={1} display={(Number.isInteger(Number.parseInt(semesterIndex, 10))) ? 'flex' : 'none'} justifyContent={'center'}>
             <Button variant="outlined" size="medium" onClick={handleOpenSignatoriesDialog} endIcon={<PrintIcon />}>Print</Button>
         </Box>
 
+        {/* ===================== PRINT DIALOG ===================== */}
         <Dialog
             open={isPrintDialogShow}
             onClose={() => {
@@ -353,7 +368,7 @@ export default function RoomSchedule({
 
             <DialogContent>
                 <DialogContentText id="alert-dialog-description">
-                    Add signatories if needed to include in printing
+                    Add signatories if needed.
                 </DialogContentText>
 
                 <Box display={'flex'} flexDirection={'column'} gap={2} marginTop={2}>

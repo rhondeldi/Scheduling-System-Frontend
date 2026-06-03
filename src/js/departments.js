@@ -213,3 +213,35 @@ export async function patchUpdateDepartment(department) {
     throw new Error(`${response.status} : ${await response.text()}`);
   }
 }
+
+export async function updateCurrentDepartmentPassword({
+  department,
+  currentPassword,
+  newPassword,
+  confirmPassword,
+}) {
+  let api_request = `/${API_VERSION}/department_password_update`;
+
+  if (DEV) {
+    api_request = `${base_url}/${API_VERSION}/department_password_update`;
+  }
+
+  const response = await fetch(api_request, {
+    credentials: "include",
+    method: "PATCH",
+    headers: {
+      Accept: "text/plain",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      DepartmentID: Number(department.DepartmentID),
+      CurrentPassword: currentPassword,
+      NewPassword: newPassword,
+      ConfirmPassword: confirmPassword,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`${response.status} : ${await response.text()}`);
+  }
+}

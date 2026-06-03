@@ -84,3 +84,73 @@ export async function fetchInstructorBasic(instructor_id) {
 
   return response.json();
 }
+
+export async function fetchInstructorSubjects(instructor_id) {
+  let api_request = `/${API_VERSION}/instructor_subjects?instructor_id=${instructor_id}`;
+
+  if (DEV) {
+    console.log("call: fetchInstructorSubjects");
+    api_request = `${base_url}/${API_VERSION}/instructor_subjects?instructor_id=${instructor_id}`;
+  }
+
+  const response = await fetch(api_request, {
+    headers: {
+      Accept: "application/json",
+    },
+    credentials: "include",
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    throw Error(`${response.status} :${await response.text()}`);
+  }
+
+  return response.json();
+}
+
+export async function assignInstructorSubject(instructor_id, subject_id) {
+  let api_request = `/${API_VERSION}/instructor_subject_add`;
+
+  if (DEV) {
+    console.log("call: assignInstructorSubject");
+    api_request = `${base_url}/${API_VERSION}/instructor_subject_add`;
+  }
+
+  const response = await fetch(api_request, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      Accept: "text/plain",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      instructor_id,
+      subject_id,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`${response.status} : ${await response.text()}`);
+  }
+}
+
+export async function removeInstructorSubject(instructor_id, subject_id) {
+  let api_request = `/${API_VERSION}/instructor_subject_remove?instructor_id=${instructor_id}&subject_id=${subject_id}`;
+
+  if (DEV) {
+    console.log("call: removeInstructorSubject");
+    api_request = `${base_url}/${API_VERSION}/instructor_subject_remove?instructor_id=${instructor_id}&subject_id=${subject_id}`;
+  }
+
+  const response = await fetch(api_request, {
+    method: "DELETE",
+    credentials: "include",
+    headers: {
+      Accept: "text/plain",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`${response.status} : ${await response.text()}`);
+  }
+}

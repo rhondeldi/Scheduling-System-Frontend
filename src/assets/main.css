@@ -1,4 +1,11 @@
 * {
+    --color-primary: #003f2d;
+    --color-primary-hover: #00281f;
+    --color-secondary: #d9eadf;
+    --color-accent: #0b6b4a;
+    --color-accent-hover: #004631;
+    --color-disabled: #d5e2da;
+
     padding: 0px;
     margin: 0px;
     box-sizing: border-box;
@@ -14,7 +21,7 @@
 .all-btns {
     padding: 0.55em 1.5em;
     font-size: 1em;
-    background-color: #007bffcd;
+    background-color: var(--color-primary);
     color: white;
     border: none;
     border-radius: 0.3em;
@@ -23,10 +30,10 @@
 }
 
 .all-btns:hover {
-    background-color: #8a00cf;
+    background-color: var(--color-primary-hover);
 }
 
 .all-btns:disabled {
-    background-color: #cccccc;
+    background-color: var(--color-disabled);
     cursor: not-allowed;
 }
