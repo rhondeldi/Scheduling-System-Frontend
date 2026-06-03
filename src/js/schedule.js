@@ -377,6 +377,38 @@ export async function fetchSubjectTimeSlotMove(subject_json, department_id, sele
   return await response.text();
 }
 
+export async function fetchAsyncScheduleRecords(department_id, selected_semester, instructor_id) {
+  const query = new URLSearchParams({
+    department_id: String(department_id),
+    semester: String(selected_semester),
+  });
+
+  if (instructor_id !== undefined && instructor_id !== null && instructor_id !== "") {
+    query.set("instructor_id", String(instructor_id));
+  }
+
+  let api_request = `/v2/async_schedule?${query.toString()}`;
+
+  if (DEV) {
+    console.log("call: fetchAsyncScheduleRecords");
+    api_request = `${base_url}/v2/async_schedule?${query.toString()}`;
+  }
+
+  const response = await fetch(api_request, {
+    headers: {
+      Accept: "application/json",
+    },
+    credentials: "include",
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    throw Error(`${response.status} : ${await response.text()}`);
+  }
+
+  return await response.json();
+}
+
 export async function fetchResourceEstimates(department_id, selected_semester) {
   let api_request = `/v2/estimate_resources?department_id=${department_id}&semester=${selected_semester}`
 

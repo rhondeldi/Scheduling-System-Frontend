@@ -23,6 +23,7 @@ import {
   Checkbox,
   IconButton,
   Typography,
+  Chip,
 } from "@mui/material";
 
 import EditIcon from "@mui/icons-material/Edit";
@@ -47,9 +48,7 @@ import {
 import { MainHeader } from "../components/Header";
 
 const truncateText = (text, maxLength) =>
-  text?.length > maxLength
-    ? text.substring(0, maxLength) + "..."
-    : text;
+  text?.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 
 const emptySubject = {
   Code: "",
@@ -57,6 +56,8 @@ const emptySubject = {
   LecHours: 0,
   LabHours: 0,
   BitFlags: 0,
+  AsynchronousHours: 0,
+  SaturdayOnly: false,
 };
 
 export default function Subjects() {
@@ -85,34 +86,26 @@ export default function Subjects() {
 
   const skipAnimRef = useRef(false);
 
-  const load_subjects = useCallback(
-    async (size, newPage, search) => {
-      try {
-        const data = await fetchSubjects(
-          size,
-          newPage,
-          search,
-          ""
-        );
+  const load_subjects = useCallback(async (size, newPage, search) => {
+    try {
+      const data = await fetchSubjects(size, newPage, search, "");
 
-        setSubjectList(data.Subjects || []);
-        setTotalCount(data.TotalSubjects || 0);
-      } catch (err) {
-        setPopupOptions({
-          Heading: "Fetch Failed",
-          HeadingStyle: {
-            background: POPUP_ERROR_COLOR,
-            color: "white",
-          },
-          Message: err.message,
-        });
-      }
+      setSubjectList(data.Subjects || []);
+      setTotalCount(data.TotalSubjects || 0);
+    } catch (err) {
+      setPopupOptions({
+        Heading: "Fetch Failed",
+        HeadingStyle: {
+          background: POPUP_ERROR_COLOR,
+          color: "white",
+        },
+        Message: err.message,
+      });
+    }
 
-      setIsTableLoading(false);
-      setIsPaginating(false);
-    },
-    []
-  );
+    setIsTableLoading(false);
+    setIsPaginating(false);
+  }, []);
 
   useEffect(() => {
     if (!skipAnimRef.current) {
@@ -170,13 +163,53 @@ export default function Subjects() {
   const handleSave = async () => {
     setIsOperationLoading(true);
 
+    const lecHoursNum = Number(subject.LecHours) || 0;
+    const labHoursNum = Number(subject.LabHours) || 0;
+
+    const normalizedType =
+      labHoursNum > 0 && lecHoursNum === 0 ? "laboratory" : "lecture";
+
+    const asyncHoursNum =
+      normalizedType === "laboratory"
+        ? 0
+        : Math.max(0, Number(subject.AsynchronousHours) || 0);
+
+    if (normalizedType === "lecture" && asyncHoursNum > lecHoursNum) {
+      setIsOperationLoading(false);
+      setPopupOptions({
+        Heading: "Invalid Async Hours",
+        HeadingStyle: {
+          background: POPUP_ERROR_COLOR,
+          color: "white",
+        },
+        Message: "Asynchronous hours cannot exceed lecture hours",
+      });
+      return;
+    }
+
+    const totalHours = lecHoursNum + labHoursNum;
+    if (totalHours > 0 && asyncHoursNum >= totalHours) {
+      setIsOperationLoading(false);
+      setPopupOptions({
+        Heading: "Invalid Async Hours",
+        HeadingStyle: {
+          background: POPUP_ERROR_COLOR,
+          color: "white",
+        },
+        Message: "Asynchronous hours must be less than total subject hours",
+      });
+      return;
+    }
+
     const subjectPayload = {
       ...subject,
-      LecHours: Number(subject.LecHours),
-      LabHours: Number(subject.LabHours),
+      LecHours: lecHoursNum,
+      LabHours: labHoursNum,
       BitFlags: Number(subject.BitFlags) || 0,
-      DesignatedInstructors:
-        subject.DesignatedInstructors || [],
+      SubjectType: normalizedType,
+      AsynchronousHours: asyncHoursNum,
+      SaturdayOnly: Boolean(subject.SaturdayOnly),
+      DesignatedInstructors: subject.DesignatedInstructors || [],
     };
 
     try {
@@ -212,14 +245,15 @@ export default function Subjects() {
     }
   };
 
+  const isLaboratoryForm =
+    Number(subject.LabHours) > 0 && Number(subject.LecHours) === 0;
+
   return (
     <>
       <MainHeader pageName="subjects">
         <Popup
           popupOptions={popupOptions}
-          closeButtonActionHandler={() =>
-            setPopupOptions(null)
-          }
+          closeButtonActionHandler={() => setPopupOptions(null)}
         />
 
         {/* PAGE */}
@@ -303,19 +337,15 @@ export default function Subjects() {
                   }}
                 >
                   <TableRow>
-                    <TableCell sx={{ width: "13%" }}>
-                      CODE
-                    </TableCell>
+                    <TableCell sx={{ width: "13%" }}>CODE</TableCell>
 
                     <TableCell>NAME</TableCell>
 
-                    <TableCell sx={{ width: "10%" }}>
-                      LECTURE
-                    </TableCell>
+                    <TableCell sx={{ width: "8%" }}>LEC</TableCell>
 
-                    <TableCell sx={{ width: "10%" }}>
-                      LAB
-                    </TableCell>
+                    <TableCell sx={{ width: "8%" }}>LAB</TableCell>
+
+                    <TableCell sx={{ width: "9%" }}>ASYNC</TableCell>
 
                     <TableCell sx={{ width: "80px" }} />
                   </TableRow>
@@ -329,18 +359,17 @@ export default function Subjects() {
                       ? "translateY(12px)"
                       : "translateY(0)",
 
-                    transition:
-                      "opacity 0.25s ease, transform 0.25s ease",
+                    transition: "opacity 0.25s ease, transform 0.25s ease",
                   }}
                 >
                   {isPaginating ? (
                     Array.from({
                       length: pageSize,
                     }).map((_, i) => (
-                      <TableRow
-                        key={i}
-                        sx={{ height: 50 }}
-                      >
+                      <TableRow key={i} sx={{ height: 50 }}>
+                        <TableCell>
+                          <Skeleton />
+                        </TableCell>
                         <TableCell>
                           <Skeleton />
                         </TableCell>
@@ -383,7 +412,7 @@ export default function Subjects() {
                   ) : subjectList.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         align="center"
                         sx={{
                           fontStyle: "italic",
@@ -395,71 +424,97 @@ export default function Subjects() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    subjectList.map((s) => (
-                      <TableRow key={s.ID}>
-                        <TableCell
-                          sx={{
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {s.Code}
-                        </TableCell>
+                    subjectList.map((s) => {
+                      const subjectType =
+                        (s.SubjectType || "").toLowerCase() === "laboratory"
+                          ? "laboratory"
+                          : (s.SubjectType || "").toLowerCase() === "lecture"
+                            ? "lecture"
+                            : s.LabHours > 0 && s.LecHours === 0
+                              ? "laboratory"
+                              : "lecture";
 
-                        <TableCell
-                          sx={{
-                            fontStyle: "italic",
-                          }}
-                        >
-                          {truncateText(s.Name, 80)}
-                        </TableCell>
+                      const asyncHours =
+                        subjectType === "laboratory"
+                          ? 0
+                          : Number(s.AsynchronousHours) || 0;
 
-                        <TableCell>
-                          {s.LecHours}
-                        </TableCell>
+                      return (
+                        <TableRow key={s.ID}>
+                          <TableCell sx={{ fontWeight: "bold" }}>
+                            {s.Code}
+                          </TableCell>
 
-                        <TableCell>
-                          {s.LabHours}
-                        </TableCell>
+                          <TableCell sx={{ fontStyle: "italic" }}>
+                            {truncateText(s.Name, 80)}
+                          </TableCell>
 
-                        <TableCell
-                          align="right"
-                          sx={{
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          <Box
+                          <TableCell>{s.LecHours}</TableCell>
+
+                          <TableCell>{s.LabHours}</TableCell>
+
+                          <TableCell>
+                            {asyncHours > 0 ? (
+                              <Chip
+                                size="small"
+                                label={asyncHours}
+                                color="secondary"
+                              />
+                            ) : (
+                              <Typography
+                                variant="caption"
+                                color="text.disabled"
+                              >
+                                —
+                              </Typography>
+                            )}
+                          </TableCell>
+
+                          <TableCell
+                            align="right"
                             sx={{
-                              display: "flex",
-                              justifyContent: "flex-end",
-                              gap: 1,
+                              whiteSpace: "nowrap",
                             }}
                           >
-                            <IconButton
-                              title="Edit"
-                              color="edit"
-                              onClick={() => {
-                                setSubject(s);
-                                setMode("edit");
-                                setIsDialogFormOpen(true);
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "flex-end",
+                                gap: 1,
                               }}
                             >
-                              <EditIcon />
-                            </IconButton>
+                              <IconButton
+                                title="Edit"
+                                color="edit"
+                                onClick={() => {
+                                  setSubject({
+                                    ...s,
+                                    AsynchronousHours:
+                                      Number(s.AsynchronousHours) || 0,
+                                    SaturdayOnly: Boolean(s.SaturdayOnly),
+                                  });
+                                  setMode("edit");
+                                  setIsDialogFormOpen(true);
+                                }}
+                              >
+                                <EditIcon />
+                              </IconButton>
 
-                            <IconButton
-                              title="Delete"
-                              color="delete"
-                              onClick={() => {
-                                setSubjectToDelete(s);
-                                setIsDialogDeleteShow(true);
-                              }}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                              <IconButton
+                                title="Delete"
+                                color="delete"
+                                onClick={() => {
+                                  setSubjectToDelete(s);
+                                  setIsDialogDeleteShow(true);
+                                }}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -520,12 +575,7 @@ export default function Subjects() {
                 skipAnimRef.current = true;
                 setIsPaginating(true);
 
-                setPageSize(
-                  Number.parseInt(
-                    event.target.value,
-                    10
-                  )
-                );
+                setPageSize(Number.parseInt(event.target.value, 10));
 
                 setPage(0);
               }}
@@ -567,11 +617,15 @@ export default function Subjects() {
                 borderColor: "error.light",
               }}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "error.dark" }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 800, color: "error.dark" }}
+              >
                 {subjectToDelete?.Code || "Selected subject"}
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                All data associated with this subject will be permanently removed.
+                All data associated with this subject will be permanently
+                removed.
               </Typography>
             </Box>
           </DialogContent>
@@ -596,9 +650,7 @@ export default function Subjects() {
               color="error"
               variant="outlined"
               disabled={isOperationLoading}
-              onClick={() =>
-                handleDelete(subjectToDelete?.ID)
-              }
+              onClick={() => handleDelete(subjectToDelete?.ID)}
             >
               {isOperationLoading ? (
                 <CircularProgress size={20} color="inherit" />
@@ -616,10 +668,7 @@ export default function Subjects() {
           fullWidth
           maxWidth="sm"
           onKeyDown={(e) => {
-            if (
-              e.key === "Enter" &&
-              !isOperationLoading
-            ) {
+            if (e.key === "Enter" && !isOperationLoading) {
               handleSave();
             }
           }}
@@ -629,9 +678,7 @@ export default function Subjects() {
               backgroundColor: "primary.main",
             }}
           >
-            {mode === "new"
-              ? "Add New Subject"
-              : "Edit Subject"}
+            {mode === "new" ? "Add New Subject" : "Edit Subject"}
           </DialogTitle>
 
           <DialogContent>
@@ -697,27 +744,46 @@ export default function Subjects() {
               />
             </Box>
 
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={
-                    (Number(subject.BitFlags) & 1) ===
-                    1
-                  }
-                  onChange={(e) =>
-                    setSubject((previous) => ({
-                      ...previous,
-
-                      BitFlags: e.target.checked
-                        ? Number(previous.BitFlags) | 1
-                        : Number(previous.BitFlags) &
-                          ~1,
-                    }))
-                  }
-                />
+            <TextField
+              margin="dense"
+              label="Asynchronous Hours"
+              type="number"
+              fullWidth
+              value={subject.AsynchronousHours ?? 0}
+              disabled={isLaboratoryForm}
+              inputProps={{ min: 0, step: 0.5 }}
+              helperText={
+                isLaboratoryForm
+                  ? "Laboratory subjects cannot have async hours"
+                  : "Hours of the lecture conducted asynchronously (self-study, no room/slot)"
               }
-              label="Is Gym Type"
+              onChange={(e) =>
+                setSubject((previous) => ({
+                  ...previous,
+                  AsynchronousHours: e.target.value,
+                }))
+              }
             />
+
+            <Box display="flex" flexDirection="column">
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={(Number(subject.BitFlags) & 1) === 1}
+                    onChange={(e) =>
+                      setSubject((previous) => ({
+                        ...previous,
+
+                        BitFlags: e.target.checked
+                          ? Number(previous.BitFlags) | 1
+                          : Number(previous.BitFlags) & ~1,
+                      }))
+                    }
+                  />
+                }
+                label="Is Gym Type"
+              />
+            </Box>
           </DialogContent>
 
           <DialogActions>
@@ -729,8 +795,8 @@ export default function Subjects() {
               {isOperationLoading
                 ? "Saving..."
                 : mode === "new"
-                ? "Save"
-                : "Apply Changes"}
+                  ? "Save"
+                  : "Apply Changes"}
             </Button>
 
             <Button
