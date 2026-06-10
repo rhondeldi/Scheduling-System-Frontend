@@ -268,12 +268,6 @@ function TimeTable() {
             });
 
             setSubjectColors(subjectColors);
-
-            // Scroll to the bottom of the page
-            window.scrollTo({
-                top: document.documentElement.scrollHeight,
-                behavior: 'smooth',
-            });
         } catch (err) {
             console.error("Error loading schedule:", err);
             setPopupOptions({

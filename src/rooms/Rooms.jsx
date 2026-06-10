@@ -136,7 +136,7 @@ function Rooms({ adminMode = false, pageName = "rooms" }) {
   const [loading, setLoading] = useState(true);
   const [isPaginating, setIsPaginating] = useState(false);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
 
   const [departmentList, setDepartmentList] = useState([]);
@@ -438,7 +438,7 @@ function Rooms({ adminMode = false, pageName = "rooms" }) {
                     {departmentID !== "" && Number(departmentID) === 0 ? (
                       <TableCell sx={{ width: "10%" }}></TableCell>
                     ) : null}
-                    <TableCell sx={{ width: "112px" }} align="right"></TableCell>
+                    <TableCell sx={{ width: adminMode ? "92px" : "138px" }} align="right"></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody sx={{ opacity: loading ? 0 : 1, transform: loading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
@@ -458,7 +458,7 @@ function Rooms({ adminMode = false, pageName = "rooms" }) {
                           </TableCell>
                         </TableRow>
                       ))
-                    : !Number.isInteger(Number(departmentID)) ? (
+                    : departmentID === "" || !Number.isInteger(Number(departmentID)) ? (
                       <TableRow>
                         <TableCell colSpan={4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
                           Please select a department first
@@ -558,35 +558,19 @@ function Rooms({ adminMode = false, pageName = "rooms" }) {
                           </TableCell>
                         ) : null}
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
-                            {!adminMode && (
-                              <>
-                                <IconButton
-                                  title="View Schedule"
-                                  color="view"
-                                  disabled={loading}
-                                  onClick={() => {
-                                    setAutoOpenRoomPrintDialog(false);
-                                    setRoomToView(room);
-                                    setIsViewRoomSchedule(true);
-                                  }}
-                                >
-                                  <PreviewIcon />
-                                </IconButton>
-                                <IconButton
-                                  title="Print Schedule"
-                                  color="primary"
-                                  disabled={loading}
-                                  onClick={() => {
-                                    setAutoOpenRoomPrintDialog(true);
-                                    setRoomToView(room);
-                                    setIsViewRoomSchedule(true);
-                                  }}
-                                >
-                                  <PrintIcon />
-                                </IconButton>
-                              </>
-                            )}
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 0.75, flexWrap: 'nowrap' }}>
+                            <IconButton
+                              title="View Schedule"
+                              color="view"
+                              disabled={loading}
+                              onClick={() => {
+                                setAutoOpenRoomPrintDialog(false);
+                                setRoomToView(room);
+                                setIsViewRoomSchedule(true);
+                              }}
+                            >
+                              <PreviewIcon />
+                            </IconButton>
                             <IconButton
                               title="Edit"
                               color="edit"
@@ -619,17 +603,6 @@ function Rooms({ adminMode = false, pageName = "rooms" }) {
                               }}
                             >
                               <EditIcon />
-                            </IconButton>
-                            <IconButton
-                              title="Delete"
-                              color="delete"
-                              disabled={loading}
-                              onClick={async () => {
-                                setRoomToDelete(room);
-                                setIsDialogDeleteShow(true);
-                              }}
-                            >
-                              <DeleteIcon />
                             </IconButton>
                           </Box>
                         </TableCell>
@@ -883,13 +856,12 @@ function Rooms({ adminMode = false, pageName = "rooms" }) {
                 <Box
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: "3fr 1fr",
+                    gridTemplateColumns: "7rem 5rem",
                     gap: 2,
                   }}
                 >
                   <TextField
                     required
-                    fullWidth
                     name="RoomNumber"
                     label="Room Number"
                     variant="outlined"
@@ -898,8 +870,9 @@ function Rooms({ adminMode = false, pageName = "rooms" }) {
                       const val = e.target.value.replace(/\D/g, "").slice(0, 3);
                       setRoom({ ...room, roomNumber: val });
                     }}
-                    placeholder="Ex. 357"
-                    inputProps={{ maxLength: 2, inputMode: "numeric" }}
+                    placeholder="357"
+                    inputProps={{ maxLength: 3, inputMode: "numeric" }}
+                    sx={{ maxWidth: "7rem" }}
                     InputProps={{
                       sx: {
                         borderRadius: 2,
@@ -907,17 +880,17 @@ function Rooms({ adminMode = false, pageName = "rooms" }) {
                     }}
                   />
                   <TextField
-                    fullWidth
                     name="RoomLetter"
-                    label="Letter (optional)"
+                    label="Letter"
                     variant="outlined"
                     value={room?.roomLetter ?? ""}
                     onChange={(e) => {
                       const val = e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 1);
                       setRoom({ ...room, roomLetter: val });
                     }}
-                    placeholder="Ex. A"
-                    inputProps={{ maxLength: 2, inputMode: "text" }}
+                    placeholder="A"
+                    inputProps={{ maxLength: 1, inputMode: "text" }}
+                    sx={{ maxWidth: "5rem" }}
                     InputProps={{
                       sx: {
                         borderRadius: 2,
@@ -930,7 +903,7 @@ function Rooms({ adminMode = false, pageName = "rooms" }) {
                 <Box
                 sx={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: "8rem 1fr",
                     gap: 2,
                 }}
                 >
@@ -942,6 +915,7 @@ function Rooms({ adminMode = false, pageName = "rooms" }) {
                     type="number"
                     variant="outlined"
                     defaultValue={room?.Capacity ?? ""}
+                    sx={{ maxWidth: "8rem" }}
                     InputProps={{
                     sx: {
                         borderRadius: 2,

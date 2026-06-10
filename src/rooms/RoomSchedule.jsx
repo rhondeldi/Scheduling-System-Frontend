@@ -1,5 +1,5 @@
 // ===================== IMPORTS =====================
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControl, InputLabel, List, MenuItem, Select, TextField, Typography } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControl, InputLabel, MenuItem, Select, TextField, Typography } from "@mui/material";
 import { useState, useEffect, useRef } from "react";
 import { Loading, POPUP_ERROR_COLOR } from "../components/Loading";
 
@@ -8,8 +8,10 @@ import { generateTimeSlotRowLabels } from "../js/week-time-table-grid-functions"
 
 import { useReactToPrint } from "react-to-print";
 
+import IconButton from "@mui/material/IconButton";
 import PrintIcon from '@mui/icons-material/Print';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import Tooltip from "@mui/material/Tooltip";
 
 import "../schedule/TimeTable.css";
 import "../schedule/TimeTableDropdowns.css";
@@ -216,8 +218,12 @@ export default function RoomSchedule({
         />
 
         {/* ===================== CONTROLS ===================== */}
-        <Box padding={1} display={'flex'} justifyContent={'space-between'}>
+        <Box padding={1} display={'flex'} justifyContent={'space-between'} alignItems="center">
             <Box display={'flex'} gap={5} alignItems={'center'}>
+                <Box display={'flex'} gap={1} alignItems={'center'}>
+                    <Typography variant="h5">Room - {roomToView.Name}</Typography>
+                </Box>
+
                 <FormControl sx={{ minWidth: 115 }} size="small">
                     <InputLabel id="label-id-semester">Semester</InputLabel>
                     <Select autoWidth
@@ -233,30 +239,60 @@ export default function RoomSchedule({
                         <MenuItem value={2}>Mid-year</MenuItem>
                     </Select>
                 </FormControl>
-
-                <Box display={'flex'} gap={1}>
-                    <Typography variant="h5">Room - {roomToView.Name}</Typography>
-                </Box>
             </Box>
 
-            <Box>
-                <Button variant="outlined" size="small" endIcon={<ExitToAppIcon />} onClick={handleBackButton}>Go Back</Button>
+            <Box display="flex" alignItems="center" gap={1}>
+                <Tooltip title="Print Schedule">
+                    <span>
+                        <IconButton
+                            color="view"
+                            disabled={!Number.isInteger(Number.parseInt(semesterIndex, 10))}
+                            onClick={handleOpenSignatoriesDialog}
+                            sx={{
+                                borderRadius: 5,
+                                width: 38,
+                                height: 38,                                color: !Number.isInteger(Number.parseInt(semesterIndex, 10)) ? 'text.disabled' : 'inherit',
+                                '& .MuiSvgIcon-root': {
+                                    color: !Number.isInteger(Number.parseInt(semesterIndex, 10)) ? 'text.disabled' : 'inherit',
+                                },                            }}
+                        >
+                            <PrintIcon />
+                        </IconButton>
+                    </span>
+                </Tooltip>
+                <Tooltip title="Go Back">
+                    <IconButton
+                        color="delete"
+                        onClick={handleBackButton}
+                        size="small"
+                        sx={{
+                            borderRadius: 5,
+                            width: 38,
+                            height: 38,
+                        }}
+                    >
+                        <ExitToAppIcon />
+                    </IconButton>
+                </Tooltip>
             </Box>
         </Box>
 
         {/* ===================== TIMETABLE ===================== */}
-        <div ref={contentRef} style={{ padding: (isPrinting && Number.isInteger(Number.parseInt(semesterIndex, 10))) ? '1em' : '0px' }}>
+        <div
+            ref={contentRef}
+            className={isPrinting && Number.isInteger(Number.parseInt(semesterIndex, 10)) ? "print-page" : ""}
+        >
 
             {(isPrinting && Number.isInteger(Number.parseInt(semesterIndex, 10))) ? (<>
                 <PrintHeader isBlackAndWhite={isBlackAndWhite} />
 
-                <Box display={'flex'} flexDirection={'column'} justifyContent={'center'} padding={1} gap={0} marginTop={1}>
+                <Box className="print-title-block" display={'flex'} flexDirection={'column'} justifyContent={'center'} padding={1} gap={0} marginTop={1}>
                     <Typography lineHeight={1} variant="body1" flexWrap={true} textAlign={'center'}>{selectedDepartment.Name?.toUpperCase()}</Typography>
                     <Typography lineHeight={1} variant="body1" flexWrap={true} fontWeight={'bold'} textAlign={'center'}>Room Schedule</Typography>
                     <Typography lineHeight={1} variant="body1" textAlign={'center'}>{`${SEMESTER_NAMES[semesterIndex]}${academicYear ? (', ' + academicYear) : ''}`}</Typography>
                 </Box>
 
-                <Box display={'flex'} justifyContent={'space-between'} alignItems={'center'} marginBottom={0.5}>
+                <Box className="print-meta-row" display={'flex'} justifyContent={'space-between'} alignItems={'center'} marginBottom={0.5}>
                     <Box><Typography variant="body1" fontWeight={'bold'} textAlign={'left'}>{
                         `Room: ${roomToView.Name}`
                     }</Typography></Box>
@@ -333,7 +369,7 @@ export default function RoomSchedule({
                 </tbody>
             </table>
 
-            <Box display={'flex'} flexDirection={'row'} width={'100%'} justifyContent={'space-between'} paddingInline={5} paddingTop={3}>
+            <Box className="print-signatories" display={'flex'} flexDirection={'row'} width={'100%'} justifyContent={'space-between'} paddingInline={5} paddingTop={3}>
                 {(signatoryPreparedBy) ? <Box display={'flex'} flexDirection={'column'}>
                     <Typography variant="caption" marginBottom={3}>Prepared by:</Typography>
                     <Typography variant="body1">{signatoryPreparedBy}</Typography>
@@ -350,71 +386,68 @@ export default function RoomSchedule({
 
         <div style={{ height: '0.8em' }} />
 
-        {/* ===================== PRINT BUTTON ===================== */}
-        <Box gap={1} display={(Number.isInteger(Number.parseInt(semesterIndex, 10))) ? 'flex' : 'none'} justifyContent={'center'}>
-            <Button variant="outlined" size="medium" onClick={handleOpenSignatoriesDialog} endIcon={<PrintIcon />}>Print</Button>
-        </Box>
-
         {/* ===================== PRINT DIALOG ===================== */}
         <Dialog
             open={isPrintDialogShow}
+            fullWidth
+            maxWidth="sm"
+            PaperProps={{ sx: { overflow: "visible" } }}
             onClose={() => {
                 setIsPrintDialogShow(false)
             }}
             aria-labelledby="alert-dialog-title"
             aria-describedby="alert-dialog-description"
         >
-            <DialogTitle>Room Schedule Signatories</DialogTitle>
+            <DialogTitle>Room Schedule Print Options</DialogTitle>
 
-            <DialogContent>
-                <DialogContentText id="alert-dialog-description">
-                    Add signatories if needed.
+            <DialogContent sx={{ pt: 3, overflow: "visible" }}>
+                <DialogContentText id="alert-dialog-description" sx={{ mb: 2 }}>
+                    Add optional print details. Leave fields blank to omit them from the printed page.
                 </DialogContentText>
 
-                <Box display={'flex'} flexDirection={'column'} gap={2} marginTop={2}>
+                <Box display={'flex'} flexDirection={'column'} gap={2.5}>
 
                     <Box width={'100%'} display={'flex'} gap={1}>
                         <TextField
                             fullWidth
-                            label="S.Y. or A.Y. - 20XX - 20YY"
+                            label="Academic Year"
                             autoFocus
-                            variant="standard"
+                            size="small"
+                            placeholder="20XX - 20YY"
                             onChange={(e) => setAcademicYear(e.target.value)}
                             defaultValue={academicYear ? academicYear : ""}
                         />
                     </Box>
 
-                    <Box width={'100%'} display={'flex'} gap={1}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Prepared by</Typography>
+                    <Box width={'100%'} display={'grid'} gridTemplateColumns={{ xs: '1fr', sm: '1fr 0.7fr' }} gap={1.5}>
                         <TextField
                             fullWidth
-                            label="Prepared By"
-                            autoFocus
-                            variant="standard"
+                            label="Name"
+                            size="small"
                             onChange={(e) => setSignatoryPreparedBy(e.target.value)}
                             defaultValue={signatoryPreparedBy ? signatoryPreparedBy : ""}
                         />
                         <TextField
                             label="Position"
-                            autoFocus
-                            variant="standard"
+                            size="small"
                             onChange={(e) => setPositionPreparedBy(e.target.value)}
                             defaultValue={positionPreparedBy ? positionPreparedBy : ""}
                         />
                     </Box>
 
-                    <Box width={'100%'} display={'flex'} gap={1}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Checked and reviewed by</Typography>
+                    <Box width={'100%'} display={'grid'} gridTemplateColumns={{ xs: '1fr', sm: '1fr 0.7fr' }} gap={1.5}>
                         <TextField
                             fullWidth
-                            label="Check and Reviewed By"
-                            autoFocus
-                            variant="standard"
+                            label="Name"
+                            size="small"
                             onChange={(e) => setSignatoryCheckedAndReviewedBy(e.target.value)}
                             defaultValue={signatoryCheckedAndReviewedBy ? signatoryCheckedAndReviewedBy : ""}
                         />
                         <TextField
                             label="Position"
-                            autoFocus
-                            variant="standard"
+                            size="small"
                             onChange={(e) => setPositionCheckedAndReviewedBy(e.target.value)}
                             defaultValue={positionCheckedAndReviewedBy ? positionCheckedAndReviewedBy : ""}
                         />
@@ -423,8 +456,8 @@ export default function RoomSchedule({
             </DialogContent>
 
             <DialogActions>
-                <Button variant="outlined" size="medium" onClick={reactToPrintFn} endIcon={<PrintIcon />}>Print Colored</Button>
-                <Button variant="outlined" size="medium" onClick={reactToPrintBlackAndWhiteFn} endIcon={<PrintIcon />}>Print Black & White</Button>
+                <Button variant="contained" color="print" size="medium" onClick={reactToPrintFn} endIcon={<PrintIcon />}>Print Colored</Button>
+                <Button variant="outlined" color="primary" size="medium" onClick={reactToPrintBlackAndWhiteFn} endIcon={<PrintIcon />}>Print Black & White</Button>
                 <Button
                     variant="outlined" size="medium"
                     onClick={() => {

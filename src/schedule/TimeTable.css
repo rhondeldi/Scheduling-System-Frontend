@@ -70,11 +70,77 @@
     cursor: pointer;
 }
 
+.print-document {
+    width: 100%;
+}
+
+.print-page {
+    padding: 1in;
+    background: white;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+}
+
+.print-title-block {
+    margin-top: 0.12in;
+    margin-bottom: 0.1in;
+}
+
+.print-meta-row {
+    gap: 0.25in;
+    margin-bottom: 0.08in;
+}
+
+.print-signatories {
+    gap: 0.5in;
+    margin-top: 0.15in;
+}
+
 @media print {
+  @page {
+    size: portrait;
+    margin: 1in;
+  }
+
+  body {
+    background: white !important;
+    margin: 0 !important;
+  }
+
+  .print-document {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .print-page {
+    min-height: auto;
+    padding: 1in;
+    margin: 0 auto;
+    width: auto;
+  }
+
+  .print-title-block {
+    margin-top: 0.12in !important;
+    margin-bottom: 0.12in !important;
+    padding: 0 !important;
+  }
+
+  .print-meta-row {
+    margin-bottom: 0.1in !important;
+  }
+
+  .print-signatories {
+    padding-inline: 0.25in !important;
+    padding-top: 0.25in !important;
+  }
+
   .time-table {
     page-break-inside: avoid;
     break-inside: avoid;
     width: 100%;
+    table-layout: fixed;
   }
 
   .time-slot-header,

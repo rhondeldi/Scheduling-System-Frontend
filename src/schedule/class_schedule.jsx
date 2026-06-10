@@ -37,6 +37,7 @@ import { MainHeader } from "../components/Header";
 import {
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -955,6 +956,7 @@ function TimeTable() {
   }) => (
     <div
       key={`${curriculumIdx}-${yearIdx}-${secIdx}`}
+      className={isPrinting ? "print-page" : ""}
       style={{
         breakAfter: pageBreak ? "page" : "auto",
         pageBreakAfter: pageBreak ? "always" : "auto",
@@ -964,7 +966,7 @@ function TimeTable() {
         <>
           <PrintHeader isBlackAndWhite={isBlackAndWhite} />
 
-          <Box display={"flex"} flexDirection={"column"} justifyContent={"center"} padding={1} gap={0} marginTop={1}>
+          <Box className="print-title-block" display={"flex"} flexDirection={"column"} justifyContent={"center"} padding={1} gap={0} marginTop={1}>
             <Typography lineHeight={1} variant="body1" flexWrap={true} textAlign={"center"}>
               {allDepartments.find((d) => d.DepartmentID == departmentID)?.Name?.toUpperCase()}
             </Typography>
@@ -976,12 +978,12 @@ function TimeTable() {
             </Typography>
           </Box>
 
-          <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
+          <Box className="print-meta-row" display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
             <Typography variant="body1">{`Program: ${departmentCurriculumsData[curriculumIdx]?.CurriculumName}`}</Typography>
             <Typography variant="body1">{`Year: ${departmentCurriculumsData[curriculumIdx]?.YearLevels[yearIdx]?.Name}`}</Typography>
           </Box>
 
-          <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"} marginBottom={1}>
+          <Box className="print-meta-row" display={"flex"} justifyContent={"space-between"} alignItems={"center"} marginBottom={1}>
             {adviserFullName ? <Typography variant="body1">{`Adviser: ${adviserFullName}`}</Typography> : null}
             <Typography variant="body1">{`Section: ${SECTION_CHARACTERS[secIdx]}`}</Typography>
           </Box>
@@ -1039,7 +1041,7 @@ function TimeTable() {
         </tbody>
       </table>
 
-      <Box display={"flex"} flexDirection={"row"} width={"100%"} justifyContent={"space-between"} paddingInline={5} paddingTop={3}>
+      <Box className="print-signatories" display={"flex"} flexDirection={"row"} width={"100%"} justifyContent={"space-between"} paddingInline={5} paddingTop={3}>
         {signatoryPreparedBy ? (
           <Box display={"flex"} flexDirection={"column"}>
             <Typography variant="caption" marginBottom={3}>Prepared by:</Typography>
@@ -1213,10 +1215,15 @@ function TimeTable() {
         {/* ===================== PRINT CONTENT WRAPPER ===================== */}
         <div
           ref={contentRef}
+          className={
+            isPrinting && (Number.isInteger(Number.parseInt(sectionIndex, 10)) || batchPrintSchedules.length > 0)
+              ? "print-document"
+              : ""
+          }
           style={{
             padding:
               isPrinting && (Number.isInteger(Number.parseInt(sectionIndex, 10)) || batchPrintSchedules.length > 0)
-                ? "1in"
+                ? 0
                 : "0px",
           }}
         >
@@ -1239,6 +1246,7 @@ function TimeTable() {
               <PrintHeader isBlackAndWhite={isBlackAndWhite} />
 
               <Box
+                className="print-title-block"
                 display={"flex"}
                 flexDirection={"column"}
                 justifyContent={"center"}
@@ -1273,6 +1281,7 @@ function TimeTable() {
               </Box>
 
               <Box
+                className="print-meta-row"
                 display={"flex"}
                 justifyContent={"space-between"}
                 alignItems={"center"}
@@ -1283,6 +1292,7 @@ function TimeTable() {
               </Box>
 
               <Box
+                className="print-meta-row"
                 display={"flex"}
                 justifyContent={"space-between"}
                 alignItems={"center"}
@@ -1435,6 +1445,7 @@ function TimeTable() {
           </table>
 
           <Box
+            className="print-signatories"
             display={"flex"}
             flexDirection={"row"}
             width={"100%"}
@@ -1475,31 +1486,34 @@ function TimeTable() {
         {/* ===================== PRINT DIALOG ===================== */}
         <Dialog
           open={isPrintDialogShow}
+          fullWidth
+          maxWidth="sm"
+          PaperProps={{ sx: { overflow: "visible" } }}
           onClose={() => {
             setIsPrintDialogShow(false);
           }}
           aria-labelledby="alert-dialog-title"
           aria-describedby="alert-dialog-description"
         >
-          <DialogTitle>Student Schedule Signatories</DialogTitle>
+          <DialogTitle>Student Schedule Print Options</DialogTitle>
 
-          <DialogContent>
-            <DialogContentText id="alert-dialog-description">
-                Add signatories and other info if needed to include in printing.
+          <DialogContent sx={{ pt: 3, overflow: "visible" }}>
+            <DialogContentText id="alert-dialog-description" sx={{ mb: 2 }}>
+              Add optional print details. Leave fields blank to omit them from the printed page.
             </DialogContentText>
 
             <Box
               display={"flex"}
               flexDirection={"column"}
-              gap={2}
-              marginTop={2}
+              gap={2.5}
             >
               <Box width={"100%"} display={"flex"} gap={1}>
                 <TextField
                   fullWidth
-                  label="S.Y. or A.Y. - 20XX - 20YY"
+                  label="Academic Year"
                   autoFocus
-                  variant="standard"
+                  size="small"
+                  placeholder="20XX - 20YY"
                   onChange={(e) => setAcademicYear(e.target.value)}
                   defaultValue={academicYear ? academicYear : ""}
                 />
@@ -1509,37 +1523,35 @@ function TimeTable() {
                 <TextField
                   fullWidth
                   label="Adviser"
-                  autoFocus
-                  variant="standard"
+                  size="small"
                   onChange={(e) => setAdviserFullName(e.target.value)}
                   defaultValue={adviserFullName ? adviserFullName : ""}
                 />
               </Box>
 
-              <Box width={"100%"} display={"flex"} gap={1}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Prepared by</Typography>
+              <Box width={"100%"} display={"grid"} gridTemplateColumns={{ xs: "1fr", sm: "1fr 0.7fr" }} gap={1.5}>
                 <TextField
                   fullWidth
-                  label="Prepared By"
-                  autoFocus
-                  variant="standard"
+                  label="Name"
+                  size="small"
                   onChange={(e) => setSignatoryPreparedBy(e.target.value)}
                   defaultValue={signatoryPreparedBy ? signatoryPreparedBy : ""}
                 />
                 <TextField
                   label="Position"
-                  autoFocus
-                  variant="standard"
+                  size="small"
                   onChange={(e) => setPositionPreparedBy(e.target.value)}
                   defaultValue={positionPreparedBy ? positionPreparedBy : ""}
                 />
               </Box>
 
-              <Box width={"100%"} display={"flex"} gap={1}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Checked and reviewed by</Typography>
+              <Box width={"100%"} display={"grid"} gridTemplateColumns={{ xs: "1fr", sm: "1fr 0.7fr" }} gap={1.5}>
                 <TextField
                   fullWidth
-                  label="Check and Reviewed By"
-                  autoFocus
-                  variant="standard"
+                  label="Name"
+                  size="small"
                   onChange={(e) =>
                     setSignatoryCheckedAndReviewedBy(e.target.value)
                   }
@@ -1551,8 +1563,7 @@ function TimeTable() {
                 />
                 <TextField
                   label="Position"
-                  autoFocus
-                  variant="standard"
+                  size="small"
                   onChange={(e) =>
                     setPositionCheckedAndReviewedBy(e.target.value)
                   }
@@ -1568,7 +1579,8 @@ function TimeTable() {
 
           <DialogActions>
             <Button
-              variant="outlined"
+              variant="contained"
+              color="print"
               size="medium"
               onClick={() =>
                 {
@@ -1581,6 +1593,7 @@ function TimeTable() {
             </Button>
             <Button
               variant="outlined"
+              color="primary"
               size="medium"
               onClick={() =>
               {
@@ -1644,16 +1657,23 @@ function TimeTable() {
             disabled={!semesterIndex || pickedUpSubject || isGenerating}
             variant="contained"
             color="success"
-            startIcon={<PlayArrowIcon />}
+            startIcon={
+                isGenerating ? (
+                <CircularProgress size={16} color="inherit" thickness={5} />
+                ) : (
+                <PlayArrowIcon />
+                )
+            }
             sx={{
                 borderRadius: 3,
                 py: 1.2,
+                minHeight: 44,
                 fontWeight: 600,
                 textTransform: "none",
                 boxShadow: "none",
             }}
             >
-            {isGenerating ? "Generating..." : "Generate Semester Schedule"}
+            Generate Semester Schedule
             </Button>
 
             <Button

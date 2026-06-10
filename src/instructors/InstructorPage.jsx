@@ -23,7 +23,6 @@ import {
 } from "../js/instructors_v2";
 
 import PreviewIcon from "@mui/icons-material/Preview";
-import PrintIcon from "@mui/icons-material/Print";
 
 import {
   Box,
@@ -226,7 +225,7 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
   const [loading, setLoading] = useState(false);
   const [isPaginating, setIsPaginating] = useState(false);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -442,7 +441,7 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
                     <TableCell sx={{ width: "32%" }}>LAST NAME</TableCell>
                     <TableCell sx={{ width: "32%" }}>FIRST NAME</TableCell>
                     <TableCell sx={{ width: "20%" }}>MIDDLE INITIAL</TableCell>
-                    <TableCell sx={{ width: "152px" }}></TableCell>
+                    <TableCell sx={{ width: adminMode ? "92px" : "54px" }}></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody sx={{ opacity: IsLoading || loading ? 0 : 1, transform: IsLoading || loading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
@@ -489,7 +488,7 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
                         <TableCell>{instructor.FirstName}</TableCell>
                         <TableCell>{instructor.MiddleInitial}</TableCell>
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5em', flexWrap: 'nowrap' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 0.75, flexWrap: 'nowrap' }}>
                             <IconButton
                               title="View Schedule"
                               color="view"

@@ -543,18 +543,44 @@ function CurriculumView({
                                 />
                               </Box>
                             )}
-                            <TableContainer component={Paper}>
-                              <Table size="small">
-                                <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
+                            <TableContainer
+                              component={Paper}
+                              sx={{
+                                height: "auto",
+                                maxHeight: "none",
+                                overflow: "visible",
+                                boxShadow: "none",
+                                border: "1px solid",
+                                borderColor: "divider",
+                                borderRadius: 1,
+                              }}
+                            >
+                              <Table
+                                size="small"
+                                sx={{
+                                  tableLayout: "fixed",
+                                  "& .MuiTableCell-root": {
+                                    py: 0.85,
+                                    px: 1.25,
+                                    verticalAlign: "middle",
+                                  },
+                                  "& .MuiTableCell-head": {
+                                    fontSize: "0.72rem",
+                                    letterSpacing: 0,
+                                    textTransform: "uppercase",
+                                  },
+                                }}
+                              >
+                                <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700 } }}>
                                   <TableRow>
-                                    <TableCell>Code</TableCell>
+                                    <TableCell sx={{ width: 120 }}>Code</TableCell>
                                     <TableCell>Name</TableCell>
-                                    <TableCell>Lec</TableCell>
-                                    <TableCell>Lab</TableCell>
-                                    <TableCell>Instructors</TableCell>
+                                    <TableCell sx={{ width: 70 }} align="center">Lec</TableCell>
+                                    <TableCell sx={{ width: 70 }} align="center">Lab</TableCell>
+                                    <TableCell sx={{ width: 110 }} align="center">Instructors</TableCell>
 
                                     {(mode === "edit" || mode === "new") && (
-                                      <TableCell align="right">
+                                      <TableCell align="right" sx={{ width: 92 }}>
                                         Actions
                                       </TableCell>
                                     )}
@@ -563,7 +589,7 @@ function CurriculumView({
                                 <TableBody>
                                   {sem.Subjects.map((sub, subIndex) => (
                                     <TableRow key={sub.ID}>
-                                      <TableCell>{sub.Code}</TableCell>
+                                      <TableCell sx={{ fontWeight: 700 }}>{sub.Code}</TableCell>
 
                                       <TableCell>
                                         <Tooltip title={sub.Name}>
@@ -573,11 +599,11 @@ function CurriculumView({
                                         </Tooltip>
                                       </TableCell>
 
-                                      <TableCell>{sub.LecHours}</TableCell>
+                                      <TableCell align="center">{sub.LecHours}</TableCell>
 
-                                      <TableCell>{sub.LabHours}</TableCell>
+                                      <TableCell align="center">{sub.LabHours}</TableCell>
 
-                                      <TableCell>
+                                      <TableCell align="center">
                                         {sub.DesignatedInstructorsID?.length
                                           ? `${sub.DesignatedInstructorsID.length}x`
                                           : "auto"}
@@ -586,89 +612,88 @@ function CurriculumView({
                                       {(mode === "edit" || mode === "new") && (
                                         <TableCell align="right">
                                           {/* EDIT SUBJECT */}
-                                          <Button
-                                            variant="contained"
-                                            color="primary"
-                                            size="small"
-                                            startIcon={<EditIcon />}
-                                            sx={{ mr: 1 }}
-                                            onClick={async () => {
-                                              setSubject(sub);
+                                          <Box display="flex" justifyContent="flex-end" gap={0.75}>
+                                            <Tooltip title="Edit subject">
+                                              <IconButton
+                                                color="edit"
+                                                size="small"
+                                                onClick={async () => {
+                                                  setSubject(sub);
 
-                                              setYearSemSubjectTarget({
-                                                index_year_level: yearTabIndex,
-                                                index_semester: si,
-                                                subject_index: subIndex,
-                                              });
+                                                  setYearSemSubjectTarget({
+                                                    index_year_level: yearTabIndex,
+                                                    index_semester: si,
+                                                    subject_index: subIndex,
+                                                  });
 
-                                              try {
-                                                const new_instructors = [];
+                                                  try {
+                                                    const new_instructors = [];
 
-                                                if (
-                                                  sub?.DesignatedInstructorsID
-                                                ) {
-                                                  for (let num of sub.DesignatedInstructorsID) {
-                                                    const instructor_basic_info =
-                                                      await fetchInstructorBasic(
-                                                        num,
-                                                      );
+                                                    if (
+                                                      sub?.DesignatedInstructorsID
+                                                    ) {
+                                                      for (let num of sub.DesignatedInstructorsID) {
+                                                        const instructor_basic_info =
+                                                          await fetchInstructorBasic(
+                                                            num,
+                                                          );
 
-                                                    new_instructors.push({
-                                                      InstructorID:
-                                                        instructor_basic_info.InstructorID,
+                                                        new_instructors.push({
+                                                          InstructorID:
+                                                            instructor_basic_info.InstructorID,
 
-                                                      Name: `${instructor_basic_info.FirstName} ${instructor_basic_info.MiddleInitial}. ${instructor_basic_info.LastName}`,
+                                                          Name: `${instructor_basic_info.FirstName} ${instructor_basic_info.MiddleInitial}. ${instructor_basic_info.LastName}`,
+                                                        });
+                                                      }
+                                                    }
+
+                                                    setChipInstructors(
+                                                      new_instructors,
+                                                    );
+                                                  } catch (err) {
+                                                    setPopupOptions({
+                                                      Heading: "Read Subject Error",
+                                                      HeadingStyle: {
+                                                        background:
+                                                          POPUP_WARNING_COLOR,
+                                                        color: "black",
+                                                      },
+                                                      Message: `${err}`,
                                                     });
                                                   }
-                                                }
 
-                                                setChipInstructors(
-                                                  new_instructors,
-                                                );
-                                              } catch (err) {
-                                                setPopupOptions({
-                                                  Heading: "Read Subject Error",
-                                                  HeadingStyle: {
-                                                    background:
-                                                      POPUP_WARNING_COLOR,
-                                                    color: "black",
-                                                  },
-                                                  Message: `${err}`,
-                                                });
-                                              }
+                                                  setIsDialogFormOpen(true);
+                                                }}
+                                              >
+                                                <EditIcon />
+                                              </IconButton>
+                                            </Tooltip>
 
-                                              setIsDialogFormOpen(true);
-                                            }}
-                                          >
-                                            Edit
-                                          </Button>
+                                            {/* REMOVE SUBJECT */}
+                                            <Tooltip title="Remove subject">
+                                              <IconButton
+                                                color="delete"
+                                                size="small"
+                                                onClick={() => {
+                                                  const c =
+                                                    structuredClone(
+                                                      editedCurriculum,
+                                                    );
 
-                                          {/* REMOVE SUBJECT */}
-                                          <Button
-                                            variant="contained"
-                                            color="error"
-                                            size="small"
-                                            startIcon={
-                                              <RemoveCircleOutlineIcon />
-                                            }
-                                            onClick={() => {
-                                              const c =
-                                                structuredClone(
-                                                  editedCurriculum,
-                                                );
+                                                  c.YearLevels[
+                                                    yearTabIndex
+                                                  ].Semesters[si].Subjects.splice(
+                                                    subIndex,
+                                                    1,
+                                                  );
 
-                                              c.YearLevels[
-                                                yearTabIndex
-                                              ].Semesters[si].Subjects.splice(
-                                                subIndex,
-                                                1,
-                                              );
-
-                                              setEditedCurriculum(c);
-                                            }}
-                                          >
-                                            Remove
-                                          </Button>
+                                                  setEditedCurriculum(c);
+                                                }}
+                                              >
+                                                <RemoveCircleOutlineIcon />
+                                              </IconButton>
+                                            </Tooltip>
+                                          </Box>
                                         </TableCell>
                                       )}
                                     </TableRow>

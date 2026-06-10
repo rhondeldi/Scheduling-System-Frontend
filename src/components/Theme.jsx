@@ -72,6 +72,11 @@ const theme = createTheme({
       main: brand.success,
       contrastText: '#FFFFFF',
     },
+    print: {
+      main: brand.primary,
+      dark: brand.primaryDark,
+      contrastText: '#FFFFFF',
+    },
     text: {
       primary: brand.text,
       secondary: alpha(brand.text, 0.72),
@@ -399,24 +404,80 @@ const theme = createTheme({
       },
       styleOverrides: {
         root: {
-          color: '#FFFFFF',
+          width: 34,
+          height: 34,
+          borderRadius: 8,
+          color: brand.primary,
+          border: `1px solid ${alpha(brand.primary, 0.18)}`,
+          backgroundColor: alpha(brand.primary, 0.06),
+          transition: 'background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+          '& .MuiSvgIcon-root': {
+            fontSize: '1.1rem',
+          },
           '&:hover': {
-            filter: 'brightness(0.8)',
+            color: brand.primaryDark,
+            borderColor: alpha(brand.primary, 0.32),
+            backgroundColor: alpha(brand.primary, 0.12),
+            filter: 'none',
+          },
+          '&.Mui-disabled': {
+            color: alpha(brand.text, 0.32),
+            borderColor: alpha(brand.text, 0.1),
+            backgroundColor: alpha(brand.text, 0.04),
+          },
+          '&.MuiIconButton-colorPrimary, &.MuiIconButton-colorPrint': {
+            color: '#FFFFFF',
+            borderColor: brand.primary,
+            backgroundColor: brand.primary,
+            '&:hover': {
+              color: '#FFFFFF',
+              borderColor: brand.primaryDark,
+              backgroundColor: brand.primaryDark,
+              boxShadow: `0 2px 8px ${alpha(brand.primaryDark, 0.18)}`,
+            },
+          },
+          '&.MuiIconButton-colorSecondary': {
+            color: brand.primaryDark,
+            borderColor: brand.accentLight,
+            backgroundColor: brand.secondary,
+            '&:hover': {
+              color: brand.primaryDark,
+              borderColor: brand.secondaryDark,
+              backgroundColor: brand.secondaryLight,
+            },
           },
           '&.MuiIconButton-colorPassword': {
+            color: brand.primaryDark,
             backgroundColor: brand.muted,
           },
           '&.MuiIconButton-colorView': {
+            color: '#FFFFFF',
+            borderColor: brand.primary,
             backgroundColor: brand.primary,
+            '&:hover': {
+              color: '#FFFFFF',
+              borderColor: brand.primaryDark,
+              backgroundColor: brand.primaryDark,
+            },
           },
           '&.MuiIconButton-colorEdit': {
+            color: '#FFFFFF',
+            borderColor: brand.accent,
             backgroundColor: brand.accent,
+            '&:hover': {
+              color: '#FFFFFF',
+              borderColor: brand.accentDark,
+              backgroundColor: brand.accentDark,
+            },
           },
           '&.MuiIconButton-colorDelete': {
+            color: '#FFFFFF',
+            borderColor: brand.danger,
             backgroundColor: brand.danger,
             '&:hover': {
+              color: '#FFFFFF',
+              borderColor: brand.dangerDark,
               backgroundColor: brand.dangerDark,
-              filter: 'none',
             },
           },
           '&.dialogClose': {

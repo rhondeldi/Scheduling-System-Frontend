@@ -79,7 +79,7 @@ export default function Subjects() {
   const [isOperationLoading, setIsOperationLoading] = useState(false);
 
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState("");

@@ -936,14 +936,14 @@ export default function InstructorDataView({
             >
             <span>
             <IconButton
-            color="view"
-            variant="outlined"
+            color="default"
             disabled={semesterIndex === ""}
             onClick={handleOpenSignatoriesDialog}
             sx={{
             borderRadius: 5,
             width: 38,
             height: 38,
+            color: semesterIndex === "" ? 'text.disabled' : 'inherit',
             }}
             >
             <PrintIcon />
@@ -1137,7 +1137,6 @@ export default function InstructorDataView({
                   size="small"
                   label="First Name"
                   value={firstName}
-                  helperText="Letters, spaces, hyphens, apostrophes only"
                   inputProps={{
                     style: { textTransform: "uppercase" },
                   }}
@@ -1160,7 +1159,6 @@ export default function InstructorDataView({
                   size="small"
                   label="M.I."
                   value={middleInitial}
-                  helperText="Single initial only"
                   inputProps={{ maxLength: 1 }}
                   InputProps={{
                     endAdornment: (
@@ -1186,7 +1184,6 @@ export default function InstructorDataView({
                   size="small"
                   label="Last Name"
                   value={lastName}
-                  helperText="Letters, spaces, hyphens, apostrophes only"
                   inputProps={{
                     style: { textTransform: "uppercase" },
                   }}
@@ -1212,7 +1209,6 @@ export default function InstructorDataView({
                   size="small"
                   label="First Name"
                   value={firstName}
-                  helperText="Letters, spaces, hyphens, apostrophes only"
                   inputProps={{
                     style: { textTransform: "uppercase" },
                   }}
@@ -1261,7 +1257,6 @@ export default function InstructorDataView({
                   size="small"
                   label="Last Name"
                   value={lastName}
-                  helperText="Letters, spaces, hyphens, apostrophes only"
                   inputProps={{
                     style: { textTransform: "uppercase" },
                   }}
@@ -1939,81 +1934,73 @@ export default function InstructorDataView({
       {/* ===================== PRINT DIALOG ===================== */}
       <Dialog
         open={isPrintDialogShow}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { overflow: "visible" } }}
         onClose={() => {
           setIsPrintDialogShow(false);
         }}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
       >
-        <DialogTitle>Faculty Schedule Signatories</DialogTitle>
+        <DialogTitle>Faculty Schedule Print Options</DialogTitle>
 
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            Add signatories if needed.
-            browser print dialog.
+        <DialogContent sx={{ pt: 3, overflow: "visible" }}>
+          <DialogContentText id="alert-dialog-description" sx={{ mb: 2 }}>
+            Add optional print details. Leave fields blank to omit them from the printed page.
           </DialogContentText>
 
-          <Box display={"flex"} flexDirection={"column"} gap={2} marginTop={2}>
+          <Box display={"flex"} flexDirection={"column"} gap={2.5}>
             <Box width={"100%"} display={"flex"} gap={1}>
               <TextField
                 fullWidth
-                label="S.Y. or A.Y. - 20XX - 20YY"
-                autoFocus
-                variant="standard"
+                label="Academic Year"
+                size="small"
+                placeholder="20XX - 20YY"
                 onChange={(e) => setAcademicYear(e.target.value)}
                 defaultValue={academicYear ? academicYear : ""}
               />
             </Box>
 
-            {/* 
-                    <Box width={'100%'} display={'flex'} gap={1}>
-                        <TextField
-                            fullWidth
-                            label="Highest Educational Attainment"
-                            autoFocus
-                            variant="standard"
-                            onChange={(e) => setHighestEducationalAttainment(e.target.value)}
-                            defaultValue={highestEducationalAttainment ? highestEducationalAttainment : ""}
-                        />
-                    </Box>
-
-                    <Box width={'100%'} display={'flex'} gap={1}>
-                        <TextField
-                            type="number"
-                            fullWidth
-                            label="Number of Preperation(s)"
-                            autoFocus
-                            variant="standard"
-                            onChange={(e) => setNumbersOfPreperation(e.target.value)}
-                            defaultValue={numbersOfPreperation ? numbersOfPreperation : ""}
-                        />
-                    </Box> */}
-
-            <Box width={"100%"} display={"flex"} gap={1}>
-                <TextField
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              Conforme
+            </Typography>
+            <Box
+              width={"100%"}
+              display={"grid"}
+              gridTemplateColumns={{ xs: "1fr", sm: "1fr 0.7fr" }}
+              gap={1.5}
+            >
+              <TextField
                 fullWidth
-                label="Conforme"
-                variant="standard"
+                label="Name"
+                size="small"
                 value={signatoryConforme || ""}
                 InputProps={{
-                    readOnly: true,
+                  readOnly: true,
                 }}
-                />
+              />
               <TextField
                 label="Position"
-                autoFocus
-                variant="standard"
+                size="small"
                 onChange={(e) => setPositionConforme(e.target.value)}
                 defaultValue={positionConforme ? positionConforme : ""}
               />
             </Box>
 
-            <Box width={"100%"} display={"flex"} gap={1}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              Recommending Approval
+            </Typography>
+            <Box
+              width={"100%"}
+              display={"grid"}
+              gridTemplateColumns={{ xs: "1fr", sm: "1fr 0.7fr" }}
+              gap={1.5}
+            >
               <TextField
                 fullWidth
-                label="Recommending Approval"
-                autoFocus
-                variant="standard"
+                label="Name"
+                size="small"
                 onChange={(e) =>
                   setSignatoryRecommendingApproval(e.target.value)
                 }
@@ -2025,8 +2012,7 @@ export default function InstructorDataView({
               />
               <TextField
                 label="Position"
-                autoFocus
-                variant="standard"
+                size="small"
                 onChange={(e) =>
                   setPositionRecommendingApproval(e.target.value)
                 }
@@ -2038,37 +2024,49 @@ export default function InstructorDataView({
               />
             </Box>
 
-            <Box width={"100%"} display={"flex"} gap={1}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              Reviewed by
+            </Typography>
+            <Box
+              width={"100%"}
+              display={"grid"}
+              gridTemplateColumns={{ xs: "1fr", sm: "1fr 0.7fr" }}
+              gap={1.5}
+            >
               <TextField
                 fullWidth
-                label="Reviewed by"
-                autoFocus
-                variant="standard"
+                label="Name"
+                size="small"
                 onChange={(e) => setSignatoryReviewedBy(e.target.value)}
                 defaultValue={signatoryReviewedBy ? signatoryReviewedBy : ""}
               />
               <TextField
                 label="Position"
-                autoFocus
-                variant="standard"
+                size="small"
                 onChange={(e) => setPositionReviewedBy(e.target.value)}
                 defaultValue={positionReviewedBy ? positionReviewedBy : ""}
               />
             </Box>
 
-            <Box width={"100%"} display={"flex"} gap={1}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              Approved
+            </Typography>
+            <Box
+              width={"100%"}
+              display={"grid"}
+              gridTemplateColumns={{ xs: "1fr", sm: "1fr 0.7fr" }}
+              gap={1.5}
+            >
               <TextField
                 fullWidth
-                label="Approved"
-                autoFocus
-                variant="standard"
+                label="Name"
+                size="small"
                 onChange={(e) => setSignatoryApproved(e.target.value)}
                 defaultValue={signatoryApproved ? signatoryApproved : ""}
               />
               <TextField
                 label="Position"
-                autoFocus
-                variant="standard"
+                size="small"
                 onChange={(e) => setPositionApproved(e.target.value)}
                 defaultValue={positionApproved ? positionApproved : ""}
               />
@@ -2078,7 +2076,8 @@ export default function InstructorDataView({
 
         <DialogActions>
           <Button
-            variant="outlined"
+            variant="contained"
+            color="print"
             size="medium"
             onClick={reactToPrintFn}
             endIcon={<PrintIcon />}
@@ -2087,6 +2086,7 @@ export default function InstructorDataView({
           </Button>
           <Button
             variant="outlined"
+            color="primary"
             size="medium"
             onClick={reactToPrintBlackAndWhiteFn}
             endIcon={<PrintIcon />}
@@ -2098,11 +2098,6 @@ export default function InstructorDataView({
             size="medium"
             onClick={() => {
               setIsPrintDialogShow(false);
-
-              setConsultation("");
-              setDesignation("");
-              setResearch("");
-              setExtension("");
 
               setSignatoryConforme("");
               setSignatoryRecommendingApproval("");
@@ -2119,7 +2114,6 @@ export default function InstructorDataView({
           </Button>
         </DialogActions>
       </Dialog>
-
       <div style={{ height: "3.25em" }} />
     </>
   );
