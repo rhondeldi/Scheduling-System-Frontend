@@ -55,6 +55,8 @@ const emptySubject = {
   Name: "",
   LecHours: 0,
   LabHours: 0,
+  LecUnits: 0,
+  LabUnits: 0,
   BitFlags: 0,
   AsynchronousHours: 0,
   SaturdayOnly: false,
@@ -205,6 +207,8 @@ export default function Subjects() {
       ...subject,
       LecHours: lecHoursNum,
       LabHours: labHoursNum,
+      LecUnits: Number(subject.LecUnits) || 0,
+      LabUnits: Number(subject.LabUnits) || 0,
       BitFlags: Number(subject.BitFlags) || 0,
       SubjectType: normalizedType,
       AsynchronousHours: asyncHoursNum,
@@ -345,6 +349,8 @@ export default function Subjects() {
 
                     <TableCell sx={{ width: "8%" }}>LAB</TableCell>
 
+                    <TableCell sx={{ width: "8%" }}>UNITS</TableCell>
+
                     <TableCell sx={{ width: "9%" }}>ASYNC</TableCell>
 
                     <TableCell sx={{ width: "80px" }} />
@@ -370,6 +376,10 @@ export default function Subjects() {
                         <TableCell>
                           <Skeleton />
                         </TableCell>
+                        <TableCell>
+                          <Skeleton />
+                        </TableCell>
+
                         <TableCell>
                           <Skeleton />
                         </TableCell>
@@ -412,7 +422,7 @@ export default function Subjects() {
                   ) : subjectList.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         align="center"
                         sx={{
                           fontStyle: "italic",
@@ -452,6 +462,8 @@ export default function Subjects() {
                           <TableCell>{s.LecHours}</TableCell>
 
                           <TableCell>{s.LabHours}</TableCell>
+
+                          <TableCell>{s.Units ?? 0}</TableCell>
 
                           <TableCell>
                             {asyncHours > 0 ? (
@@ -739,6 +751,40 @@ export default function Subjects() {
                   setSubject((previous) => ({
                     ...previous,
                     LabHours: e.target.value,
+                  }))
+                }
+              />
+            </Box>
+
+            <Box display="flex" gap={2}>
+              <TextField
+                margin="dense"
+                label="Lecture Units"
+                type="number"
+                fullWidth
+                value={subject.LecUnits ?? 0}
+                inputProps={{ min: 0, step: 1 }}
+                helperText="Lecture credit units"
+                onChange={(e) =>
+                  setSubject((previous) => ({
+                    ...previous,
+                    LecUnits: e.target.value,
+                  }))
+                }
+              />
+
+              <TextField
+                margin="dense"
+                label="Lab Units"
+                type="number"
+                fullWidth
+                value={subject.LabUnits ?? 0}
+                inputProps={{ min: 0, step: 1 }}
+                helperText="Laboratory credit units"
+                onChange={(e) =>
+                  setSubject((previous) => ({
+                    ...previous,
+                    LabUnits: e.target.value,
                   }))
                 }
               />

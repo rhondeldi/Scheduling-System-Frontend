@@ -51,6 +51,56 @@ import InstructorDataView from "./InstructorDataView";
 
 import theme from "../components/Theme";
 
+// short labels for each supported semester, matching the backend's
+// HeldUnitsPerSemester ordering (0 = 1st sem, 1 = 2nd sem, 2 = Mid-year).
+const SEMESTER_SHORT_LABELS = ["1st", "2nd", "Mid-yr"];
+
+// Renders an instructor's held units broken down per semester. Each semester's
+// value sits beside its short label; the unit cap (MaxUnits) is shown once
+// since it applies to every semester independently. A value exceeding the cap
+// is highlighted. Falls back to the combined total if the backend response
+// predates the per-semester breakdown.
+function HeldUnitsPerSemesterCell({ instructor }) {
+  const cap = instructor.MaxUnits ?? 32;
+  const perSemester = instructor.HeldUnitsPerSemester;
+
+  if (!Array.isArray(perSemester)) {
+    return `${instructor.HeldUnits ?? 0} / ${cap}`;
+  }
+
+  return (
+    <Box sx={{ display: "inline-flex", flexDirection: "column", minWidth: 64 }}>
+      {perSemester.map((held, idx) => {
+        const value = held ?? 0;
+        return (
+          <Box
+            key={idx}
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 1.5,
+              lineHeight: 1.4,
+            }}
+          >
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              {SEMESTER_SHORT_LABELS[idx] ?? `S${idx + 1}`}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 600,
+                color: value > cap ? "error.main" : "text.primary",
+              }}
+            >
+              {value}
+            </Typography>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
 // ===================== MAIN COMPONENT =====================
 function InstructorPage() {
   const [mode, setMode] = useState(""); // 3 mode - new, view, edit
@@ -285,13 +335,14 @@ function InstructorPage() {
                 <TableCell>Last Name</TableCell>
                 <TableCell>First Name</TableCell>
                 <TableCell>Middle Initial</TableCell>
+                <TableCell>Units Held</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={6} align="center">
                     <CircularProgress />
                   </TableCell>
                 </TableRow>
@@ -302,6 +353,9 @@ function InstructorPage() {
                     <TableCell>{instructor.LastName}</TableCell>
                     <TableCell>{instructor.FirstName}</TableCell>
                     <TableCell>{instructor.MiddleInitial}</TableCell>
+                    <TableCell>
+                      <HeldUnitsPerSemesterCell instructor={instructor} />
+                    </TableCell>
                     <TableCell align="right">
                       <Button
                         variant="contained"

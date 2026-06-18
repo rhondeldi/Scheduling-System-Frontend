@@ -112,6 +112,12 @@ export default function InstructorDataView({
     selectedInstructor?.MiddleInitial ?? "",
   );
   const [lastName, setLastName] = useState(selectedInstructor?.LastName ?? "");
+  const [employmentType, setEmploymentType] = useState(
+    selectedInstructor?.EmploymentType === "part-time"
+      ? "part-time"
+      : "regular",
+  );
+  const [maxUnits, setMaxUnits] = useState(selectedInstructor?.MaxUnits ?? "");
 
   const sanitizeNameValue = (value = "") => {
     return value
@@ -177,6 +183,12 @@ export default function InstructorDataView({
     setFirstName(selectedInstructor?.FirstName ?? "");
     setMiddleInitial(selectedInstructor?.MiddleInitial ?? "");
     setLastName(selectedInstructor?.LastName ?? "");
+    setEmploymentType(
+      selectedInstructor?.EmploymentType === "part-time"
+        ? "part-time"
+        : "regular",
+    );
+    setMaxUnits(selectedInstructor?.MaxUnits ?? "");
   }, [selectedInstructor]);
 
   // ---- TIME TABLE GRID STATES ----
@@ -649,6 +661,8 @@ export default function InstructorDataView({
         FirstName: selectedInstructor.FirstName,
         MiddleInitial: selectedInstructor.MiddleInitial,
         LastName: selectedInstructor.LastName,
+        EmploymentType: employmentType === "part-time" ? "part-time" : "regular",
+        MaxUnits: employmentType === "part-time" ? Number(maxUnits) || 0 : 0,
         Time: new_default_time,
       };
 
@@ -1054,7 +1068,11 @@ export default function InstructorDataView({
                         instructorBackup.MiddleInitial;
                     selectedInstructor.LastName =
                         instructorBackup.LastName;
-            
+                    selectedInstructor.EmploymentType =
+                        instructorBackup.EmploymentType;
+                    selectedInstructor.MaxUnits =
+                        instructorBackup.MaxUnits;
+
                     setBaseResourceTimeSlots(
                         backupBaseResourceTimeSlots.current
                     );
@@ -1201,6 +1219,39 @@ export default function InstructorDataView({
                   }}
                   onKeyDown={handleNameKeyDown}
                 />
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel id="label-id-edit-employee-type">
+                    Employee Type
+                  </InputLabel>
+                  <Select
+                    labelId="label-id-edit-employee-type"
+                    label="Employee Type"
+                    value={employmentType}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setEmploymentType(value);
+                      updateInstructorField("EmploymentType", value);
+                    }}
+                  >
+                    <MenuItem value="regular">Regular</MenuItem>
+                    <MenuItem value="part-time">Part-time</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  variant="outlined"
+                  size="small"
+                  type="number"
+                  label="Max Units"
+                  value={employmentType === "part-time" ? maxUnits : 32}
+                  disabled={employmentType !== "part-time"}
+                  helperText="Optional part-time cap (below 32); leave 0 to derive from availability"
+                  inputProps={{ min: 0, max: 31 }}
+                  onChange={(e) => {
+                    const value = Number(e.target.value) || 0;
+                    setMaxUnits(value);
+                    updateInstructorField("MaxUnits", value);
+                  }}
+                />
               </>
             ) : mode === "new" ? (
               <>  
@@ -1273,6 +1324,39 @@ export default function InstructorDataView({
                     updateInstructorField("LastName", sanitized);
                   }}
                   onKeyDown={handleNameKeyDown}
+                />
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel id="label-id-new-employee-type">
+                    Employee Type
+                  </InputLabel>
+                  <Select
+                    labelId="label-id-new-employee-type"
+                    label="Employee Type"
+                    value={employmentType}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setEmploymentType(value);
+                      updateInstructorField("EmploymentType", value);
+                    }}
+                  >
+                    <MenuItem value="regular">Regular</MenuItem>
+                    <MenuItem value="part-time">Part-time</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  variant="outlined"
+                  size="small"
+                  type="number"
+                  label="Max Units"
+                  value={employmentType === "part-time" ? maxUnits : 32}
+                  disabled={employmentType !== "part-time"}
+                  helperText="Optional part-time cap (below 32); leave 0 to derive from availability"
+                  inputProps={{ min: 0, max: 31 }}
+                  onChange={(e) => {
+                    const value = Number(e.target.value) || 0;
+                    setMaxUnits(value);
+                    updateInstructorField("MaxUnits", value);
+                  }}
                 />
               </>
             ) : (

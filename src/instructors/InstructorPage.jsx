@@ -20,6 +20,7 @@ import { fetchAllDepartments, fetchWho } from "../js/departments";
 import {
   fetchInstructors,
   fetchInstructorResources,
+  fetchInstructorSubjects,
 } from "../js/instructors_v2";
 
 import PreviewIcon from "@mui/icons-material/Preview";
@@ -48,6 +49,7 @@ import {
   DialogActions,
   TextField,
   Typography,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -58,12 +60,64 @@ import { deleteRemoveInsturctor } from "../js/instructors";
 
 import { MainHeader } from "../components/Header";
 
+// short labels for each supported semester, matching the backend's
+// HeldUnitsPerSemester ordering (0 = 1st sem, 1 = 2nd sem, 2 = Mid-year).
+const SEMESTER_SHORT_LABELS = ["1st", "2nd", "Mid-yr"];
+
+// Renders an instructor's held units broken down per semester. Each semester's
+// value sits beside its short label; the unit cap (MaxUnits) is shown once
+// since it applies to every semester independently. A value exceeding the cap
+// is highlighted. Falls back to the combined total if the backend response
+// predates the per-semester breakdown.
+function HeldUnitsPerSemesterCell({ instructor }) {
+  const cap = instructor.MaxUnits ?? 32;
+  const perSemester = instructor.HeldUnitsPerSemester;
+
+  if (!Array.isArray(perSemester)) {
+    return `${instructor.HeldUnits ?? 0} / ${cap}`;
+  }
+
+  return (
+    <Box sx={{ display: "inline-flex", flexDirection: "column", minWidth: 64 }}>
+      {perSemester.map((held, idx) => {
+        const value = held ?? 0;
+        return (
+          <Box
+            key={idx}
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 1.5,
+              lineHeight: 1.4,
+            }}
+          >
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              {SEMESTER_SHORT_LABELS[idx] ?? `S${idx + 1}`}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 600,
+                color: value > cap ? "error.main" : "text.primary",
+              }}
+            >
+              {value}
+            </Typography>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
 function InstructorPage({ adminMode = false, pageName = "instructors" }) {
   const [mode, setMode] = useState(""); // 3 mode - new, view, edit
   const [popupOptions, setPopupOptions] = useState(null);
 
   const [isOperationLoading, setIsOperationLoading] = useState(false);
   const [instructors, setInstructors] = useState([]); // load array of instructs when a department is selected
+  const [instructorSubjects, setInstructorSubjects] = useState({}); // map: InstructorID -> [{ SubjectID, Code, Name, Units }]
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [selectedInstructor, setSelectedInstructor] = useState(null);
   const [autoOpenInstructorPrintDialog, setAutoOpenInstructorPrintDialog] =
     useState(false);
@@ -128,88 +182,144 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
 
   const skipAnimRef = useRef(false);
 
-  const load_instructors = useCallback(async (
-    department_id,
-    page_size,
-    new_page,
-    search_term = "",
-  ) => {
-    try {
-      let fetched_instructors;
+  const load_instructors = useCallback(
+    async (department_id, page_size, new_page, search_term = "") => {
+      try {
+        let fetched_instructors;
 
-      if (search_term) {
-        const [firstnameResults, lastnameResults, initialResults] =
-          await Promise.all([
-            fetchInstructors(department_id, page_size, new_page, search_term, "", ""),
-            fetchInstructors(department_id, page_size, new_page, "", "", search_term),
-            fetchInstructors(department_id, page_size, new_page, "", search_term, ""),
-          ]);
+        if (search_term) {
+          const [firstnameResults, lastnameResults, initialResults] =
+            await Promise.all([
+              fetchInstructors(
+                department_id,
+                page_size,
+                new_page,
+                search_term,
+                "",
+                "",
+              ),
+              fetchInstructors(
+                department_id,
+                page_size,
+                new_page,
+                "",
+                "",
+                search_term,
+              ),
+              fetchInstructors(
+                department_id,
+                page_size,
+                new_page,
+                "",
+                search_term,
+                "",
+              ),
+            ]);
 
-        const combined = [
-          ...(firstnameResults.Instructors || []),
-          ...(lastnameResults.Instructors || []),
-          ...(initialResults.Instructors || []),
-        ];
+          const combined = [
+            ...(firstnameResults.Instructors || []),
+            ...(lastnameResults.Instructors || []),
+            ...(initialResults.Instructors || []),
+          ];
 
-        const uniqueInstructors = [];
-        const seenIds = new Set();
-        for (const instructor of combined) {
-          if (!seenIds.has(instructor.InstructorID)) {
-            seenIds.add(instructor.InstructorID);
-            uniqueInstructors.push(instructor);
+          const uniqueInstructors = [];
+          const seenIds = new Set();
+          for (const instructor of combined) {
+            if (!seenIds.has(instructor.InstructorID)) {
+              seenIds.add(instructor.InstructorID);
+              uniqueInstructors.push(instructor);
+            }
           }
+
+          fetched_instructors = {
+            Instructors: uniqueInstructors,
+            TotalInstructors: uniqueInstructors.length,
+          };
+        } else {
+          fetched_instructors = await fetchInstructors(
+            department_id,
+            page_size,
+            new_page,
+            "",
+            "",
+            "",
+          );
         }
 
-        fetched_instructors = {
-          Instructors: uniqueInstructors,
-          TotalInstructors: uniqueInstructors.length,
-        };
-      } else {
-        fetched_instructors = await fetchInstructors(
-          department_id,
-          page_size,
-          new_page,
-          "",
-          "",
-          "",
-        );
-      }
-
-      const sortedInstructors = [
-        ...(fetched_instructors.Instructors || [])
-      ].sort((a, b) => {
-        const lastNameCompare =
-          (a.LastName || "").localeCompare(
+        const sortedInstructors = [
+          ...(fetched_instructors.Instructors || []),
+        ].sort((a, b) => {
+          const lastNameCompare = (a.LastName || "").localeCompare(
             b.LastName || "",
             undefined,
-            { sensitivity: "base" }
+            { sensitivity: "base" },
           );
-      
-        if (lastNameCompare !== 0) {
-          return lastNameCompare;
-        }
-      
-        return (a.FirstName || "").localeCompare(
-          b.FirstName || "",
-          undefined,
-          { sensitivity: "base" }
-        );
-      });
-      
-      setInstructors(sortedInstructors);
-      setTotalCount(fetched_instructors.TotalInstructors);
-      
-    } catch (err) {
-      setPopupOptions({
-        Heading: "Failed to fetch instructors",
-        HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
-        Message: `${err}`,
-      });
+
+          if (lastNameCompare !== 0) {
+            return lastNameCompare;
+          }
+
+          return (a.FirstName || "").localeCompare(
+            b.FirstName || "",
+            undefined,
+            { sensitivity: "base" },
+          );
+        });
+
+        setInstructors(sortedInstructors);
+        setTotalCount(fetched_instructors.TotalInstructors);
+      } catch (err) {
+        setPopupOptions({
+          Heading: "Failed to fetch instructors",
+          HeadingStyle: { background: POPUP_ERROR_COLOR, color: "white" },
+          Message: `${err}`,
+        });
+      }
+
+      setLoading(false);
+      setIsPaginating(false);
+    },
+    [],
+  );
+
+  // Fetch the designated (assigned) subjects for each instructor on the current
+  // page. Runs whenever the displayed instructors change (page, search, reload).
+  useEffect(() => {
+    if (instructors.length === 0) {
+      setInstructorSubjects({});
+      return;
     }
 
-    setLoading(false);
-    setIsPaginating(false);
-  }, []);
+    let cancelled = false;
+    setSubjectsLoading(true);
+
+    (async () => {
+      const entries = await Promise.all(
+        instructors.map(async (instructor) => {
+          try {
+            const subjects = await fetchInstructorSubjects(
+              instructor.InstructorID,
+            );
+            return [
+              instructor.InstructorID,
+              Array.isArray(subjects) ? subjects : [],
+            ];
+          } catch {
+            return [instructor.InstructorID, []];
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        setInstructorSubjects(Object.fromEntries(entries));
+        setSubjectsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [instructors]);
 
   /////////////////////////////////////////////////////////////////////////////////
   //                       DROPDOWN SELECTION STATES
@@ -231,7 +341,7 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
 
   // Sanitize function to allow only letters, spaces, hyphens, and apostrophes
   const sanitizeSearchTerm = (value) => {
-    return value.replace(/[^a-zA-Z\s\-']/g, '');
+    return value.replace(/[^a-zA-Z\s\-']/g, "");
   };
 
   useEffect(() => {
@@ -269,12 +379,7 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
 
     try {
       await deleteRemoveInsturctor(instructor_id);
-      await load_instructors(
-        departmentID,
-        pageSize,
-        page,
-        searchTerm,
-      );
+      await load_instructors(departmentID, pageSize, page, searchTerm);
       setPopupOptions({
         Heading: "Delete Success",
         HeadingStyle: { background: POPUP_SUCCESS_COLOR, color: "white" },
@@ -291,15 +396,20 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
     setInstructorToDelete(null);
     setIsOperationLoading(false);
     setIsDialogDeleteShow(false);
-
   };
 
   // duplicate detection (admin mode)
 
-  const [duplicateInstructorNames, setDuplicateInstructorNames] = useState(new Set());
+  const [duplicateInstructorNames, setDuplicateInstructorNames] = useState(
+    new Set(),
+  );
 
   useEffect(() => {
-    if (!adminMode || !Number.isInteger(Number.parseInt(departmentID, 10)) || departments.length === 0) {
+    if (
+      !adminMode ||
+      !Number.isInteger(Number.parseInt(departmentID, 10)) ||
+      departments.length === 0
+    ) {
       setDuplicateInstructorNames(new Set());
       return;
     }
@@ -311,7 +421,9 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
 
       const results = await Promise.all(
         otherDepts.map((d) =>
-          fetchInstructors(d.DepartmentID, 999, 0, "", "", "").catch(() => ({ Instructors: [] })),
+          fetchInstructors(d.DepartmentID, 999, 0, "", "", "").catch(() => ({
+            Instructors: [],
+          })),
         ),
       );
 
@@ -319,7 +431,9 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
       for (const result of results) {
         for (const instructor of result.Instructors || []) {
           otherNames.add(
-            `${instructor.FirstName} ${instructor.LastName}`.toLowerCase().trim(),
+            `${instructor.FirstName} ${instructor.LastName}`
+              .toLowerCase()
+              .trim(),
           );
         }
       }
@@ -360,7 +474,9 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
           {adminMode && (
             <Box sx={{ mb: 2 }}>
               <FormControl size="small" sx={{ minWidth: 300 }}>
-                <InputLabel id="admin-instructor-dept-label">Select Department</InputLabel>
+                <InputLabel id="admin-instructor-dept-label">
+                  Select Department
+                </InputLabel>
                 <Select
                   labelId="admin-instructor-dept-label"
                   value={departmentID}
@@ -428,100 +544,249 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
         <Box>
           {mode === "" ? (
             <TableContainer component={Paper}>
-            <Box
-              sx={{
-                flex: 1,
-                overflowY: "auto",
-                minHeight: 0,
-              }}
-            >
-              <Table stickyHeader size="small" sx={{ tableLayout: "fixed" }}>
-                <TableHead sx={{ "& .MuiTableCell-root": { bgcolor: "primary.main", color: "white", fontWeight: 700, letterSpacing: "0.05em" } }}>
-                  <TableRow sx={{ height: 1 }}>
-                    <TableCell sx={{ width: "32%" }}>LAST NAME</TableCell>
-                    <TableCell sx={{ width: "32%" }}>FIRST NAME</TableCell>
-                    <TableCell sx={{ width: "20%" }}>MIDDLE INITIAL</TableCell>
-                    <TableCell sx={{ width: adminMode ? "92px" : "54px" }}></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody sx={{ opacity: IsLoading || loading ? 0 : 1, transform: IsLoading || loading ? "translateY(12px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}>
-                  {IsLoading || loading || isPaginating
-                    ? Array.from({ length: pageSize }).map((_, i) => (
+              <Box
+                sx={{
+                  flex: 1,
+                  overflowY: "auto",
+                  minHeight: 0,
+                }}
+              >
+                <Table stickyHeader size="small" sx={{ tableLayout: "fixed" }}>
+                  <TableHead
+                    sx={{
+                      "& .MuiTableCell-root": {
+                        bgcolor: "primary.main",
+                        color: "white",
+                        fontWeight: 700,
+                        letterSpacing: "0.05em",
+                      },
+                    }}
+                  >
+                    <TableRow sx={{ height: 1 }}>
+                      <TableCell sx={{ width: "20%" }}>LAST NAME</TableCell>
+                      <TableCell sx={{ width: "20%" }}>FIRST NAME</TableCell>
+                      <TableCell sx={{ width: "10%" }}>
+                        MIDDLE INITIAL
+                      </TableCell>
+                      <TableCell sx={{ width: "12%" }}>EMPLOYEE TYPE</TableCell>
+                      <TableCell sx={{ width: "10%" }}>UNITS HELD</TableCell>
+                      <TableCell sx={{ width: "auto" }}>
+                        ASSIGNED SUBJECTS
+                      </TableCell>
+                      <TableCell
+                        sx={{ width: adminMode ? "92px" : "54px" }}
+                      ></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody
+                    sx={{
+                      opacity: IsLoading || loading ? 0 : 1,
+                      transform:
+                        IsLoading || loading
+                          ? "translateY(12px)"
+                          : "translateY(0)",
+                      transition: "opacity 0.25s ease, transform 0.25s ease",
+                    }}
+                  >
+                    {IsLoading || loading || isPaginating ? (
+                      Array.from({ length: pageSize }).map((_, i) => (
                         <TableRow key={i} sx={{ height: 50 }}>
-                          <TableCell><Skeleton /></TableCell>
-                          <TableCell><Skeleton /></TableCell>
-                          <TableCell><Skeleton /></TableCell>
+                          <TableCell>
+                            <Skeleton />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton />
+                          </TableCell>
                           <TableCell align="right">
-                            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: "0.5em" }}>
-                              <Skeleton variant="circular" width={32} height={32} />
-                              <Skeleton variant="circular" width={32} height={32} />
-                              <Skeleton variant="circular" width={32} height={32} />
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "flex-end",
+                                gap: "0.5em",
+                              }}
+                            >
+                              <Skeleton
+                                variant="circular"
+                                width={32}
+                                height={32}
+                              />
+                              <Skeleton
+                                variant="circular"
+                                width={32}
+                                height={32}
+                              />
+                              <Skeleton
+                                variant="circular"
+                                width={32}
+                                height={32}
+                              />
                             </Box>
                           </TableCell>
                         </TableRow>
                       ))
-                    : !selectedDepartment ? (
+                    ) : !selectedDepartment ? (
                       <TableRow>
-                        <TableCell colSpan={4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                        <TableCell
+                          colSpan={7}
+                          align="center"
+                          sx={{
+                            fontStyle: "italic",
+                            color: "text.secondary",
+                            py: 2,
+                          }}
+                        >
                           Please select a department first
                         </TableCell>
                       </TableRow>
                     ) : instructors.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} align="center" sx={{ fontStyle: "italic", color: "text.secondary", py: 2 }}>
+                        <TableCell
+                          colSpan={7}
+                          align="center"
+                          sx={{
+                            fontStyle: "italic",
+                            color: "text.secondary",
+                            py: 2,
+                          }}
+                        >
                           No instructors found
                         </TableCell>
                       </TableRow>
                     ) : (
-                    instructors.map((instructor) => (
-                      <TableRow key={instructor.InstructorID}>
-                        <TableCell>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                            {instructor.LastName}
-                            {adminMode && duplicateInstructorNames.has(`${instructor.FirstName} ${instructor.LastName}`.toLowerCase().trim()) && (
-                              <Tooltip title="An instructor with this name already exists in another department">
-                                <WarningAmberIcon color="warning" fontSize="small" />
-                              </Tooltip>
-                            )}
-                          </Box>
-                        </TableCell>
-                        <TableCell>{instructor.FirstName}</TableCell>
-                        <TableCell>{instructor.MiddleInitial}</TableCell>
-                        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 0.75, flexWrap: 'nowrap' }}>
-                            <IconButton
-                              title="View Schedule"
-                              color="view"
-                              disabled={loading}
-                              onClick={() => {
-                                setAutoOpenInstructorPrintDialog(false);
-                                setSelectedInstructor(instructor);
-                                setMode("view");
+                      instructors.map((instructor) => (
+                        <TableRow key={instructor.InstructorID}>
+                          <TableCell>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.5,
                               }}
                             >
-                              <PreviewIcon />
-                            </IconButton>
-                            {adminMode && (
-                            <IconButton
-                              title="Delete"
-                              color="delete"
-                              disabled={loading}
-                              onClick={() => {
-                                setInstructorToDelete(instructor);
-                                setIsDialogDeleteShow(true);
+                              {instructor.LastName}
+                              {adminMode &&
+                                duplicateInstructorNames.has(
+                                  `${instructor.FirstName} ${instructor.LastName}`
+                                    .toLowerCase()
+                                    .trim(),
+                                ) && (
+                                  <Tooltip title="An instructor with this name already exists in another department">
+                                    <WarningAmberIcon
+                                      color="warning"
+                                      fontSize="small"
+                                    />
+                                  </Tooltip>
+                                )}
+                            </Box>
+                          </TableCell>
+                          <TableCell>{instructor.FirstName}</TableCell>
+                          <TableCell>{instructor.MiddleInitial}</TableCell>
+                          <TableCell>
+                            {instructor.EmploymentType === "part-time"
+                              ? "Part-time"
+                              : "Regular"}
+                          </TableCell>
+                          <TableCell>
+                            <HeldUnitsPerSemesterCell
+                              instructor={instructor}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {subjectsLoading ? (
+                              <Skeleton />
+                            ) : instructorSubjects[instructor.InstructorID]
+                                ?.length ? (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  flexWrap: "wrap",
+                                  gap: 0.5,
+                                }}
+                              >
+                                {instructorSubjects[
+                                  instructor.InstructorID
+                                ].map((subject) => (
+                                  <Tooltip
+                                    key={subject.SubjectID}
+                                    title={subject.Name || ""}
+                                  >
+                                    <Chip
+                                      label={subject.Code}
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                  </Tooltip>
+                                ))}
+                              </Box>
+                            ) : (
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "text.secondary",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                No assigned subjects
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell
+                            align="right"
+                            sx={{ whiteSpace: "nowrap" }}
+                          >
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "flex-end",
+                                alignItems: "center",
+                                gap: 0.75,
+                                flexWrap: "nowrap",
                               }}
                             >
-                              <DeleteIcon />
-                            </IconButton>
-                            )}
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                    )
-                  }
-                </TableBody>
-              </Table>
+                              <IconButton
+                                title="View Schedule"
+                                color="view"
+                                disabled={loading}
+                                onClick={() => {
+                                  setAutoOpenInstructorPrintDialog(false);
+                                  setSelectedInstructor(instructor);
+                                  setMode("view");
+                                }}
+                              >
+                                <PreviewIcon />
+                              </IconButton>
+                              {adminMode && (
+                                <IconButton
+                                  title="Delete"
+                                  color="delete"
+                                  disabled={loading}
+                                  onClick={() => {
+                                    setInstructorToDelete(instructor);
+                                    setIsDialogDeleteShow(true);
+                                  }}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              )}
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </Box>
               <Box
                 sx={{
@@ -589,11 +854,18 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
           aria-labelledby="alert-dialog-title"
           aria-describedby="alert-dialog-description"
         >
-          
-          <DialogTitle id="alert-dialog-title" sx={{ backgroundColor: "error.dark" }}>Delete Instructor</DialogTitle>
+          <DialogTitle
+            id="alert-dialog-title"
+            sx={{ backgroundColor: "error.dark" }}
+          >
+            Delete Instructor
+          </DialogTitle>
 
           <DialogContent>
-            <DialogContentText id="alert-dialog-description" sx={{ color: "text.primary", mb: 2 }}>
+            <DialogContentText
+              id="alert-dialog-description"
+              sx={{ color: "text.primary", mb: 2 }}
+            >
               This action cannot be undone.
             </DialogContentText>
             <Box
@@ -606,8 +878,12 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
                 borderColor: "error.light",
               }}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "error.dark" }}>
-                {`${instructorToDelete?.FirstName ?? ""} ${instructorToDelete?.MiddleInitial ?? ""} ${instructorToDelete?.LastName ?? ""}`.trim() || "Selected instructor"}
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 800, color: "error.dark" }}
+              >
+                {`${instructorToDelete?.FirstName ?? ""} ${instructorToDelete?.MiddleInitial ?? ""} ${instructorToDelete?.LastName ?? ""}`.trim() ||
+                  "Selected instructor"}
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 This instructor record will be permanently removed.
@@ -649,20 +925,10 @@ function InstructorPage({ adminMode = false, pageName = "instructors" }) {
             onInstructorDataViewClose={async () => {
               setMode("");
               setSelectedInstructor(null);
-              await load_instructors(
-                departmentID,
-                pageSize,
-                page,
-                searchTerm,
-              );
+              await load_instructors(departmentID, pageSize, page, searchTerm);
             }}
             reloadInstructorsTable={async () => {
-              await load_instructors(
-                departmentID,
-                pageSize,
-                page,
-                searchTerm,
-              );
+              await load_instructors(departmentID, pageSize, page, searchTerm);
             }}
             departments={departments}
             popupOptions={popupOptions}

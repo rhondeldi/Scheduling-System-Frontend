@@ -81,16 +81,7 @@ const truncateText = (text, maxLength) => {
 };
 
 // ===================== CONSTANTS =====================
-const YEAR_LEVEL_NAMES = [
-  "1st Year",
-  "2nd Year",
-  "3rd Year",
-  "4th Year",
-  "5th Year",
-  "6th Year",
-  "7th Year",
-  "8th Year",
-];
+const YEAR_LEVEL_NAMES = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
 const SEMESTER_NAMES = ["1st Semester", "2nd Semester", "Mid-year"];
 
@@ -120,6 +111,32 @@ function CurriculumView({
   const [yearSemSubjectTarget, setYearSemSubjectTarget] = useState(null);
 
   const [chipInstructors, setChipInstructors] = useState([]);
+
+  // ===================== HANDLERS =====================
+  const addYearLevel = () => {
+    const c = structuredClone(editedCurriculum);
+
+    if (c.YearLevels.length >= YEAR_LEVEL_NAMES.length) {
+      setPopupOptions({
+        Heading: "Limit reached",
+        HeadingStyle: {
+          background: POPUP_WARNING_COLOR,
+          color: "black",
+        },
+        Message: "Max year levels reached",
+      });
+      return;
+    }
+
+    c.YearLevels.push({
+      Name: YEAR_LEVEL_NAMES[c.YearLevels.length],
+      IsActive: true,
+      Semesters: [],
+    });
+
+    setEditedCurriculum(c);
+    setYearTabIndex(c.YearLevels.length - 1);
+  };
 
   // ===================== LOAD DATA =====================
   useEffect(() => {
@@ -337,34 +354,7 @@ function CurriculumView({
                 </Tabs>
 
                 {(mode === "edit" || mode === "new") && (
-                  <Button
-                    onClick={() => {
-                      const c = structuredClone(editedCurriculum);
-
-                      if (c.YearLevels.length >= YEAR_LEVEL_NAMES.length) {
-                        setPopupOptions({
-                          Heading: "Limit reached",
-                          HeadingStyle: {
-                            background: POPUP_WARNING_COLOR,
-                            color: "black",
-                          },
-                          Message: "Max year levels reached",
-                        });
-                        return;
-                      }
-
-                      c.YearLevels.push({
-                        Name: YEAR_LEVEL_NAMES[c.YearLevels.length],
-                        IsActive: true,
-                        Semesters: [],
-                      });
-
-                      setEditedCurriculum(c);
-                      setYearTabIndex(c.YearLevels.length - 1);
-                    }}
-                  >
-                    +
-                  </Button>
+                  <Button onClick={addYearLevel}>+</Button>
                 )}
               </Box>
 
@@ -710,8 +700,25 @@ function CurriculumView({
               </Box>
             </>
           ) : (
-            <Box p={1}>
+            <Box
+              p={2}
+              display="flex"
+              flexDirection="column"
+              alignItems="flex-start"
+              gap={1}
+            >
               <Typography fontStyle="italic">empty year levels</Typography>
+
+              {(mode === "edit" || mode === "new") && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<AddIcon />}
+                  onClick={addYearLevel}
+                >
+                  Add Year Level
+                </Button>
+              )}
             </Box>
           )}
         </Box>
